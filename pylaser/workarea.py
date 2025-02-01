@@ -1,6 +1,7 @@
 import cairo
 from copy import copy
 from dataclasses import dataclass
+from render import Renderer, SVGRenderer
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -8,14 +9,29 @@ from gi.repository import Gtk, Graphene  # noqa: E402
 
 
 @dataclass
-class SurfaceItem:
-    surface: cairo.Surface
+class WorkAreaItem:
+    renderer: Renderer
+    data: object
     x_mm: float
     y_mm: float
     width_mm: float
     height_mm: float
     angle: float = 0.0
     selected: bool = False
+    surface: cairo.Surface = None
+    dirty: bool = True
+
+    def render(self, width, height):
+        if self.surface:
+            if self.surface.get_width() != width \
+              or self.surface.get_height() != height:
+                self.dirty = True
+
+        if self.dirty:
+            self.surface = self.renderer.render_item(self, width, height)
+            self.dirty = False
+
+        return self.surface
 
 
 class WorkAreaWidget(Gtk.DrawingArea):
@@ -53,22 +69,18 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.drag_gesture.connect("drag-end", self.on_button_release)
         self.add_controller(self.drag_gesture)
 
-    def add_surface(self, surface):
+    def add_svg(self, data):
         """
-        Add a new Cairo surface.
+        Add a new item from an SVG (XML as binary string).
         """
-        # Scale the surface to fit the widget
-        surface_width = surface.get_width()
-        surface_height = surface.get_height()
-        aspect_ratio = surface_width/surface_height
-
+        aspect_ratio = SVGRenderer.get_aspect_ratio(data)
         width_mm = self.work_area_width_mm
         height_mm = width_mm/aspect_ratio
         if height_mm > self.work_area_height_mm:
             height_mm = self.work_area_height_mm
             width_mm = height_mm*aspect_ratio
 
-        item = SurfaceItem(surface, 0, 0, width_mm, height_mm)
+        item = WorkAreaItem(SVGRenderer, data, 0, 0, width_mm, height_mm)
         self.items.append(item)
         self.queue_draw()
 
@@ -97,37 +109,45 @@ class WorkAreaWidget(Gtk.DrawingArea):
 
         # Draw the items.
         for item in self.items:
-            cr.save()
-            item_x = self.work_area_x+item.x_mm*self.pixels_per_mm
-            item_y = self.work_area_y_end+item.y_mm*self.pixels_per_mm
+            self._draw_item(cr, item)
 
-            cr.translate(item_x, item_y)
-            item_width = item.surface.get_width()
-            item_height = item.surface.get_height()
-            target_width = item.width_mm*self.pixels_per_mm
-            target_height = item.height_mm*self.pixels_per_mm
-            cr.scale(target_width/item_width, target_height/item_height)
-            cr.rotate(item.angle)
-            cr.set_source_surface(item.surface, 0, 0)
-            cr.paint()
-            cr.restore()
+    def _draw_item(self, cr, item):
+        # Scale the surface to fit the widget
+        target_width = item.width_mm*self.pixels_per_mm
+        target_height = item.height_mm*self.pixels_per_mm
+        surface = item.render(target_width, target_height)
 
-            # Draw rectangle around selected items
-            if item.selected:
-                cr.set_source_rgb(0, 0, 1)
-                cr.rectangle(item_x, item_y, target_width, target_height)
-                cr.stroke()
+        cr.save()
+        item_x = self.work_area_x+item.x_mm*self.pixels_per_mm
+        item_y = self.work_area_y_end+item.y_mm*self.pixels_per_mm
 
-            # Draw resize handle
-            if item == self.active_item:
-                cr.set_source_rgb(0, 0, 1)
-                handle_x = item_x + target_width
-                handle_y = item_y + target_height
-                cr.rectangle(handle_x-self.handle_size/2,
-                             handle_y-self.handle_size/2,
-                             self.handle_size,
-                             self.handle_size)
-                cr.fill()
+        cr.translate(item_x, item_y)
+        item_width = surface.get_width()
+        item_height = surface.get_height()
+        target_width = item.width_mm*self.pixels_per_mm
+        target_height = item.height_mm*self.pixels_per_mm
+        cr.scale(target_width/item_width, target_height/item_height)
+        cr.rotate(item.angle)
+        cr.set_source_surface(surface, 0, 0)
+        cr.paint()
+        cr.restore()
+
+        # Draw rectangle around selected items
+        if item.selected:
+            cr.set_source_rgb(0, 0, 1)
+            cr.rectangle(item_x, item_y, target_width, target_height)
+            cr.stroke()
+
+        # Draw resize handle
+        if item == self.active_item:
+            cr.set_source_rgb(0, 0, 1)
+            handle_x = item_x + target_width
+            handle_y = item_y + target_height
+            cr.rectangle(handle_x-self.handle_size/2,
+                         handle_y-self.handle_size/2,
+                         self.handle_size,
+                         self.handle_size)
+            cr.fill()
 
     def _update_surface_extents(self, cr, width, height):
         label_x_max = f"{self.work_area_width_mm}"

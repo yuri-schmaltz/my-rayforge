@@ -1,11 +1,3 @@
-import cairosvg
-import cairo
-import io
-
-def render_svg_to_surface(svg_file):
-    png_data = cairosvg.svg2png(url=svg_file)
-    return cairo.ImageSurface.create_from_png(io.BytesIO(png_data))
-
 def convert_surface_to_greyscale(surface):
     """Converts a cairo surface to greyscale."""
     data = surface.get_data()

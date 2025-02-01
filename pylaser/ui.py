@@ -1,6 +1,5 @@
 import argparse
 import gi
-from image import render_svg_to_surface, convert_surface_to_greyscale
 from workarea import WorkAreaWidget
 
 gi.require_version('Gtk', '4.0')
@@ -11,14 +10,15 @@ class SVGViewer(Gtk.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("SVG to Grayscale Bitmap Viewer")
-        self.set_default_size(800, 600)
+        self.set_default_size(800, 800)
 
         # Create a button to open the SVG file
         self.open_button = Gtk.Button(label="Open SVG")
         self.open_button.connect("clicked", self.on_open_clicked)
 
         # Create a work area to display the image and paths
-        self.workarea = WorkAreaWidget(width_mm=100, height_mm=100)
+        self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
+        self.workarea.set_hexpand(True)
         self.workarea.set_vexpand(True)
 
         # Create a vertical box to hold the button and drawing area
@@ -60,9 +60,8 @@ class SVGViewer(Gtk.ApplicationWindow):
             print(f"Error opening file: {e.message}")
 
     def load_file(self, filename):
-        surface = render_svg_to_surface(filename)
-        surface = convert_surface_to_greyscale(surface)
-        self.workarea.add_surface(surface)
+        with open(filename) as fp:
+            self.workarea.add_svg(fp.read())
 
 
 class MyApp(Gtk.Application):
