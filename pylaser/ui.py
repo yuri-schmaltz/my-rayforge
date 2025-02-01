@@ -1,3 +1,4 @@
+import os
 import argparse
 import gi
 from workarea import WorkAreaWidget
@@ -37,6 +38,7 @@ class SVGViewer(Gtk.ApplicationWindow):
         filter_svg = Gtk.FileFilter()
         filter_svg.set_name("SVG files")
         filter_svg.add_mime_type("image/svg+xml")
+        filter_svg.add_mime_type("image/png")
 
         # Create a Gio.ListModel for the filters
         filters = Gio.ListStore.new(Gtk.FileFilter)
@@ -60,8 +62,16 @@ class SVGViewer(Gtk.ApplicationWindow):
             print(f"Error opening file: {e.message}")
 
     def load_file(self, filename):
-        with open(filename) as fp:
-            self.workarea.add_svg(fp.read())
+        with open(filename, 'rb') as fp:
+            ext = os.path.splitext(filename)[1].lower()
+            match ext:
+                case '.svg':
+                    self.workarea.add_svg(fp.read())
+                case '.png':
+                    self.workarea.add_png(fp.read())
+                case _:
+                    print(f"unknown extension: {filename}")
+                    return
 
 
 class MyApp(Gtk.Application):

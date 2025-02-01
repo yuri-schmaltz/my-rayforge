@@ -1,7 +1,7 @@
 import cairo
 from copy import copy
 from dataclasses import dataclass
-from render import Renderer, SVGRenderer
+from render import Renderer, SVGRenderer, PNGRenderer
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -19,17 +19,12 @@ class WorkAreaItem:
     angle: float = 0.0
     selected: bool = False
     surface: cairo.Surface = None
-    dirty: bool = True
 
     def render(self, width, height):
-        if self.surface:
-            if self.surface.get_width() != width \
-              or self.surface.get_height() != height:
-                self.dirty = True
-
-        if self.dirty:
+        if not self.surface \
+          or self.surface.get_width() != width \
+          or self.surface.get_height() != height:
             self.surface = self.renderer.render_item(self, width, height)
-            self.dirty = False
 
         return self.surface
 
@@ -73,16 +68,28 @@ class WorkAreaWidget(Gtk.DrawingArea):
         """
         Add a new item from an SVG (XML as binary string).
         """
-        aspect_ratio = SVGRenderer.get_aspect_ratio(data)
+        self._add_item(SVGRenderer, data)
+
+    def add_png(self, data):
+        """
+        Add a new item from a PNG image (binary string).
+        """
+        self._add_item(PNGRenderer, data)
+
+    def _add_item(self, renderer, data):
+        aspect_ratio = renderer.get_aspect_ratio(data)
+        width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
+        item = WorkAreaItem(renderer, data, 0, 0, width_mm, height_mm)
+        self.items.append(item)
+        self.queue_draw()
+
+    def _get_default_size_mm(self, aspect_ratio):
         width_mm = self.work_area_width_mm
         height_mm = width_mm/aspect_ratio
         if height_mm > self.work_area_height_mm:
             height_mm = self.work_area_height_mm
             width_mm = height_mm*aspect_ratio
-
-        item = WorkAreaItem(SVGRenderer, data, 0, 0, width_mm, height_mm)
-        self.items.append(item)
-        self.queue_draw()
+        return width_mm, height_mm
 
     def do_snapshot(self, snapshot):
         """
@@ -113,8 +120,8 @@ class WorkAreaWidget(Gtk.DrawingArea):
 
     def _draw_item(self, cr, item):
         # Scale the surface to fit the widget
-        target_width = item.width_mm*self.pixels_per_mm
-        target_height = item.height_mm*self.pixels_per_mm
+        target_width = int(item.width_mm*self.pixels_per_mm)
+        target_height = int(item.height_mm*self.pixels_per_mm)
         surface = item.render(target_width, target_height)
 
         cr.save()
