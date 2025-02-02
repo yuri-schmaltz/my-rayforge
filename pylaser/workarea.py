@@ -51,6 +51,9 @@ class Group:
     def add_item(self, item):
         self.items.append(item)
 
+    def remove_selected(self):
+        self.items = [i for i in self.items if not i.selected]
+
     def render(self, width, height, pixels_per_mm):
         # Make a surface for the layer and copy all relevant items to it.
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
@@ -90,12 +93,16 @@ class WorkArea:
     def add_item(self, item):
         self.items.append(item)
 
+    def remove_selected(self):
+        self.items = [i for i in self.items if not i.selected]
+        for group in self.groups:
+            group.remove_selected()
+
 
 class WorkAreaWidget(Gtk.DrawingArea):
     def __init__(self, width_mm=100, height_mm=100, **kwargs):
         super().__init__(**kwargs)
         self.work_area = WorkArea(width_mm, height_mm)
-        self.groups = [Group()]
         self.aspect_ratio = width_mm/height_mm
         self.set_focusable(True)
 
@@ -132,6 +139,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.key_controller.connect("key-released", self.on_key_released)
         self.add_controller(self.key_controller)
         self.shift_pressed = False
+        self.grab_focus()
 
     def add_svg(self, data):
         """
@@ -156,7 +164,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
                             width_mm,
                             height_mm)
         self.work_area.add_item(item)
-        self.groups[0].add_item(item)
+        self.work_area.groups[0].add_item(item)
         self.queue_draw()
 
     def _get_default_size_mm(self, aspect_ratio):
@@ -171,7 +179,6 @@ class WorkAreaWidget(Gtk.DrawingArea):
         """
         Render the Cairo surface and draw scales on the widget.
         """
-        self.grab_focus()
         # Get the widget's allocated size
         width = self.get_width()
         height = width/self.aspect_ratio
@@ -199,7 +206,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
             return
 
         # Draw the paths.
-        for group in self.groups:
+        for group in self.work_area.groups:
             surface = group.render(self.work_area_w,
                                    self.work_area_h,
                                    self.pixels_per_mm)
@@ -394,6 +401,11 @@ class WorkAreaWidget(Gtk.DrawingArea):
     def on_key_pressed(self, controller, keyval, keycode, state):
         if keyval == Gdk.KEY_Shift_L or keyval == Gdk.KEY_Shift_R:
             self.shift_pressed = True
+        elif keyval == Gdk.KEY_Delete:
+            self.work_area.remove_selected()
+            self.active_item = None
+            self.active_item_copy = None
+            self.queue_draw()
 
     def on_key_released(self, controller, keyval, keycode, state):
         if keyval == Gdk.KEY_Shift_L or keyval == Gdk.KEY_Shift_R:
