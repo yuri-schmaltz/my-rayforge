@@ -7,7 +7,7 @@ from processor import Processor, ToGrayscale, OutlineTracer
 import gi
 
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Graphene  # noqa: E402
+from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
 
 
 @dataclass
@@ -32,6 +32,10 @@ class WorkAreaItem:
             self.surface = self.renderer.render_item(self, width, height)
 
         return self.surface
+
+    def get_aspect_ratio(self):
+        """Returns the current aspect ratio (i.e. not the natural ratio)"""
+        return self.width_mm/self.height_mm
 
 
 @dataclass
@@ -85,16 +89,14 @@ class WorkArea:
 
 
 class WorkAreaWidget(Gtk.DrawingArea):
-    def __init__(self, width_mm=100, height_mm=100):
-        super().__init__()
+    def __init__(self, width_mm=100, height_mm=100, **kwargs):
+        super().__init__(**kwargs)
         self.work_area = WorkArea(width_mm, height_mm)
         self.groups = [Group()]
         self.aspect_ratio = width_mm/height_mm
-        self.set_has_tooltip(True)
+        self.set_focusable(True)
 
         # Location of the work area in the drawing area.
-        self.work_area.width_mm = width_mm  # Real-world width in mm
-        self.work_area.height_mm = height_mm  # Real-world height in mm
         self.work_area_x = 10
         self.work_area_x_end = 20
         self.work_area_y = 10
@@ -106,20 +108,27 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.grid_size = 10  # in mm
 
         # Configure gestures.
-        self.active_item = None
-        self.active_item_copy = None
-        self.resizing = False
-        self.moving = False
-        self.handle_size = 10.0
-        self.click_pos = None, None
         self.click_gesture = Gtk.GestureClick()
         self.click_gesture.connect("pressed", self.on_button_press)
         self.add_controller(self.click_gesture)
+        self.last_click = None, None
+        self.active_item = None
+        self.active_item_copy = None
+        self.handle_size = 10.0
 
         self.drag_gesture = Gtk.GestureDrag()
         self.drag_gesture.connect("drag-update", self.on_mouse_drag)
         self.drag_gesture.connect("drag-end", self.on_button_release)
         self.add_controller(self.drag_gesture)
+        self.resizing = False
+        self.moving = False
+
+        # Create an event controller for key events
+        self.key_controller = Gtk.EventControllerKey.new()
+        self.key_controller.connect("key-pressed", self.on_key_pressed)
+        self.key_controller.connect("key-released", self.on_key_released)
+        self.add_controller(self.key_controller)
+        self.shift_pressed = False
 
     def add_svg(self, data):
         """
@@ -137,7 +146,12 @@ class WorkAreaWidget(Gtk.DrawingArea):
         data = renderer.prepare(data)
         aspect_ratio = renderer.get_aspect_ratio(data)
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
-        item = WorkAreaItem(renderer, data, 0, 0, width_mm, height_mm)
+        item = WorkAreaItem(renderer,
+                            data,
+                            self.work_area.width_mm/2-width_mm/2,
+                            self.work_area.height_mm/2-height_mm/2,
+                            width_mm,
+                            height_mm)
         self.work_area.add_item(item)
         self.groups[0].add_item(item)
         self.queue_draw()
@@ -154,6 +168,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
         """
         Render the Cairo surface and draw scales on the widget.
         """
+        self.grab_focus()
         # Get the widget's allocated size
         width = self.get_width()
         height = width/self.aspect_ratio
@@ -314,9 +329,11 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.queue_draw()
 
     def on_button_press(self, gesture, n_press, x, y):
+        self.grab_focus()
+
         x_mm = (x-self.work_area_x)/self.pixels_per_mm
         y_mm = (y-self.work_area_y_end)/self.pixels_per_mm
-        self.click_pos = x_mm, y_mm
+        self.last_click = x_mm, y_mm
 
         item = self.get_item_at(x_mm, y_mm)
         if not item:
@@ -353,8 +370,14 @@ class WorkAreaWidget(Gtk.DrawingArea):
         if self.resizing:
             self.active_item.width_mm = min(max(self.handle_size, start_w+dx),
                                             self.work_area.width_mm)
-            self.active_item.height_mm = min(max(self.handle_size, start_h+dy),
-                                             self.work_area.height_mm)
+            if self.shift_pressed:
+                aspect = self.active_item_copy.get_aspect_ratio()
+                self.active_item.height_mm = self.active_item.width_mm/aspect
+            else:
+                self.active_item.height_mm = min(max(self.handle_size,
+                                                     start_h+dy),
+                                                 self.work_area.height_mm)
+
             self.queue_draw()
             return
 
@@ -364,3 +387,11 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.active_item.y_mm = min(max(-start_h/2, start_y+dy),
                                     self.work_area.height_mm-start_h/2)
         self.queue_draw()
+
+    def on_key_pressed(self, controller, keyval, keycode, state):
+        if keyval == Gdk.KEY_Shift_L or keyval == Gdk.KEY_Shift_R:
+            self.shift_pressed = True
+
+    def on_key_released(self, controller, keyval, keycode, state):
+        if keyval == Gdk.KEY_Shift_L or keyval == Gdk.KEY_Shift_R:
+            self.shift_pressed = False

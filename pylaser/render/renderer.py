@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class Renderer(ABC):
     @classmethod
     def prepare(cls, data):
