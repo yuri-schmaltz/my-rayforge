@@ -1,8 +1,8 @@
 import cairo
 from copy import copy
 from dataclasses import dataclass, field
-from render import Renderer, SVGRenderer, PNGRenderer
 from pathdom import PathDOM
+from render import Renderer, SVGRenderer, PNGRenderer
 from processor import Processor, ToGrayscale, OutlineTracer
 import gi
 
@@ -125,7 +125,6 @@ class WorkAreaWidget(Gtk.DrawingArea):
         """
         Add a new item from an SVG (XML as binary string).
         """
-        data = SVGRenderer.crop_to_content(data)
         self._add_item(SVGRenderer, data)
 
     def add_png(self, data):
@@ -135,6 +134,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self._add_item(PNGRenderer, data)
 
     def _add_item(self, renderer, data):
+        data = renderer.prepare(data)
         aspect_ratio = renderer.get_aspect_ratio(data)
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
         item = WorkAreaItem(renderer, data, 0, 0, width_mm, height_mm)

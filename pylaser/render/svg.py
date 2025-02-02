@@ -1,10 +1,10 @@
 import re
-from abc import ABC
+import io
+import cairo
+import cairosvg
 from xml.etree import ElementTree as ET
 from PIL import Image
-import cairosvg
-import cairo
-import io
+from .renderer import Renderer
 
 
 def parse_length(s):
@@ -12,19 +12,13 @@ def parse_length(s):
     if m:
         return float(m.group(1)), m.group(2) or "px"
     return float(s)
-    return None, None
-
-
-class Renderer(ABC):
-    @classmethod
-    def render_item(cls, item, width=None, height=None):
-        """
-        Renders a WorkAreaItem to a Cairo surface.
-        """
-        pass
 
 
 class SVGRenderer(Renderer):
+    @classmethod
+    def prepare(cls, data):
+        return cls._crop_to_content(data)
+
     @classmethod
     def get_aspect_ratio(cls, data):
         surface = cls._render_data(data)
@@ -42,7 +36,7 @@ class SVGRenderer(Renderer):
         return cairo.ImageSurface.create_from_png(io.BytesIO(png_data))
 
     @classmethod
-    def get_margins(cls, data):
+    def _get_margins(cls, data):
         """
         Reliably finding the content width of an SVG is surprisingly hard.
         I tried several modules (svgelements, svg2paths2) and all methods
@@ -75,8 +69,8 @@ class SVGRenderer(Renderer):
         return left_pct, top_pct, right_pct, bottom_pct
 
     @classmethod
-    def crop_to_content(cls, data):
-        left_pct, top_pct, right_pct, bottom_pct = cls.get_margins(data)
+    def _crop_to_content(cls, data):
+        left_pct, top_pct, right_pct, bottom_pct = cls._get_margins(data)
 
         root = ET.fromstring(data)
 
@@ -101,23 +95,3 @@ class SVGRenderer(Renderer):
             root.set("height", f"{new_h}{unit}")
 
         return ET.tostring(root, encoding="unicode")
-
-
-class PNGRenderer(Renderer):
-    @classmethod
-    def get_aspect_ratio(cls, data):
-        surface = cairo.ImageSurface.create_from_png(io.BytesIO(data))
-        return surface.get_width()/surface.get_height()
-
-    @classmethod
-    def render_item(cls, item, width=None, height=None):
-        surface = cairo.ImageSurface.create_from_png(io.BytesIO(item.data))
-        scaled = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
-        ctx = cairo.Context(scaled)
-        ctx.scale(width/surface.get_width(), height/surface.get_height())
-        ctx.set_source_surface(surface, 0, 0)
-        return cls._render_data(item.data, width, height)
-
-    @classmethod
-    def _render_data(cls, data, width=None, height=None):
-        return cairo.ImageSurface.create_from_png(io.BytesIO(data))
