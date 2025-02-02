@@ -1,42 +1,52 @@
 import os
 import argparse
 import gi
-from workarea import WorkAreaWidget
+from workarea import WorkAreaWidget, WorkAreaItem, Group
 from gcode import GCodeSerializer
 
+gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gio, GLib  # noqa: E402
+from gi.repository import Gtk, Gio, GLib, Adw  # noqa: E402
 
 
-class SVGViewer(Gtk.ApplicationWindow):
+class SVGViewer(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("Laser GCode generator")
-        self.set_default_size(800, 800)
+        self.set_default_size(1000, 700)
 
-        # Create buttons to open the SVG file and to generate GCode
-        self.open_button = Gtk.Button(label="Open SVG")
-        self.open_button.connect("clicked", self.on_open_clicked)
-        self.generate_button = Gtk.Button(label="Generate G-code")
-        self.generate_button.connect("clicked", self.on_generate_clicked)
+        # Create the main vbox
+        vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.set_content(vbox)
 
-        self.buttonbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
-                                 spacing=6)
-        self.buttonbox.append(self.open_button)
-        self.buttonbox.append(self.generate_button)
-        self.buttonbox.set_hexpand(True)
+        # Header bar with hamburger menu
+        header_bar = Adw.HeaderBar()
+        vbox.append(header_bar)
+
+        # Create a menu
+        menu_button = Gtk.MenuButton()
+        menu_model = Gio.Menu()
+        menu_model.append("Quit", "app.quit")
+        menu_button.set_menu_model(menu_model)
+        header_bar.pack_end(menu_button)
+
+        # Create a toolbar
+        toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        vbox.append(toolbar)
+        open_button = Gtk.Button(icon_name="document-import-symbolic")
+        open_button.set_tooltip_text("Import Image")
+        open_button.connect("clicked", self.on_open_clicked)
+        toolbar.append(open_button)
+        generate_button = Gtk.Button(icon_name="document-save-symbolic")
+        generate_button.set_tooltip_text("Generate GCode")
+        generate_button.connect("clicked", self.on_generate_clicked)
+        toolbar.append(generate_button)
 
         # Create a work area to display the image and paths
         self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
         self.workarea.set_hexpand(True)
         self.workarea.set_vexpand(True)
-
-        # Create a vertical box to hold the button and drawing area
-        self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.box.append(self.buttonbox)
-        self.box.append(self.workarea)
-
-        self.set_child(self.box)
+        vbox.append(self.workarea)
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
@@ -90,10 +100,10 @@ class SVGViewer(Gtk.ApplicationWindow):
                     return
 
 
-class MyApp(Gtk.Application):
+class MyApp(Adw.Application):
     def __init__(self, args):
         super().__init__(application_id='org.example.myapp')
-        self.args = args
+        self.set_accels_for_action("app.quit", ["<Ctrl>Q"])
 
     def do_activate(self):
         win = SVGViewer(application=self)
@@ -101,6 +111,15 @@ class MyApp(Gtk.Application):
             win.load_file(args.filename)
         win.present()
 
+    def do_startup(self):
+        Adw.Application.do_startup(self)
+        self.add_action_entries()
+
+    def add_action_entries(self):
+        # Add the "quit" action
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda a, p: self.quit())
+        self.add_action(quit_action)
 
 parser = argparse.ArgumentParser(
         description="GCode generator for laser cutters.")
