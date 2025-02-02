@@ -55,8 +55,10 @@ class Group:
         # Make a surface for the layer and copy all relevant items to it.
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                           int(width), int(height))
+
         ctx = cairo.Context(self.surface)
         for item in self.items:
+            ctx.save()
             item_x = item.x_mm*pixels_per_mm
             item_y = item.y_mm*pixels_per_mm
             item_w = item.width_mm*pixels_per_mm
@@ -67,6 +69,7 @@ class Group:
             ctx.scale(scale_x, scale_y)
             ctx.set_source_surface(item.surface, 0, 0)
             ctx.paint()
+            ctx.restore()
 
         # Run the processors.
         self.pathdom.clear()
