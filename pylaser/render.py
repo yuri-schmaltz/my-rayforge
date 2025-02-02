@@ -37,7 +37,7 @@ class SVGRenderer(Renderer):
     @classmethod
     def _render_data(cls, data, width=None, height=None):
         png_data = cairosvg.svg2png(bytestring=data,
-                                    output_width=width,
+                                    parent_height=height,
                                     output_height=height)
         return cairo.ImageSurface.create_from_png(io.BytesIO(png_data))
 
