@@ -258,21 +258,25 @@ class WorkAreaWidget(Gtk.DrawingArea):
         # Draw rectangle around selected items
         if item.selected:
             ctx.save()
-            ctx.set_source_rgb(0, 0, 1)
+            ctx.set_source_rgb(.4, .4, .4)
+            ctx.set_dash((5, 5))
             ctx.rectangle(item_x, item_y, target_width, target_height)
             ctx.stroke()
             ctx.restore()
 
         # Draw resize handle
         if item == self.active_item:
-            ctx.set_source_rgb(0, 0, 1)
+            ctx.save()
+            ctx.set_source_rgb(.4, .4, .4)
+            ctx.set_line_width(1)
             handle_x = item_x + target_width
             handle_y = item_y + target_height
             ctx.rectangle(handle_x-self.handle_size/2,
                          handle_y-self.handle_size/2,
                          self.handle_size,
                          self.handle_size)
-            ctx.fill()
+            ctx.stroke()
+            ctx.restore()
 
     def _update_surface_extents(self, ctx, width, height):
         label_x_max = f"{self.workarea.width_mm}"
