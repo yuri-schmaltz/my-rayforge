@@ -60,7 +60,7 @@ class SVGViewer(Gtk.ApplicationWindow):
 
     def on_generate_clicked(self, button):
         serializer = GCodeSerializer()
-        group = self.workarea.work_area.groups[0]
+        group = self.workarea.workarea.groups[0]
         group.render()
         gcode = serializer.serialize(group.pathdom)
         print(gcode)

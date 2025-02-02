@@ -40,6 +40,7 @@ class WorkAreaItem:
 
 @dataclass
 class Group:
+    workarea: object
     items: list[WorkAreaItem] = field(default_factory=list)
     processors: list[Processor] = field(default_factory=lambda: [
         MakeTransparent,
@@ -51,7 +52,10 @@ class Group:
     surface: cairo.Surface = None
 
     def copy(self):
-        return Group(self.items, self.processors, self.pixels_per_mm)
+        return Group(self.workarea,
+                     self.items,
+                     self.processors,
+                     self.pixels_per_mm)
 
     def add_item(self, item):
         self.items.append(item)
@@ -71,7 +75,6 @@ class Group:
         width_mm, height_mm = self.size_mm()
         width = width_mm*self.pixels_per_mm
         height = height_mm*self.pixels_per_mm
-        print("PX", self.pixels_per_mm, int(width), int(height))
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                           int(width), int(height))
 
@@ -94,7 +97,7 @@ class Group:
         self.pathdom.clear()
         for processor in self.processors:
             processor.process(self)
-        self.pathdom.render(self.surface, self.pixels_per_mm, self.pixels_per_mm)
+        self.pathdom.render(self.surface, self.pixels_per_mm, self.workarea.height_mm)
 
         return self.surface
 
@@ -104,7 +107,7 @@ class WorkArea:
     width_mm: float = 10   # Real-world width in mm
     height_mm: float = 10  # Real-world height in mm
     items: list = field(default_factory=lambda: [])
-    groups: list = field(default_factory=lambda: [Group()])
+    groups: list = field(default_factory=lambda: [])
 
     def add_item(self, item):
         self.items.append(item)
@@ -118,18 +121,19 @@ class WorkArea:
 class WorkAreaWidget(Gtk.DrawingArea):
     def __init__(self, width_mm=100, height_mm=100, **kwargs):
         super().__init__(**kwargs)
-        self.work_area = WorkArea(width_mm, height_mm)
+        self.workarea = WorkArea(width_mm, height_mm)
+        self.workarea.groups.append(Group(self.workarea))
         self.aspect_ratio = width_mm/height_mm
         self.set_focusable(True)
 
         # Location of the work area in the drawing area.
-        self.work_area_x = 10
-        self.work_area_x_end = 20
-        self.work_area_y = 10
-        self.work_area_y_end = 20
-        self.work_area_w = 10
-        self.work_area_h = 10
-        self.pixels_per_mm = self.work_area_w/self.work_area.width_mm
+        self.workarea_x = 10
+        self.workarea_x_end = 20
+        self.workarea_y = 10
+        self.workarea_y_end = 20
+        self.workarea_w = 10
+        self.workarea_h = 10
+        self.pixels_per_mm = self.workarea_w/self.workarea.width_mm
         self.label_padding = 2
         self.grid_size = 10  # in mm
 
@@ -175,19 +179,19 @@ class WorkAreaWidget(Gtk.DrawingArea):
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
         item = WorkAreaItem(renderer,
                             data,
-                            self.work_area.width_mm/2-width_mm/2,
-                            self.work_area.height_mm/2-height_mm/2,
+                            self.workarea.width_mm/2-width_mm/2,
+                            self.workarea.height_mm/2-height_mm/2,
                             width_mm,
                             height_mm)
-        self.work_area.add_item(item)
-        self.work_area.groups[0].add_item(item)
+        self.workarea.add_item(item)
+        self.workarea.groups[0].add_item(item)
         self.queue_draw()
 
     def _get_default_size_mm(self, aspect_ratio):
-        width_mm = self.work_area.width_mm
+        width_mm = self.workarea.width_mm
         height_mm = width_mm/aspect_ratio
-        if height_mm > self.work_area.height_mm:
-            height_mm = self.work_area.height_mm
+        if height_mm > self.workarea.height_mm:
+            height_mm = self.workarea.height_mm
             width_mm = height_mm*aspect_ratio
         return width_mm, height_mm
 
@@ -215,28 +219,28 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self._draw_scales(ctx, width, height)
 
         # Draw the items.
-        for item in self.work_area.items:
+        for item in self.workarea.items:
             self._draw_item(ctx, item)
 
         if self.resizing or self.moving:
             return
 
         # Draw the paths.
-        for group in self.work_area.groups:
+        for group in self.workarea.groups:
             group = group.copy()
             group.pixels_per_mm = self.pixels_per_mm
             surface = group.render()
             ctx.set_source_surface(surface,
-                                   self.work_area_x,
-                                   self.work_area_y_end)
+                                   self.workarea_x,
+                                   self.workarea_y_end)
             ctx.paint()
 
     def _draw_item(self, cr, item):
         surface = item.render(self.pixels_per_mm)
 
         cr.save()
-        item_x = self.work_area_x+item.x_mm*self.pixels_per_mm
-        item_y = self.work_area_y_end+item.y_mm*self.pixels_per_mm
+        item_x = self.workarea_x+item.x_mm*self.pixels_per_mm
+        item_y = self.workarea_y_end+item.y_mm*self.pixels_per_mm
 
         cr.translate(item_x, item_y)
         item_width = surface.get_width()
@@ -267,22 +271,22 @@ class WorkAreaWidget(Gtk.DrawingArea):
             cr.fill()
 
     def _update_surface_extents(self, cr, width, height):
-        label_x_max = f"{self.work_area.width_mm}"
+        label_x_max = f"{self.workarea.width_mm}"
         x_label_max_extents = cr.text_extents(label_x_max)
         x_label_width = x_label_max_extents.width
         x_label_height = x_label_max_extents.height
-        label_y_max = f"{self.work_area.height_mm}"
+        label_y_max = f"{self.workarea.height_mm}"
         y_label_max_extents = cr.text_extents(label_y_max)
         y_label_width = y_label_max_extents.width
         y_label_height = y_label_max_extents.height
 
-        self.work_area_x = y_label_width+2*self.label_padding
-        self.work_area_x_end = width-x_label_width/2-self.label_padding
-        self.work_area_y = height-x_label_height-2*self.label_padding
-        self.work_area_y_end = y_label_height/2+self.label_padding
-        self.work_area_w = self.work_area_x_end-self.work_area_x
-        self.work_area_h = self.work_area_y-self.work_area_y_end
-        self.pixels_per_mm = self.work_area_w/self.work_area.width_mm
+        self.workarea_x = y_label_width+2*self.label_padding
+        self.workarea_x_end = width-x_label_width/2-self.label_padding
+        self.workarea_y = height-x_label_height-2*self.label_padding
+        self.workarea_y_end = y_label_height/2+self.label_padding
+        self.workarea_w = self.workarea_x_end-self.workarea_x
+        self.workarea_h = self.workarea_y-self.workarea_y_end
+        self.pixels_per_mm = self.workarea_w/self.workarea.width_mm
 
     def _draw_scales(self, cr, width, height):
         """
@@ -293,48 +297,48 @@ class WorkAreaWidget(Gtk.DrawingArea):
         # Draw X axis line.
         cr.set_line_width(1)
         cr.set_source_rgb(0, 0, 0)
-        cr.move_to(self.work_area_x, self.work_area_y)
-        cr.line_to(self.work_area_x_end, self.work_area_y)
+        cr.move_to(self.workarea_x, self.workarea_y)
+        cr.line_to(self.workarea_x_end, self.workarea_y)
 
         # Draw Y axis line.
-        cr.move_to(self.work_area_x, self.work_area_y)
-        cr.line_to(self.work_area_x, self.work_area_y_end)
+        cr.move_to(self.workarea_x, self.workarea_y)
+        cr.line_to(self.workarea_x, self.workarea_y_end)
         cr.stroke()
 
         # Draw X-axis scale
         interval = self.grid_size
-        for x in range(interval, self.work_area.width_mm+1, interval):
-            x_px = x/self.work_area.width_mm*self.work_area_w
-            cr.move_to(self.work_area_x+x_px, self.work_area_y)
-            cr.line_to(self.work_area_x+x_px,
-                       self.work_area_y-self.work_area_h)
+        for x in range(interval, self.workarea.width_mm+1, interval):
+            x_px = x/self.workarea.width_mm*self.workarea_w
+            cr.move_to(self.workarea_x+x_px, self.workarea_y)
+            cr.line_to(self.workarea_x+x_px,
+                       self.workarea_y-self.workarea_h)
             cr.set_source_rgb(.9, .9, .9)
             cr.stroke()
 
             cr.set_source_rgb(0, 0, 0)
             label = f"{x}"
             extents = cr.text_extents(label)
-            cr.move_to(self.work_area_x+x_px-extents.width/2,
-                       self.work_area_y+extents.height+self.label_padding)
+            cr.move_to(self.workarea_x+x_px-extents.width/2,
+                       self.workarea_y+extents.height+self.label_padding)
             cr.show_text(f"{x}")
 
         # Draw Y-axis scale
-        for y in range(interval, self.work_area.height_mm + 1, interval):
-            y_px = self.work_area_y-y/self.work_area.height_mm*self.work_area_h
-            cr.move_to(self.work_area_x, y_px)
-            cr.line_to(self.work_area_x+self.work_area_w, y_px)
+        for y in range(interval, self.workarea.height_mm + 1, interval):
+            y_px = self.workarea_y-y/self.workarea.height_mm*self.workarea_h
+            cr.move_to(self.workarea_x, y_px)
+            cr.line_to(self.workarea_x+self.workarea_w, y_px)
             cr.set_source_rgb(.9, .9, .9)
             cr.stroke()
 
             cr.set_source_rgb(0, 0, 0)
             label = f"{y}"
             extents = cr.text_extents(label)
-            cr.move_to(self.work_area_x-extents.width-self.label_padding,
+            cr.move_to(self.workarea_x-extents.width-self.label_padding,
                        y_px+extents.height/2)
             cr.show_text(label)
 
     def get_item_at(self, x_mm, y_mm):
-        for item in reversed(self.work_area.items):
+        for item in reversed(self.workarea.items):
             if x_mm >= item.x_mm and x_mm <= item.x_mm+item.width_mm \
               and y_mm >= item.y_mm and y_mm <= item.y_mm+item.height_mm:
                 return item
@@ -350,15 +354,15 @@ class WorkAreaWidget(Gtk.DrawingArea):
             and y_mm <= item.y_mm+item.height_mm+handle_size_mm/2
 
     def _unselect_all(self):
-        for item in self.work_area.items:
+        for item in self.workarea.items:
             item.selected = False
         self.queue_draw()
 
     def on_button_press(self, gesture, n_press, x, y):
         self.grab_focus()
 
-        x_mm = (x-self.work_area_x)/self.pixels_per_mm
-        y_mm = (y-self.work_area_y_end)/self.pixels_per_mm
+        x_mm = (x-self.workarea_x)/self.pixels_per_mm
+        y_mm = (y-self.workarea_y_end)/self.pixels_per_mm
         self.last_click = x_mm, y_mm
 
         item = self.get_item_at(x_mm, y_mm)
@@ -395,30 +399,30 @@ class WorkAreaWidget(Gtk.DrawingArea):
         dy = y/self.pixels_per_mm
         if self.resizing:
             self.active_item.width_mm = min(max(self.handle_size, start_w+dx),
-                                            self.work_area.width_mm)
+                                            self.workarea.width_mm)
             if self.shift_pressed:
                 aspect = self.active_item_copy.get_aspect_ratio()
                 self.active_item.height_mm = self.active_item.width_mm/aspect
             else:
                 self.active_item.height_mm = min(max(self.handle_size,
                                                      start_h+dy),
-                                                 self.work_area.height_mm)
+                                                 self.workarea.height_mm)
 
             self.queue_draw()
             return
 
         # Ending up here, the user is trying to move the item.
         self.active_item.x_mm = min(max(-start_w/2, start_x+dx),
-                                    self.work_area.width_mm-start_w/2)
+                                    self.workarea.width_mm-start_w/2)
         self.active_item.y_mm = min(max(-start_h/2, start_y+dy),
-                                    self.work_area.height_mm-start_h/2)
+                                    self.workarea.height_mm-start_h/2)
         self.queue_draw()
 
     def on_key_pressed(self, controller, keyval, keycode, state):
         if keyval == Gdk.KEY_Shift_L or keyval == Gdk.KEY_Shift_R:
             self.shift_pressed = True
         elif keyval == Gdk.KEY_Delete:
-            self.work_area.remove_selected()
+            self.workarea.remove_selected()
             self.active_item = None
             self.active_item_copy = None
             self.queue_draw()

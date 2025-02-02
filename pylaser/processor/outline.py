@@ -43,6 +43,11 @@ class OutlineTracer(Processor):
                                        cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_SIMPLE)
 
+        # The resulting path needs to be in machine coordinates, i.e. zero point
+        # must be at the bottom left, and units need to be mm.
+        # Since Cairo coordinates put the zero point at the top left, we must
+        # subtract Y from the machine's Y axis maximum.
+        ymax = group.workarea.height_mm
         scale = group.pixels_per_mm
         for contour in contours:
             # Smooth contour
@@ -51,8 +56,8 @@ class OutlineTracer(Processor):
 
             # Append (scaled to mm)
             if len(contour) > 0:
-                group.pathdom.move_to(contour[0][0][0]/scale, contour[0][0][1]/scale)
+                group.pathdom.move_to(contour[0][0][0]/scale, ymax-contour[0][0][1]/scale)
                 for point in contour:
                     x, y = point[0]
-                    group.pathdom.line_to(x/scale, y/scale)
+                    group.pathdom.line_to(x/scale, ymax-y/scale)
                 group.pathdom.close_path()
