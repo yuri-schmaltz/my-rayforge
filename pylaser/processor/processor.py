@@ -7,5 +7,5 @@ class Processor(ABC):
     """
     @staticmethod
     @abstractmethod
-    def process(self, item):
+    def process(group):
         pass

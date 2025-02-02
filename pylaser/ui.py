@@ -2,6 +2,7 @@ import os
 import argparse
 import gi
 from workarea import WorkAreaWidget
+from gcode import GCodeSerializer
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gio, GLib  # noqa: E402
@@ -10,12 +11,19 @@ from gi.repository import Gtk, Gio, GLib  # noqa: E402
 class SVGViewer(Gtk.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_title("SVG to Grayscale Bitmap Viewer")
+        self.set_title("Laser GCode generator")
         self.set_default_size(800, 800)
 
-        # Create a button to open the SVG file
+        # Create buttons to open the SVG file and to generate GCode
         self.open_button = Gtk.Button(label="Open SVG")
         self.open_button.connect("clicked", self.on_open_clicked)
+        self.generate_button = Gtk.Button(label="Generate G-code")
+        self.generate_button.connect("clicked", self.on_generate_clicked)
+
+        self.button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        self.button_box.append(self.open_button)
+        self.button_box.append(self.generate_button)
+        self.button_box.set_hexpand(True)
 
         # Create a work area to display the image and paths
         self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
@@ -24,7 +32,7 @@ class SVGViewer(Gtk.ApplicationWindow):
 
         # Create a vertical box to hold the button and drawing area
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.box.append(self.open_button)
+        self.box.append(self.button_box)
         self.box.append(self.workarea)
 
         self.set_child(self.box)
@@ -49,6 +57,13 @@ class SVGViewer(Gtk.ApplicationWindow):
 
         # Show the dialog and handle the response
         dialog.open(self, None, self.on_file_dialog_response)
+
+    def on_generate_clicked(self, button):
+        serializer = GCodeSerializer()
+        group = self.workarea.work_area.groups[0]
+        group.render()
+        gcode = serializer.serialize(group.pathdom)
+        print(gcode)
 
     def on_file_dialog_response(self, dialog, result):
         try:

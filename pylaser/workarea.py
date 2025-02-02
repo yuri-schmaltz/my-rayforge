@@ -46,8 +46,12 @@ class Group:
         ToGrayscale,
         OutlineTracer
     ])
+    pixels_per_mm: int = 20
     pathdom: PathDOM = PathDOM()
     surface: cairo.Surface = None
+
+    def copy(self):
+        return Group(self.items, self.processors, self.pixels_per_mm)
 
     def add_item(self, item):
         self.items.append(item)
@@ -55,18 +59,29 @@ class Group:
     def remove_selected(self):
         self.items = [i for i in self.items if not i.selected]
 
-    def render(self, width, height, pixels_per_mm):
+    def size_mm(self):
+        width_mm, height_mm = 0, 0
+        for item in self.items:
+            width_mm = max(width_mm, item.width_mm+item.x_mm)
+            height_mm = max(height_mm, item.height_mm+item.y_mm)
+        return width_mm, height_mm
+
+    def render(self):
         # Make a surface for the layer and copy all relevant items to it.
+        width_mm, height_mm = self.size_mm()
+        width = width_mm*self.pixels_per_mm
+        height = height_mm*self.pixels_per_mm
+        print("PX", self.pixels_per_mm, int(width), int(height))
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32,
                                           int(width), int(height))
 
         ctx = cairo.Context(self.surface)
         for item in self.items:
             ctx.save()
-            item_x = item.x_mm*pixels_per_mm
-            item_y = item.y_mm*pixels_per_mm
-            item_w = item.width_mm*pixels_per_mm
-            item_h = item.height_mm*pixels_per_mm
+            item_x = item.x_mm*self.pixels_per_mm
+            item_y = item.y_mm*self.pixels_per_mm
+            item_w = item.width_mm*self.pixels_per_mm
+            item_h = item.height_mm*self.pixels_per_mm
             scale_x = item_w/item.surface.get_width()
             scale_y = item_h/item.surface.get_height()
             ctx.translate(item_x, item_y)
@@ -79,7 +94,7 @@ class Group:
         self.pathdom.clear()
         for processor in self.processors:
             processor.process(self)
-        self.pathdom.render(self.surface)
+        self.pathdom.render(self.surface, self.pixels_per_mm, self.pixels_per_mm)
 
         return self.surface
 
@@ -208,9 +223,9 @@ class WorkAreaWidget(Gtk.DrawingArea):
 
         # Draw the paths.
         for group in self.work_area.groups:
-            surface = group.render(self.work_area_w,
-                                   self.work_area_h,
-                                   self.pixels_per_mm)
+            group = group.copy()
+            group.pixels_per_mm = self.pixels_per_mm
+            surface = group.render()
             ctx.set_source_surface(surface,
                                    self.work_area_x,
                                    self.work_area_y_end)

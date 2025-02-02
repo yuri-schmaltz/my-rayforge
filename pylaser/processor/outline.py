@@ -9,9 +9,9 @@ class OutlineTracer(Processor):
     Find outlines for laser cutting.
     """
     @staticmethod
-    def process(item):
+    def process(group):
         # Get the surface format
-        surface_format = item.surface.get_format()
+        surface_format = group.surface.get_format()
 
         # Determine the number of channels based on the format
         if surface_format == cairo.FORMAT_ARGB32:
@@ -24,8 +24,8 @@ class OutlineTracer(Processor):
             raise ValueError("Unsupported Cairo surface format")
 
         # Make a copy of the image.
-        width, height = item.surface.get_width(), item.surface.get_height()
-        buf = item.surface.get_data()
+        width, height = group.surface.get_width(), group.surface.get_height()
+        buf = group.surface.get_data()
         img = np.frombuffer(buf, dtype=np.uint8)
         img = img.reshape(height, width, channels).copy()
 
@@ -43,10 +43,16 @@ class OutlineTracer(Processor):
                                        cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_SIMPLE)
 
+        scale = group.pixels_per_mm
         for contour in contours:
+            # Smooth contour
+            peri = cv2.arcLength(contour, True)
+            contour = cv2.approxPolyDP(contour, 0.0001*peri, True)
+
+            # Append (scaled to mm)
             if len(contour) > 0:
-                item.pathdom.move_to(contour[0][0][0], contour[0][0][1])
+                group.pathdom.move_to(contour[0][0][0]/scale, contour[0][0][1]/scale)
                 for point in contour:
                     x, y = point[0]
-                    item.pathdom.line_to(x, y)
-                item.pathdom.close_path()
+                    group.pathdom.line_to(x/scale, y/scale)
+                group.pathdom.close_path()

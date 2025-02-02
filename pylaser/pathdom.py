@@ -20,9 +20,11 @@ class PathDOM:
     def dump(self):
         print(self.paths)
 
-    def render(self, surface):
+    def render(self, surface, scale_x, scale_y):
         ctx = cairo.Context(surface)
         ctx.set_source_rgb(1, 0, 1)
+        ctx.scale(scale_x, scale_y)
+        ctx.set_line_width(2/scale_x)
         for opname, *args in self.paths:
             op = getattr(ctx, opname)
             op(*args)

@@ -39,5 +39,5 @@ class MakeTransparent(Processor):
     Makes white pixels transparent.
     """
     @staticmethod
-    def process(item):
-        make_transparent(item.surface)
+    def process(group):
+        make_transparent(group.surface)
