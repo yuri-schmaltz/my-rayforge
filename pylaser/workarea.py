@@ -3,7 +3,7 @@ from copy import copy
 from dataclasses import dataclass, field
 from pathdom import PathDOM
 from render import Renderer, SVGRenderer, PNGRenderer
-from processor import Processor, ToGrayscale, OutlineTracer
+from processor import Processor, MakeTransparent, ToGrayscale, OutlineTracer
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -42,6 +42,7 @@ class WorkAreaItem:
 class Group:
     items: list[WorkAreaItem] = field(default_factory=list)
     processors: list[Processor] = field(default_factory=lambda: [
+        MakeTransparent,
         ToGrayscale,
         OutlineTracer
     ])
