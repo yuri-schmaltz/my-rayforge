@@ -1,26 +1,7 @@
-from abc import ABC, abstractmethod
 import cairo
 import numpy as np
 import cv2
-from image import convert_surface_to_greyscale
-
-
-class Processor(ABC):
-    """
-    Any process that operates on WorkAreaItems.
-    """
-    @abstractmethod
-    def process(self, item):
-        pass
-
-
-class ToGrayscale(Processor):
-    """
-    Removes colors from input surface.
-    """
-    @staticmethod
-    def process(item):
-        convert_surface_to_greyscale(item.surface)
+from .processor import Processor
 
 
 class OutlineTracer(Processor):

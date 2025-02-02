@@ -1,3 +1,6 @@
+from .processor import Processor
+
+
 def convert_surface_to_greyscale(surface):
     """Converts a cairo surface to greyscale."""
     data = surface.get_data()
@@ -10,3 +13,12 @@ def convert_surface_to_greyscale(surface):
         data[i + 1] = grey
         data[i + 2] = grey
     return surface  # Return the modified surface
+
+
+class ToGrayscale(Processor):
+    """
+    Removes colors from input surface.
+    """
+    @staticmethod
+    def process(item):
+        convert_surface_to_greyscale(item.surface)
