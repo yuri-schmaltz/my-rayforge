@@ -237,48 +237,50 @@ class WorkAreaWidget(Gtk.DrawingArea):
                                    self.workarea_y_end)
             ctx.paint()
 
-    def _draw_item(self, cr, item):
+    def _draw_item(self, ctx, item):
         surface = item.render(self.pixels_per_mm)
 
-        cr.save()
+        ctx.save()
         item_x = self.workarea_x+item.x_mm*self.pixels_per_mm
         item_y = self.workarea_y_end+item.y_mm*self.pixels_per_mm
 
-        cr.translate(item_x, item_y)
+        ctx.translate(item_x, item_y)
         item_width = surface.get_width()
         item_height = surface.get_height()
         target_width = item.width_mm*self.pixels_per_mm
         target_height = item.height_mm*self.pixels_per_mm
-        cr.scale(target_width/item_width, target_height/item_height)
-        cr.rotate(item.angle)
-        cr.set_source_surface(surface, 0, 0)
-        cr.paint()
-        cr.restore()
+        ctx.scale(target_width/item_width, target_height/item_height)
+        ctx.rotate(item.angle)
+        ctx.set_source_surface(surface, 0, 0)
+        ctx.paint()
+        ctx.restore()
 
         # Draw rectangle around selected items
         if item.selected:
-            cr.set_source_rgb(0, 0, 1)
-            cr.rectangle(item_x, item_y, target_width, target_height)
-            cr.stroke()
+            ctx.save()
+            ctx.set_source_rgb(0, 0, 1)
+            ctx.rectangle(item_x, item_y, target_width, target_height)
+            ctx.stroke()
+            ctx.restore()
 
         # Draw resize handle
         if item == self.active_item:
-            cr.set_source_rgb(0, 0, 1)
+            ctx.set_source_rgb(0, 0, 1)
             handle_x = item_x + target_width
             handle_y = item_y + target_height
-            cr.rectangle(handle_x-self.handle_size/2,
+            ctx.rectangle(handle_x-self.handle_size/2,
                          handle_y-self.handle_size/2,
                          self.handle_size,
                          self.handle_size)
-            cr.fill()
+            ctx.fill()
 
-    def _update_surface_extents(self, cr, width, height):
+    def _update_surface_extents(self, ctx, width, height):
         label_x_max = f"{self.workarea.width_mm}"
-        x_label_max_extents = cr.text_extents(label_x_max)
+        x_label_max_extents = ctx.text_extents(label_x_max)
         x_label_width = x_label_max_extents.width
         x_label_height = x_label_max_extents.height
         label_y_max = f"{self.workarea.height_mm}"
-        y_label_max_extents = cr.text_extents(label_y_max)
+        y_label_max_extents = ctx.text_extents(label_y_max)
         y_label_width = y_label_max_extents.width
         y_label_height = y_label_max_extents.height
 
@@ -290,54 +292,54 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.workarea_h = self.workarea_y-self.workarea_y_end
         self.pixels_per_mm = self.workarea_w/self.workarea.width_mm
 
-    def _draw_scales(self, cr, width, height):
+    def _draw_scales(self, ctx, width, height):
         """
         Draw scales on the X and Y axes.
         """
-        self._update_surface_extents(cr, width, height)
+        self._update_surface_extents(ctx, width, height)
 
         # Draw X axis line.
-        cr.set_line_width(1)
-        cr.set_source_rgb(0, 0, 0)
-        cr.move_to(self.workarea_x, self.workarea_y)
-        cr.line_to(self.workarea_x_end, self.workarea_y)
+        ctx.set_line_width(1)
+        ctx.set_source_rgb(0, 0, 0)
+        ctx.move_to(self.workarea_x, self.workarea_y)
+        ctx.line_to(self.workarea_x_end, self.workarea_y)
 
         # Draw Y axis line.
-        cr.move_to(self.workarea_x, self.workarea_y)
-        cr.line_to(self.workarea_x, self.workarea_y_end)
-        cr.stroke()
+        ctx.move_to(self.workarea_x, self.workarea_y)
+        ctx.line_to(self.workarea_x, self.workarea_y_end)
+        ctx.stroke()
 
         # Draw X-axis scale
         interval = self.grid_size
         for x in range(interval, self.workarea.width_mm+1, interval):
             x_px = x/self.workarea.width_mm*self.workarea_w
-            cr.move_to(self.workarea_x+x_px, self.workarea_y)
-            cr.line_to(self.workarea_x+x_px,
+            ctx.move_to(self.workarea_x+x_px, self.workarea_y)
+            ctx.line_to(self.workarea_x+x_px,
                        self.workarea_y-self.workarea_h)
-            cr.set_source_rgb(.9, .9, .9)
-            cr.stroke()
+            ctx.set_source_rgb(.9, .9, .9)
+            ctx.stroke()
 
-            cr.set_source_rgb(0, 0, 0)
+            ctx.set_source_rgb(0, 0, 0)
             label = f"{x}"
-            extents = cr.text_extents(label)
-            cr.move_to(self.workarea_x+x_px-extents.width/2,
+            extents = ctx.text_extents(label)
+            ctx.move_to(self.workarea_x+x_px-extents.width/2,
                        self.workarea_y+extents.height+self.label_padding)
-            cr.show_text(f"{x}")
+            ctx.show_text(f"{x}")
 
         # Draw Y-axis scale
         for y in range(interval, self.workarea.height_mm + 1, interval):
             y_px = self.workarea_y-y/self.workarea.height_mm*self.workarea_h
-            cr.move_to(self.workarea_x, y_px)
-            cr.line_to(self.workarea_x+self.workarea_w, y_px)
-            cr.set_source_rgb(.9, .9, .9)
-            cr.stroke()
+            ctx.move_to(self.workarea_x, y_px)
+            ctx.line_to(self.workarea_x+self.workarea_w, y_px)
+            ctx.set_source_rgb(.9, .9, .9)
+            ctx.stroke()
 
-            cr.set_source_rgb(0, 0, 0)
+            ctx.set_source_rgb(0, 0, 0)
             label = f"{y}"
-            extents = cr.text_extents(label)
-            cr.move_to(self.workarea_x-extents.width-self.label_padding,
+            extents = ctx.text_extents(label)
+            ctx.move_to(self.workarea_x-extents.width-self.label_padding,
                        y_px+extents.height/2)
-            cr.show_text(label)
+            ctx.show_text(label)
 
     def get_item_at(self, x_mm, y_mm):
         for item in reversed(self.workarea.items):
