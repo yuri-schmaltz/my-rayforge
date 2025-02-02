@@ -16,4 +16,4 @@ class PNGRenderer(Renderer):
         ctx = cairo.Context(scaled)
         ctx.scale(width/surface.get_width(), height/surface.get_height())
         ctx.set_source_surface(surface, 0, 0)
-        return cairo.ImageSurface.create_from_png(io.BytesIO(data))
+        return cairo.ImageSurface.create_from_png(io.BytesIO(item.data))
