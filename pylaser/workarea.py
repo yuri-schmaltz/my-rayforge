@@ -97,7 +97,9 @@ class Group:
         self.pathdom.clear()
         for processor in self.processors:
             processor.process(self)
-        self.pathdom.render(self.surface, self.pixels_per_mm, self.workarea.height_mm)
+        self.pathdom.render(self.surface,
+                            self.pixels_per_mm,
+                            self.workarea.height_mm)
 
         return self.surface
 

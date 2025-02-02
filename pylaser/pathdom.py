@@ -21,6 +21,10 @@ class PathDOM:
         print(self.paths)
 
     def render(self, surface, scale, ymax):
+        # The path is in machine coordinates, i.e. zero point
+        # at the bottom left, and units are mm.
+        # Since Cairo coordinates put the zero point at the top left, we must
+        # subtract Y from the machine's Y axis maximum.
         ctx = cairo.Context(surface)
         ctx.set_source_rgb(1, 0, 1)
         ctx.scale(scale, scale)
@@ -29,7 +33,7 @@ class PathDOM:
         for opname, *args in self.paths:
             op = getattr(ctx, opname)
             if opname in ('move_to', 'line_to'):
-                args[1] = ymax-args[1]
+                args[1] = ymax-args[1]  # zero point correction
             op(*args)
             if opname == 'close_path':
                 ctx.stroke()

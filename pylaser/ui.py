@@ -20,10 +20,11 @@ class SVGViewer(Gtk.ApplicationWindow):
         self.generate_button = Gtk.Button(label="Generate G-code")
         self.generate_button.connect("clicked", self.on_generate_clicked)
 
-        self.button_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        self.button_box.append(self.open_button)
-        self.button_box.append(self.generate_button)
-        self.button_box.set_hexpand(True)
+        self.buttonbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
+                                 spacing=6)
+        self.buttonbox.append(self.open_button)
+        self.buttonbox.append(self.generate_button)
+        self.buttonbox.set_hexpand(True)
 
         # Create a work area to display the image and paths
         self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
@@ -32,7 +33,7 @@ class SVGViewer(Gtk.ApplicationWindow):
 
         # Create a vertical box to hold the button and drawing area
         self.box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.box.append(self.button_box)
+        self.box.append(self.buttonbox)
         self.box.append(self.workarea)
 
         self.set_child(self.box)
