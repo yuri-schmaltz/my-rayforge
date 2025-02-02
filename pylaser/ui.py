@@ -82,9 +82,9 @@ class SVGViewer(Gtk.ApplicationWindow):
             ext = os.path.splitext(filename)[1].lower()
             match ext:
                 case '.svg':
-                    self.workarea.add_svg(fp.read())
+                    self.workarea.add_svg(filename, fp.read())
                 case '.png':
-                    self.workarea.add_png(fp.read())
+                    self.workarea.add_png(filename, fp.read())
                 case _:
                     print(f"unknown extension: {filename}")
                     return

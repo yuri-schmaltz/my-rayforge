@@ -12,6 +12,7 @@ from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
 
 @dataclass
 class WorkAreaItem:
+    name: str
     renderer: Renderer
     data: object
     x_mm: float  # Position in workarea, in mm
@@ -48,6 +49,7 @@ class Group:
         OutlineTracer
     ])
     pixels_per_mm: int = 20
+    name: str = None
     pathdom: PathDOM = PathDOM()
     surface: cairo.Surface = None
 
@@ -163,23 +165,24 @@ class WorkAreaWidget(Gtk.DrawingArea):
         self.shift_pressed = False
         self.grab_focus()
 
-    def add_svg(self, data):
+    def add_svg(self, name, data):
         """
         Add a new item from an SVG (XML as binary string).
         """
-        self._add_item(SVGRenderer, data)
+        self._add_item(name, SVGRenderer, data)
 
-    def add_png(self, data):
+    def add_png(self, name, data):
         """
         Add a new item from a PNG image (binary string).
         """
-        self._add_item(PNGRenderer, data)
+        self._add_item(name, PNGRenderer, data)
 
-    def _add_item(self, renderer, data):
+    def _add_item(self, name, renderer, data):
         data = renderer.prepare(data)
         aspect_ratio = renderer.get_aspect_ratio(data)
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
-        item = WorkAreaItem(renderer,
+        item = WorkAreaItem(name,
+                            renderer,
                             data,
                             self.workarea.width_mm/2-width_mm/2,
                             self.workarea.height_mm/2-height_mm/2,
