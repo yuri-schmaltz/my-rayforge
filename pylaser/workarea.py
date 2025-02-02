@@ -27,8 +27,8 @@ class WorkAreaItem:
         height = int(self.height_mm*pixels_per_mm)
 
         if not self.surface \
-          or self.surface.get_width() != width \
-          or self.surface.get_height() != height:
+           or self.surface.get_width() != width \
+           or self.surface.get_height() != height:
             self.surface = self.renderer.render_item(self, width, height)
 
         return self.surface
@@ -57,8 +57,10 @@ class Group:
             item_y = item.y_mm*pixels_per_mm
             item_w = item.width_mm*pixels_per_mm
             item_h = item.height_mm*pixels_per_mm
+            scale_x = item_w/item.surface.get_width()
+            scale_y = item_h/item.surface.get_height()
             ctx.translate(item_x, item_y)
-            ctx.scale(item_w/item.surface.get_width(), item_h/item.surface.get_height())
+            ctx.scale(scale_x, scale_y)
             ctx.set_source_surface(item.surface, 0, 0)
             ctx.paint()
 
@@ -123,6 +125,7 @@ class WorkAreaWidget(Gtk.DrawingArea):
         """
         Add a new item from an SVG (XML as binary string).
         """
+        data = SVGRenderer.crop_to_content(data)
         self._add_item(SVGRenderer, data)
 
     def add_png(self, data):
@@ -179,8 +182,12 @@ class WorkAreaWidget(Gtk.DrawingArea):
 
         # Draw the paths.
         for group in self.groups:
-            surface = group.render(self.work_area_w, self.work_area_h, self.pixels_per_mm)
-            ctx.set_source_surface(surface, self.work_area_x, self.work_area_y_end)
+            surface = group.render(self.work_area_w,
+                                   self.work_area_h,
+                                   self.pixels_per_mm)
+            ctx.set_source_surface(surface,
+                                   self.work_area_x,
+                                   self.work_area_y_end)
             ctx.paint()
 
     def _draw_item(self, cr, item):
