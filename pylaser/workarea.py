@@ -1,7 +1,9 @@
 import cairo
 from copy import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from render import Renderer, SVGRenderer, PNGRenderer
+from pathdom import PathDOM
+from processor import ToGrayscale, OutlineTracer
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -19,12 +21,21 @@ class WorkAreaItem:
     angle: float = 0.0
     selected: bool = False
     surface: cairo.Surface = None
+    pathdom: PathDOM = PathDOM()
+    processors: list = field(default_factory=lambda: [
+        ToGrayscale,
+        OutlineTracer
+    ])
 
     def render(self, width, height):
         if not self.surface \
           or self.surface.get_width() != width \
           or self.surface.get_height() != height:
             self.surface = self.renderer.render_item(self, width, height)
+            self.pathdom.clear()
+            for processor in self.processors:
+                processor.process(self)
+            self.pathdom.render(self.surface)
 
         return self.surface
 
