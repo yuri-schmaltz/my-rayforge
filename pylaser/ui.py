@@ -1,7 +1,7 @@
 import os
 import argparse
 import gi
-from workarea import WorkAreaWidget, WorkAreaItem, Group
+from workarea import WorkAreaWidget
 from gcode import GCodeSerializer
 
 gi.require_version('Adw', '1')
@@ -71,7 +71,7 @@ class SVGViewer(Adw.ApplicationWindow):
 
     def on_generate_clicked(self, button):
         serializer = GCodeSerializer()
-        group = self.workarea.workarea.groups[0]
+        group = self.workarea.groups[0]
         group.render()
         gcode = serializer.serialize(group.pathdom)
         print(gcode)
@@ -120,6 +120,7 @@ class MyApp(Adw.Application):
         quit_action = Gio.SimpleAction.new("quit", None)
         quit_action.connect("activate", lambda a, p: self.quit())
         self.add_action(quit_action)
+
 
 parser = argparse.ArgumentParser(
         description="GCode generator for laser cutters.")

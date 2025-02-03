@@ -6,15 +6,15 @@ class GCodeSerializer:
         self.cut_speed = cut_speed  # Cutting speed (mm/min)
         self.gcode = ["G21 ; Set units to mm", "G90 ; Absolute positioning"]
         self.is_cutting = False
-    
+
     def laser_on(self):
         self.gcode.append(f"M4 S{self.laser_power}")
         self.is_cutting = True
-    
+
     def laser_off(self):
         self.gcode.append("M5 ; Disable laser")
         self.is_cutting = False
-    
+
     def finish(self):
         self.laser_off()
         self.gcode.append("G0 X0 Y0 ; Return to origin")

@@ -47,8 +47,9 @@ class OutlineTracer(Processor):
         # point must be at the bottom left, and units need to be mm.
         # Since Cairo coordinates put the zero point at the top left, we must
         # subtract Y from the machine's Y axis maximum.
-        ymax = group.workarea.height_mm
-        scale = group.pixels_per_mm
+        canvas = group.get_canvas()
+        ymax = canvas.root.height_mm
+        scale = group.get_pixels_per_mm()
         for contour in contours:
             # Smooth contour
             peri = cv2.arcLength(contour, True)
