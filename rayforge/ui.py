@@ -3,13 +3,14 @@ import argparse
 import gi
 from workarea import WorkAreaWidget
 from gcode import GCodeSerializer
+from rayforge import __version__
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gio, GLib, Adw  # noqa: E402
 
 
-class SVGViewer(Adw.ApplicationWindow):
+class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("Rayforge")
@@ -19,16 +20,27 @@ class SVGViewer(Adw.ApplicationWindow):
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.set_content(vbox)
 
-        # Header bar with hamburger menu
+        # Show the application header bar with hamburger menu
         header_bar = Adw.HeaderBar()
         vbox.append(header_bar)
 
         # Create a menu
         menu_button = Gtk.MenuButton()
         menu_model = Gio.Menu()
-        menu_model.append("Quit", "app.quit")
+        menu_model.append("About", "win.about")
+        menu_model.append("Quit", "win.quit")
         menu_button.set_menu_model(menu_model)
         header_bar.pack_end(menu_button)
+
+        # Add the "about" action
+        about_action = Gio.SimpleAction.new("about", None)
+        about_action.connect("activate", self.show_about_dialog)
+        self.add_action(about_action)
+
+        # Add the "quit" action
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", lambda a, p: self.quit())
+        self.add_action(quit_action)
 
         # Create a toolbar
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -99,36 +111,43 @@ class SVGViewer(Adw.ApplicationWindow):
                     print(f"unknown extension: {filename}")
                     return
 
+    def show_about_dialog(self, action, param):
+        about_dialog = Adw.AboutDialog(
+            application_name="Rayforge",
+            developer_name="Barebaric",
+            version=__version__ or 'unknown',
+            copyright="© 2025 Samuel Abels",
+            website="https://github.com/barebaric/rayforge",
+            issue_url="https://github.com/barebaric/rayforge/issues",
+            developers=["Samuel Abels"],
+            license_type=Gtk.License.MIT_X11
+        )
+        about_dialog.present()
+
 
 class MyApp(Adw.Application):
     def __init__(self, args):
-        super().__init__(application_id='org.barebaric.Rayforge')
+        super().__init__(application_id='com.barebaric.Rayforge')
         self.set_accels_for_action("app.quit", ["<Ctrl>Q"])
+        self.args = args
 
     def do_activate(self):
-        win = SVGViewer(application=self)
-        if args.filename:
-            win.load_file(args.filename)
+        win = MainWindow(application=self)
+        if self.args.filename:
+            win.load_file(self.args.filename)
         win.present()
 
-    def do_startup(self):
-        Adw.Application.do_startup(self)
-        self.add_action_entries()
 
-    def add_action_entries(self):
-        # Add the "quit" action
-        quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda a, p: self.quit())
-        self.add_action(quit_action)
+def run():
+    parser = argparse.ArgumentParser(
+            description="A GCode generator for laser cutters.")
+    parser.add_argument("filename",
+                        help="Path to the input SVG or image file.",
+                        nargs='?')
 
-
-parser = argparse.ArgumentParser(
-        description="A GCode generator for laser cutters.")
-parser.add_argument("filename",
-                    help="Path to the input SVG or image file.",
-                    nargs='?')
-
-if __name__ == '__main__':
     args = parser.parse_args()
     app = MyApp(args)
     app.run(None)
+
+if __name__ == '__main__':
+    run()
