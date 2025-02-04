@@ -1,6 +1,6 @@
 import cairo
 import io
-from pylaser.processor.transparency import make_transparent
+from rayforge.processor.transparency import make_transparent
 from .renderer import Renderer
 
 

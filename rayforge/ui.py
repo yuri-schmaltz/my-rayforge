@@ -12,7 +12,7 @@ from gi.repository import Gtk, Gio, GLib, Adw  # noqa: E402
 class SVGViewer(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.set_title("Laser GCode generator")
+        self.set_title("Rayforge")
         self.set_default_size(1000, 700)
 
         # Create the main vbox
@@ -102,7 +102,7 @@ class SVGViewer(Adw.ApplicationWindow):
 
 class MyApp(Adw.Application):
     def __init__(self, args):
-        super().__init__(application_id='org.example.myapp')
+        super().__init__(application_id='org.barebaric.Rayforge')
         self.set_accels_for_action("app.quit", ["<Ctrl>Q"])
 
     def do_activate(self):
@@ -123,7 +123,7 @@ class MyApp(Adw.Application):
 
 
 parser = argparse.ArgumentParser(
-        description="GCode generator for laser cutters.")
+        description="A GCode generator for laser cutters.")
 parser.add_argument("filename",
                     help="Path to the input SVG or image file.",
                     nargs='?')
