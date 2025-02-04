@@ -131,27 +131,27 @@ class DragListBox(Gtk.ListBox):
 
         return True
 
-class DragListWindow(Gtk.ApplicationWindow):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.set_title("Reorderable List Example")
-        self.set_default_size(300, 400)
-        listview = DragListBox()
-        self.set_child(listview)
+if __name__ == "__main__":
+    class DragListWindow(Gtk.ApplicationWindow):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs)
+            self.set_title("Reorderable List Example")
+            self.set_default_size(300, 400)
+            listview = DragListBox()
+            self.set_child(listview)
 
-        # Add some rows
-        for i in range(5):
-            label = Gtk.Label(label=f"Item {i + 1}")
-            label.set_xalign(0)
-            row = Gtk.ListBoxRow()
-            row.set_child(label)
-            listview.add_row(row)
-        
+            # Add some rows
+            for i in range(5):
+                label = Gtk.Label(label=f"Item {i + 1}")
+                label.set_xalign(0)
+                row = Gtk.ListBoxRow()
+                row.set_child(label)
+                listview.add_row(row)
 
-def on_activate(app):
-    win = DragListWindow(application=app)
-    win.present()
+    def on_activate(app):
+        win = DragListWindow(application=app)
+        win.present()
 
-app = Gtk.Application(application_id='org.example.DragListBox')
-app.connect('activate', on_activate)
-app.run(None)
+    app = Gtk.Application(application_id='org.example.DragListBox')
+    app.connect('activate', on_activate)
+    app.run(None)
