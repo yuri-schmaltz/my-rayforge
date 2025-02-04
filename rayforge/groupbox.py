@@ -8,7 +8,7 @@ css = """
     border-radius: 8px;
     background-color: #ffffff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin: 12px;
+    margin: 6px 12px 6px 12px;
 }
 
 .group-title {

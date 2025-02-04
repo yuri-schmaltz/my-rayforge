@@ -7,7 +7,7 @@ css = """
 .material-list {
     background-color: #ffffff;
     border-radius: 8px;
-    margin: 16px;
+    margin: 0;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 .material-list row {
@@ -35,11 +35,6 @@ css = """
 }
 .material-list row:active {
     background-color: #e0e0e0;
-}
-.material-list label {
-    font-family: 'Roboto', sans-serif;
-    font-size: 14px;
-    color: #212121;
 }
 """
 

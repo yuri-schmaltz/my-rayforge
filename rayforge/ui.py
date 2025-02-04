@@ -2,6 +2,8 @@ import os
 import argparse
 import gi
 from workarea import WorkAreaWidget
+from groupwidget import GroupWidget
+from draglist import DragListBox
 from gcode import GCodeSerializer
 from rayforge import __version__
 
@@ -14,7 +16,7 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("Rayforge")
-        self.set_default_size(1000, 700)
+        self.set_default_size(1000, 750)
 
         # Create the main vbox
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -38,8 +40,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.add_action(about_action)
 
         # Add the "quit" action
+        app = self.get_application()
         quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda a, p: self.quit())
+        quit_action.connect("activate", lambda a, p: app.quit())
         self.add_action(quit_action)
 
         # Create a toolbar
@@ -54,11 +57,33 @@ class MainWindow(Adw.ApplicationWindow):
         generate_button.connect("clicked", self.on_generate_clicked)
         toolbar.append(generate_button)
 
+        # Create the Paned splitting the window into left and right sections.
+        self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        vbox.append(self.paned)
+
         # Create a work area to display the image and paths
         self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
         self.workarea.set_hexpand(True)
         self.workarea.set_vexpand(True)
-        vbox.append(self.workarea)
+        self.workarea.set_size_request(400, 400)   # Used to define min size
+        self.paned.set_start_child(self.workarea)
+
+        # Add the GroupListWidget
+        grouplistview = DragListBox()
+        group_width = self.get_default_size()[0]*0.35
+        grouplistview.set_size_request(group_width, -1)
+        self.paned.set_end_child(grouplistview)
+        self.paned.set_resize_end_child(False)
+        self.paned.set_shrink_end_child(False)
+
+        # Add a group to the list.
+        row = Gtk.ListBoxRow()
+        grouplistview.add_row(row)
+        group = self.workarea.groups[0]
+        group.name = 'Step 1: Outline'
+        #group.description = '100% power, feed 200'
+        self.groupview = GroupWidget(group)
+        row.set_child(self.groupview)
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
@@ -128,7 +153,7 @@ class MainWindow(Adw.ApplicationWindow):
 class MyApp(Adw.Application):
     def __init__(self, args):
         super().__init__(application_id='com.barebaric.Rayforge')
-        self.set_accels_for_action("app.quit", ["<Ctrl>Q"])
+        self.set_accels_for_action("win.quit", ["<Ctrl>Q"])
         self.args = args
 
     def do_activate(self):
