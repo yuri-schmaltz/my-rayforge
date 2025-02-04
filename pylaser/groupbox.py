@@ -93,8 +93,6 @@ class GroupBox(Gtk.Box):
 
 
 if __name__ == "__main__":
-    from draglist import DragListBox
-
     class GroupWindow(Gtk.ApplicationWindow):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
@@ -105,22 +103,8 @@ if __name__ == "__main__":
             self.set_child(group_widget)
             self.set_default_size(300, 200)
 
-            listview = DragListBox()
-
-            # Add some rows
-            for i in range(5):
-                label = Gtk.Label(label=f"Item {i + 1}")
-                label.set_xalign(0)
-                row = Gtk.ListBoxRow()
-                row.set_child(label)
-                listview.add_row(row)
-
-            group_widget.add_child(listview)
-
-            """
             label = Gtk.Label(label="This is the child widget.")
             group_widget.add_child(label)
-            """
 
     def on_activate(app):
         win = GroupWindow(application=app)

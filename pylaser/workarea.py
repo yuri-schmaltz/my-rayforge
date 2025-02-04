@@ -50,6 +50,7 @@ class Group(CanvasItem):
         OutlineTracer
     ])
     pathdom: PathDOM = PathDOM()
+    description: str = 'A group of items to process'
 
     def render(self):
         super().render()
