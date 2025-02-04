@@ -1,0 +1,38 @@
+[project]
+name = "rayforge"
+dynamic = ["version"]
+authors = [
+  { name="Samuel Abels", email="knipknap@gmail.com" },
+]
+description = "A desktop application for laser cutting and engraving"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Manufacturing",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/barebaric/rayforce"
+"Bug Tracker" = "https://github.com/barebaric/rayforce/issues"
+
+[build-system]
+requires = [
+  "setuptools >= 40.9.0", "setuptools-git-versioning"
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages]
+find = {}
+
+[tool.setuptools-git-versioning]
+enabled = true
+
+[project.scripts]
+rayforge = "rayforge.ui:run"

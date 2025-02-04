@@ -19,6 +19,6 @@ def get_version_from_pkg() -> str:
         return None
 
     try:
-        return version("btl")
+        return version("rayforge")
     except PackageNotFoundError:
         return None
