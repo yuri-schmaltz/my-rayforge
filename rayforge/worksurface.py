@@ -82,7 +82,7 @@ class Group(CanvasElement):
         return self.surface
 
 
-class WorkAreaWidget(Canvas):
+class WorkSurface(Canvas):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.groups = [Group("default",
