@@ -9,7 +9,7 @@ from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
 
 
 @dataclass
-class CanvasItem:
+class CanvasElement:
     name: str
     x_mm: float  # Relative to parent (or canvas if top-level)
     y_mm: float  # Relative to parent (or canvas if top-level)
@@ -23,7 +23,7 @@ class CanvasItem:
     background: (float, float, float, float) = 0, 0, 0, 0
 
     def get_canvas(self):
-        if isinstance(self.parent, CanvasItem):
+        if isinstance(self.parent, CanvasElement):
             return self.parent.get_canvas()
         return self.parent
 
@@ -56,7 +56,7 @@ class CanvasItem:
 
     def pos_abs(self):
         parent_x, parent_y = 0, 0
-        if isinstance(self.parent, CanvasItem):
+        if isinstance(self.parent, CanvasElement):
             parent_x, parent_y = self.parent.pos_abs()
         return self.x_mm+parent_x, self.y_mm+parent_y
 
@@ -152,12 +152,12 @@ class CanvasItem:
 class CanvasWidget(Gtk.DrawingArea):
     def __init__(self, width_mm=100, height_mm=100, **kwargs):
         super().__init__(**kwargs)
-        self.root = CanvasItem("root",
-                               0,
-                               0,
-                               width_mm,
-                               height_mm,
-                               parent=self)
+        self.root = CanvasElement("root",
+                                  0,
+                                  0,
+                                  width_mm,
+                                  height_mm,
+                                  parent=self)
         self.pixels_per_mm_x = 1  # Updated in do_size_allocate()
         self.pixels_per_mm_y = 1  # Updated in do_size_allocate()
         self.handle_size = 10   # Resize handle size
@@ -347,15 +347,15 @@ if __name__ == "__main__":
             win.set_default_size(800, 800)
             canvas = CanvasWidget(200, 200)
             win.set_child(canvas)
-            group = CanvasItem("GROUP", 50, 50, 140, 130,
-                               background=(0, 1, 1, 1))
-            group.add(CanvasItem("one", 50, 50, 40, 30,
-                                 background=(0, 0, 1, 1),
-                                 selectable=False))
-            group.add(CanvasItem("two", 100, 100, 30, 30,
-                                 background=(0, 1, 0, 1)))
-            group.add(CanvasItem("three", 50, 100, 50, 50,
-                                 background=(1, 0, 1, 1)))
+            group = CanvasElement("GROUP", 50, 50, 140, 130,
+                                  background=(0, 1, 1, 1))
+            group.add(CanvasElement("one", 50, 50, 40, 30,
+                                    background=(0, 0, 1, 1),
+                                    selectable=False))
+            group.add(CanvasElement("two", 100, 100, 30, 30,
+                                    background=(0, 1, 0, 1)))
+            group.add(CanvasElement("three", 50, 100, 50, 50,
+                                    background=(1, 0, 1, 1)))
             canvas.add(group)
             win.present()
 

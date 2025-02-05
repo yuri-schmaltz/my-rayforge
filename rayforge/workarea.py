@@ -2,7 +2,7 @@ from __future__ import annotations
 import cairo
 from copy import copy
 from dataclasses import dataclass, field
-from canvas import CanvasWidget, CanvasItem
+from canvas import CanvasWidget, CanvasElement
 from pathdom import PathDOM
 from render import Renderer, SVGRenderer, PNGRenderer
 from processor import Processor, MakeTransparent, ToGrayscale, OutlineTracer
@@ -22,7 +22,7 @@ def _copy_surface(source, target, width, height):
     return target
 
 @dataclass
-class WorkAreaItem(CanvasItem):
+class WorkAreaItem(CanvasElement):
     renderer: Renderer = None
     data: object = None
 
@@ -43,7 +43,7 @@ class WorkAreaItem(CanvasItem):
 
 
 @dataclass
-class Group(CanvasItem):
+class Group(CanvasElement):
     processors: list[Processor] = field(default_factory=lambda: [
         MakeTransparent,
         ToGrayscale,
