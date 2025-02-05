@@ -29,5 +29,5 @@ class ToGrayscale(Processor):
     Removes colors from input surface.
     """
     @staticmethod
-    def process(group):
-        convert_surface_to_greyscale(group.surface)
+    def process(workstep, surface, pixels_per_mm, ymax):
+        convert_surface_to_greyscale(surface)

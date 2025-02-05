@@ -1,5 +1,5 @@
 class GCodeSerializer:
-    """Serializes PathDOM to G-code."""
+    """Serializes a Path model to G-code."""
     def __init__(self, laser_power=1000, travel_speed=3000, cut_speed=1000):
         self.laser_power = laser_power  # Max power (0-1000 for GRBL)
         self.travel_speed = travel_speed  # Travel speed (mm/min)

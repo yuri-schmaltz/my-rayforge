@@ -1,10 +1,12 @@
 import os
 import argparse
 import gi
+from models import Doc, WorkStep, WorkPiece
 from workbench import WorkBench
-from groupwidget import GroupWidget
+from groupwidget import WorkStepBox
 from draglist import DragListBox
 from gcode import GCodeSerializer
+from render import SVGRenderer, PNGRenderer
 from rayforge import __version__
 
 gi.require_version('Adw', '1')
@@ -75,26 +77,33 @@ class MainWindow(Adw.ApplicationWindow):
         self.frame.set_hexpand(True)
         self.paned.set_start_child(self.frame)
 
-        self.area = WorkBench(width_mm, height_mm)
-        self.area.set_hexpand(True)
-        self.frame.set_child(self.area)
+        self.workbench = WorkBench(width_mm, height_mm)
+        self.workbench.set_hexpand(True)
+        self.frame.set_child(self.workbench)
 
         # Add the GroupListWidget
-        grouplistview = DragListBox()
-        group_width = self.get_default_size()[0]*0.35
-        grouplistview.set_size_request(group_width, -1)
-        self.paned.set_end_child(grouplistview)
+        panel_width = self.get_default_size()[0]*0.35
+        self.worksteplistview = DragListBox()
+        self.worksteplistview.set_size_request(panel_width, -1)
+        self.paned.set_end_child(self.worksteplistview)
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
 
-        # Add a group to the list.
-        row = Gtk.ListBoxRow()
-        grouplistview.add_row(row)
-        group = self.area.workarea.groups[0]
-        group.name = 'Step 1: Outline'
-        group.description = '100% power, feed 200'
-        self.groupview = GroupWidget(group)
-        row.set_child(self.groupview)
+        # Make a default document.
+        self.doc = Doc()
+        workstep = WorkStep('Step 1: Outline')
+        workstep.description = '100% power, feed 200'
+        self.doc.add_workstep(workstep)
+
+        self.update_state()
+
+    def update_state(self):
+        for workstep in self.doc.worksteps:
+            # Add a workstep to the list.
+            row = Gtk.ListBoxRow()
+            self.worksteplistview.add_row(row)
+            workstepbox = WorkStepBox(workstep)
+            row.set_child(workstepbox)
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
@@ -119,9 +128,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_generate_clicked(self, button):
         serializer = GCodeSerializer()
-        group = self.area.workarea.groups[0]
-        group.render()
-        gcode = serializer.serialize(group.pathdom)
+        workstep = self.doc.worksteps[0]
+        gcode = serializer.serialize(workstep.path)
         print(gcode)
 
     def on_file_dialog_response(self, dialog, result):
@@ -140,12 +148,16 @@ class MainWindow(Adw.ApplicationWindow):
             ext = os.path.splitext(filename)[1].lower()
             match ext:
                 case '.svg':
-                    self.area.workarea.add_svg(filename, fp.read())
+                    renderer = SVGRenderer()
                 case '.png':
-                    self.area.workarea.add_png(filename, fp.read())
+                    renderer = PNGRenderer()
                 case _:
                     print(f"unknown extension: {filename}")
                     return
+            wp = WorkPiece.from_file(filename, renderer)
+            workstep = self.doc.worksteps[0]
+            workstep.add_workpiece(wp)
+            self.workbench.surface.add_workstep(workstep)
 
     def show_about_dialog(self, action, param):
         about_dialog = Adw.AboutDialog(

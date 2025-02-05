@@ -9,9 +9,9 @@ class OutlineTracer(Processor):
     Find outlines for laser cutting.
     """
     @staticmethod
-    def process(group):
+    def process(workstep, surface, pixels_per_mm, ymax):
         # Get the surface format
-        surface_format = group.surface.get_format()
+        surface_format = surface.get_format()
 
         # Determine the number of channels based on the format
         if surface_format == cairo.FORMAT_ARGB32:
@@ -24,8 +24,8 @@ class OutlineTracer(Processor):
             raise ValueError("Unsupported Cairo surface format")
 
         # Make a copy of the image.
-        width, height = group.surface.get_width(), group.surface.get_height()
-        buf = group.surface.get_data()
+        width, height = surface.get_width(), surface.get_height()
+        buf = surface.get_data()
         img = np.frombuffer(buf, dtype=np.uint8)
         img = img.reshape(height, width, channels).copy()
 
@@ -47,9 +47,7 @@ class OutlineTracer(Processor):
         # point must be at the bottom left, and units need to be mm.
         # Since Cairo coordinates put the zero point at the top left, we must
         # subtract Y from the machine's Y axis maximum.
-        canvas = group.get_canvas()
-        ymax = canvas.root.height_mm
-        scale_x, scale_y = group.get_pixels_per_mm()
+        scale_x, scale_y = pixels_per_mm
         for contour in contours:
             # Smooth contour
             peri = cv2.arcLength(contour, True)
@@ -57,9 +55,9 @@ class OutlineTracer(Processor):
 
             # Append (scaled to mm)
             if len(contour) > 0:
-                group.pathdom.move_to(contour[0][0][0]/scale_x,
+                workstep.path.move_to(contour[0][0][0]/scale_x,
                                       ymax-contour[0][0][1]/scale_y)
                 for point in contour:
                     x, y = point[0]
-                    group.pathdom.line_to(x/scale_x, ymax-y/scale_y)
-                group.pathdom.close_path()
+                    workstep.path.line_to(x/scale_x, ymax-y/scale_y)
+                workstep.path.close_path()

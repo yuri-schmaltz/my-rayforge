@@ -7,5 +7,5 @@ class Processor(ABC):
     """
     @staticmethod
     @abstractmethod
-    def process(group):
+    def process(workstep, surface, pixels_per_mm, ymax):
         pass

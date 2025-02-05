@@ -1,27 +1,27 @@
 import gi
 from groupbox import GroupBox
 from draglist import DragListBox
-from worksurface import Group, WorkPieceElement
+from models import WorkPiece, WorkStep
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
 
-class GroupWidget(GroupBox):
-    def __init__(self, group: Group):
+class WorkStepBox(GroupBox):
+    def __init__(self, workstep: WorkStep):
         # Hint: possible icon names can be found using gtk3-icon-browser
-        super().__init__(group.name,
-                         group.description,
+        super().__init__(workstep.name,
+                         workstep.description,
                          icon_name=None)
 
         self.listbox = DragListBox()
         self.add_child(self.listbox)
 
-        for child in group.children:
-            self.add_item(child)
+        for workpiece in workstep.workpieces:
+            self.add_workpiece(workpiece)
 
-    def add_workpiece(self, item: WorkPieceElement):
-        label = Gtk.Label(label=item.name)
+    def add_workpiece(self, workpiece: WorkPiece):
+        label = Gtk.Label(label=workpiece.name)
         label.set_xalign(0)
         row = Gtk.ListBoxRow()
         row.set_child(label)
@@ -29,21 +29,19 @@ class GroupWidget(GroupBox):
 
 
 if __name__ == "__main__":
-    class GroupWindow(Gtk.ApplicationWindow):
+    class TestWindow(Gtk.ApplicationWindow):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
 
-            group = Group('My test group', 0, 0, 300, 300)
-            group.add(WorkPieceElement('Item one', 0, 0, 10, 10,
-                                       renderer=object,
-                                       data=object))
+            workstep = WorkStep('My test workstep')
+            workstep.add_workpiece(WorkPiece('Item one'))
 
-            group_widget = GroupWidget(group)
-            self.set_child(group_widget)
+            box = WorkStepBox(workstep)
+            self.set_child(box)
             self.set_default_size(300, 200)
 
     def on_activate(app):
-        win = GroupWindow(application=app)
+        win = TestWindow(application=app)
         win.present()
 
     app = Gtk.Application(application_id="org.example.groupviewexample")

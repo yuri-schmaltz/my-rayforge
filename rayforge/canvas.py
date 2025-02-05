@@ -10,7 +10,6 @@ from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
 
 @dataclass
 class CanvasElement:
-    name: str
     x_mm: float  # Relative to parent (or canvas if top-level)
     y_mm: float  # Relative to parent (or canvas if top-level)
     width_mm: float  # Real-world width in mm
@@ -34,10 +33,10 @@ class CanvasElement:
     def copy(self):
         return deepcopy(self)
 
-    def add(self, item):
-        self.children.append(item)
-        item.parent = self
-        item.allocate()
+    def add(self, elem):
+        self.children.append(elem)
+        elem.parent = self
+        elem.allocate()
 
     def remove_selected(self):
         self.children = [i for i in self.children if not i.selected]
@@ -125,24 +124,24 @@ class CanvasElement:
             ctx.set_source_surface(child.surface, *child.pos_px())
             ctx.paint()
 
-    def get_item_hit(self, x_mm, y_mm, selectable=False):
+    def get_elem_hit(self, x_mm, y_mm, selectable=False):
         """
-        Check if the point (x_mm, y_mm) hits this item or any of its children.
-        If selectable is True, only selectable items are considered.
+        Check if the point (x_mm, y_mm) hits this elem or any of its children.
+        If selectable is True, only selectable elems are considered.
         """
         # Check children (child-to-parent order)
         for child in reversed(self.children):
             # Translate the coordinates to the child's local coordinate system
             child_x_mm = x_mm - child.x_mm
             child_y_mm = y_mm - child.y_mm
-            hit = child.get_item_hit(child_x_mm, child_y_mm, selectable)
+            hit = child.get_elem_hit(child_x_mm, child_y_mm, selectable)
             if hit:
                 return hit
 
         if selectable and not self.selectable:
             return None
 
-        # Check if the point is within the item's bounds
+        # Check if the point is within the elem's bounds
         if 0 <= x_mm <= self.width_mm and 0 <= y_mm <= self.height_mm:
             return self
 
@@ -152,8 +151,7 @@ class CanvasElement:
 class Canvas(Gtk.DrawingArea):
     def __init__(self, width_mm=100, height_mm=100, **kwargs):
         super().__init__(**kwargs)
-        self.root = CanvasElement("root",
-                                  0,
+        self.root = CanvasElement(0,
                                   0,
                                   width_mm,
                                   height_mm,
@@ -161,12 +159,12 @@ class Canvas(Gtk.DrawingArea):
         self.pixels_per_mm_x = 1  # Updated in do_size_allocate()
         self.pixels_per_mm_y = 1  # Updated in do_size_allocate()
         self.handle_size = 10   # Resize handle size
-        self.active_item = None
+        self.active_elem = None
         self.active_rect = None, None, None, None
         self._setup_interactions()
 
-    def add(self, item):
-        self.root.add(item)
+    def add(self, elem):
+        self.root.add(elem)
 
     def _setup_interactions(self):
         self.click_gesture = Gtk.GestureClick()
@@ -204,31 +202,31 @@ class Canvas(Gtk.DrawingArea):
 
         self._render_selection(ctx, self.root, 0, 0)
 
-    def _render_selection(self, ctx, item, parent_x_mm, parent_y_mm):
-        # Calculate absolute position of the item
-        absolute_x_mm = parent_x_mm + item.x_mm
-        absolute_y_mm = parent_y_mm + item.y_mm
-        item_x = absolute_x_mm * self.pixels_per_mm_x
-        item_y = absolute_y_mm * self.pixels_per_mm_y
-        target_width = item.width_mm * self.pixels_per_mm_x
-        target_height = item.height_mm * self.pixels_per_mm_y
+    def _render_selection(self, ctx, elem, parent_x_mm, parent_y_mm):
+        # Calculate absolute position of the elem
+        absolute_x_mm = parent_x_mm + elem.x_mm
+        absolute_y_mm = parent_y_mm + elem.y_mm
+        elem_x = absolute_x_mm * self.pixels_per_mm_x
+        elem_y = absolute_y_mm * self.pixels_per_mm_y
+        target_width = elem.width_mm * self.pixels_per_mm_x
+        target_height = elem.height_mm * self.pixels_per_mm_y
 
-        # Draw rectangle around selected items
-        if item.selected:
+        # Draw rectangle around selected elems
+        if elem.selected:
             ctx.save()
             ctx.set_source_rgb(.4, .4, .4)
             ctx.set_dash((5, 5))
-            ctx.rectangle(item_x, item_y, target_width, target_height)
+            ctx.rectangle(elem_x, elem_y, target_width, target_height)
             ctx.stroke()
             ctx.restore()
 
         # Draw resize handle
-        if item == self.active_item:
+        if elem == self.active_elem:
             ctx.save()
             ctx.set_source_rgb(.4, .4, .4)
             ctx.set_line_width(1)
-            handle_x = item_x + target_width
-            handle_y = item_y + target_height
+            handle_x = elem_x + target_width
+            handle_y = elem_y + target_height
             ctx.rectangle(handle_x-self.handle_size/2,
                           handle_y-self.handle_size/2,
                           self.handle_size,
@@ -237,29 +235,29 @@ class Canvas(Gtk.DrawingArea):
             ctx.restore()
 
         # Recursively render children
-        for child in item.children:
+        for child in elem.children:
             self._render_selection(ctx, child, absolute_x_mm, absolute_y_mm)
 
-    def get_item_handle_hit(self, item, x_mm, y_mm, selectable=True):
-        for child in item.children:
-            child_x_mm = x_mm-item.x_mm
-            child_y_mm = y_mm-item.y_mm
-            hit = self.get_item_handle_hit(child,
+    def get_elem_handle_hit(self, elem, x_mm, y_mm, selectable=True):
+        for child in elem.children:
+            child_x_mm = x_mm-elem.x_mm
+            child_y_mm = y_mm-elem.y_mm
+            hit = self.get_elem_handle_hit(child,
                                            child_x_mm,
                                            child_y_mm,
                                            selectable=True)
             if hit:
                 return hit
-        if selectable and not item.selectable:
+        if selectable and not elem.selectable:
             return
-        if not item.selected:
+        if not elem.selected:
             return None
-        handle_x1 = item.x_mm+item.width_mm-self.handle_size/2
+        handle_x1 = elem.x_mm+elem.width_mm-self.handle_size/2
         handle_x2 = handle_x1+self.handle_size
-        handle_y1 = item.y_mm+item.height_mm-self.handle_size/2
+        handle_y1 = elem.y_mm+elem.height_mm-self.handle_size/2
         handle_y2 = handle_y1+self.handle_size
         if handle_x1 <= x_mm <= handle_x2 and handle_y1 <= y_mm <= handle_y2:
-            return item
+            return elem
         return None
 
     def on_button_press(self, gesture, n_press, x, y):
@@ -268,32 +266,32 @@ class Canvas(Gtk.DrawingArea):
         x_mm = x/self.pixels_per_mm_x
         y_mm = y/self.pixels_per_mm_y
 
-        hit = self.get_item_handle_hit(self.root, x_mm, y_mm, selectable=True)
+        hit = self.get_elem_handle_hit(self.root, x_mm, y_mm, selectable=True)
 
         self.root.unselect_all()
 
         if hit and hit != self.root:
             hit.selected = True
             self.resizing = True
-            self.active_item = hit
+            self.active_elem = hit
             self.active_origin = hit.rect()
             self.queue_draw()
             return
 
-        hit = self.root.get_item_hit(x_mm, y_mm, selectable=True)
+        hit = self.root.get_elem_hit(x_mm, y_mm, selectable=True)
         if hit and hit != self.root:
             hit.selected = True
             self.moving = True
-            self.active_item = hit
+            self.active_elem = hit
             self.active_origin = hit.rect()
             self.queue_draw()
             return
 
-        self.active_item = None
+        self.active_elem = None
         self.queue_draw()
 
     def on_mouse_drag(self, gesture, x, y):
-        if not self.active_item:
+        if not self.active_elem:
             return
 
         start_x_mm, start_y_mm, start_w_mm, start_h_mm = self.active_origin
@@ -301,21 +299,21 @@ class Canvas(Gtk.DrawingArea):
         delta_y_mm = y/self.pixels_per_mm_y
 
         if self.moving:
-            self.active_item.x_mm = start_x_mm+delta_x_mm
-            self.active_item.y_mm = start_y_mm+delta_y_mm
+            self.active_elem.x_mm = start_x_mm+delta_x_mm
+            self.active_elem.y_mm = start_y_mm+delta_y_mm
 
         if self.resizing:
             new_w_mm = max(self.handle_size, start_w_mm+delta_x_mm)
-            new_w_mm = min(new_w_mm, self.active_item.parent.width_mm)
-            self.active_item.width_mm = new_w_mm
+            new_w_mm = min(new_w_mm, self.active_elem.parent.width_mm)
+            self.active_elem.width_mm = new_w_mm
             if self.shift_pressed:
                 aspect = start_w_mm/start_h_mm
-                self.active_item.height_mm = new_w_mm/aspect
+                self.active_elem.height_mm = new_w_mm/aspect
             else:
                 new_h_mm = max(self.handle_size, start_h_mm+delta_y_mm)
-                new_h_mm = min(new_h_mm, self.active_item.parent.height_mm)
-                self.active_item.height_mm = new_h_mm
-            self.active_item.allocate()
+                new_h_mm = min(new_h_mm, self.active_elem.parent.height_mm)
+                self.active_elem.height_mm = new_h_mm
+            self.active_elem.allocate()
 
         self.queue_draw()
 
@@ -328,7 +326,7 @@ class Canvas(Gtk.DrawingArea):
             self.shift_pressed = True
         elif keyval == Gdk.KEY_Delete:
             self.root.remove_selected()
-            self.active_item = None
+            self.active_elem = None
             self.active_rect = None, None, None, None
             self.queue_draw()
 
@@ -347,14 +345,14 @@ if __name__ == "__main__":
             win.set_default_size(800, 800)
             canvas = Canvas(200, 200)
             win.set_child(canvas)
-            group = CanvasElement("GROUP", 50, 50, 140, 130,
+            group = CanvasElement(50, 50, 140, 130,
                                   background=(0, 1, 1, 1))
-            group.add(CanvasElement("one", 50, 50, 40, 30,
+            group.add(CanvasElement(50, 50, 40, 30,
                                     background=(0, 0, 1, 1),
                                     selectable=False))
-            group.add(CanvasElement("two", 100, 100, 30, 30,
+            group.add(CanvasElement(100, 100, 30, 30,
                                     background=(0, 1, 0, 1)))
-            group.add(CanvasElement("three", 50, 100, 50, 50,
+            group.add(CanvasElement(50, 100, 50, 50,
                                     background=(1, 0, 1, 1)))
             canvas.add(group)
             win.present()

@@ -2,9 +2,8 @@ from __future__ import annotations
 import cairo
 from dataclasses import dataclass, field
 from canvas import Canvas, CanvasElement
-from pathdom import PathDOM
-from render import Renderer, SVGRenderer, PNGRenderer
-from processor import Processor, MakeTransparent, ToGrayscale, OutlineTracer
+from models import Path
+from processor import processor_by_name
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -22,21 +21,38 @@ def _copy_surface(source, target, width, height):
     return target
 
 
+def _path2surface(path, surface, scale_x, scale_y, ymax):
+    # The path is in machine coordinates, i.e. zero point
+    # at the bottom left, and units are mm.
+    # Since Cairo coordinates put the zero point at the top left, we must
+    # subtract Y from the machine's Y axis maximum.
+    ctx = cairo.Context(surface)
+    ctx.set_source_rgb(1, 0, 1)
+    ctx.scale(scale_x, scale_y)
+
+    ctx.set_line_width(1/scale_x)
+    for opname, *args in path.paths:
+        op = getattr(ctx, opname)
+        if opname in ('move_to', 'line_to'):
+            args[1] = ymax-args[1]  # zero point correction
+        op(*args)
+        if opname == 'close_path':
+            ctx.stroke()
+
+
 @dataclass
 class WorkPieceElement(CanvasElement):
-    renderer: Renderer = None
-    data: object = None
+    workpiece: WorkPiece = None
 
     def __post_init__(self):
-        if self.renderer is None:
-            raise TypeError("__init__ missing 1 required argument: 'renderer'")
-        if self.data is None:
-            raise TypeError("__init__ missing 1 required argument: 'data'")
+        if self.workpiece is None:
+            raise TypeError("__init__ missing 1 required argument: 'workpiece'")
 
     def render(self):
         assert self.surface is not None
         width, height = self.size_px()
-        surface = self.renderer.render_workpiece(self, width, height)
+        renderer = self.workpiece.renderer
+        surface = renderer.render_workpiece(self.workpiece, width, height)
         if not surface:
             return self.surface  # we assume surface was changed in-place
         self.surface = _copy_surface(surface, self.surface, width, height)
@@ -44,28 +60,33 @@ class WorkPieceElement(CanvasElement):
 
 
 @dataclass
-class Group(CanvasElement):
-    processors: list[Processor] = field(default_factory=lambda: [
-        MakeTransparent,
-        ToGrayscale,
-        OutlineTracer
-    ])
-    pathdom: PathDOM = PathDOM()
-    description: str = 'A group of items to process'
+class WorkStepElement(CanvasElement):
+    workstep: WorkStep = None
+
+    def __post_init__(self):
+        if self.workstep is None:
+            raise TypeError("__init__ missing 1 required argument: 'workstep'")
 
     def render(self):
         super().render()
 
         # Run the processors.
         width, height = self.size_px()
-        self.pathdom.clear()
-        for processor in self.processors:
+        self.workstep.path.clear()
+        for name in self.workstep.processors:
+            processor = processor_by_name[name]
             # The processor can *optionally* return the result on a
             # new surface, in which case we copy it to the existing
             # one (or replace it if it has the same size).
             # If no surface was returned, we assume that the surface
             # was changed in-place, so we can just continue.
-            surface = processor.process(self)
+            canvas = self.get_canvas()
+            ymax = canvas.root.height_mm
+            pixels_per_mm = self.get_pixels_per_mm()
+            surface = processor.process(self.workstep,
+                                        self.surface,
+                                        pixels_per_mm,
+                                        ymax)
             if not surface:
                 continue
             self.surface = _copy_surface(surface,
@@ -75,9 +96,10 @@ class Group(CanvasElement):
 
         # Render the processed result.
         canvas = self.get_canvas()
-        self.pathdom.render(self.surface,
-                            *self.get_pixels_per_mm(),
-                            canvas.root.height_mm)
+        _path2surface(self.workstep.path,
+                      self.surface,
+                      *self.get_pixels_per_mm(),
+                      canvas.root.height_mm)
 
         return self.surface
 
@@ -85,37 +107,33 @@ class Group(CanvasElement):
 class WorkSurface(Canvas):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.groups = [Group("default",
-                             *self.root.rect(),
-                             selectable=False)]
-        self.add(self.groups[0])
+        self.worksteps = []
         self.aspect_ratio = self.root.width_mm/self.root.height_mm
         self.grid_size = 10  # in mm
 
-    def add_svg(self, name, data):
-        """
-        Add a new item from an SVG (XML as binary string).
-        """
-        self._add_item(name, SVGRenderer, data)
+    def add_workstep(self, workstep):
+        we = WorkStepElement(*self.root.rect(),
+                             workstep=workstep,
+                             selectable=False)
+        self.worksteps.append(we)
+        self.add(we)
 
-    def add_png(self, name, data):
-        """
-        Add a new item from a PNG image (binary string).
-        """
-        self._add_item(name, PNGRenderer, data)
+        for workpiece in workstep.workpieces:
+            self.add_workpiece(workpiece, we)
+        self.queue_draw()
 
-    def _add_item(self, name, renderer, data):
-        data = renderer.prepare(data)
-        aspect_ratio = renderer.get_aspect_ratio(data)
+    def add_workpiece(self, workpiece, workstep_elem):
+        aspect_ratio = workpiece.get_aspect_ratio()
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
-        item = WorkPieceElement(name,
-                                self.root.width_mm/2-width_mm/2,
+        elem = WorkPieceElement(self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,
                                 width_mm,
                                 height_mm,
-                                renderer=renderer,
-                                data=data)
-        self.groups[0].add(item)
+                                workpiece=workpiece)
+        if workstep_elem:
+            workstep_elem.add(elem)
+        else:
+            self.add(elem)
         self.queue_draw()
 
     def _get_default_size_mm(self, aspect_ratio):

@@ -12,12 +12,12 @@ class WorkBench(Gtk.Grid):
         self.axis_thickness = 25
 
         # Create a work area to display the image and paths
-        self.workarea = WorkSurface(width_mm=width_mm, height_mm=height_mm)
-        self.workarea.set_hexpand(True)
-        self.workarea.set_vexpand(True)
-        self.workarea.set_halign(Gtk.Align.FILL)
-        self.workarea.set_valign(Gtk.Align.FILL)
-        self.attach(self.workarea, 1, 0, 1, 1)
+        self.surface = WorkSurface(width_mm=width_mm, height_mm=height_mm)
+        self.surface.set_hexpand(True)
+        self.surface.set_vexpand(True)
+        self.surface.set_halign(Gtk.Align.FILL)
+        self.surface.set_valign(Gtk.Align.FILL)
+        self.attach(self.surface, 1, 0, 1, 1)
 
         # Add the X axis
         axis = AxisWidget(width_mm,
