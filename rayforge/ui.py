@@ -11,14 +11,20 @@ from rayforge import __version__
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gio, GLib, Adw  # noqa: E402
+from gi.repository import Gtk, Gio, GLib, Gdk, Adw  # noqa: E402
 
 
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("Rayforge")
-        self.set_default_size(1000, 750)
+
+        # Get the primary monitor size
+        display = Gdk.Display.get_default()
+        monitor = display.get_primary_monitor()
+        geometry = monitor.get_geometry()
+        self.set_default_size(int(geometry.width*0.6),
+                              int(geometry.height*0.6))
 
         # Create the main vbox
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
@@ -68,8 +74,8 @@ class MainWindow(Adw.ApplicationWindow):
         vbox.append(self.paned)
 
         # Create a work area to display the image and paths
-        width_mm = 600  # TODO: load from machine parameter settings
-        height_mm = 300
+        width_mm = 200  # TODO: load from machine parameter settings
+        height_mm = 200
         ratio = width_mm/height_mm
         self.frame = Gtk.AspectFrame(ratio=ratio, obey_child=False)
         self.frame.set_margin_start(12)
@@ -82,9 +88,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.frame.set_child(self.workbench)
 
         # Add the GroupListWidget
-        panel_width = self.get_default_size()[0]*0.35
         self.worksteplistview = DragListBox()
-        self.worksteplistview.set_size_request(panel_width, -1)
+        self.worksteplistview.set_size_request(350, -1)
         self.paned.set_end_child(self.worksteplistview)
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
