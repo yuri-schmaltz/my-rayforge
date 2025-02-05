@@ -1,7 +1,7 @@
 import gi
 from groupbox import GroupBox
 from draglist import DragListBox
-from worksurface import Group, WorkAreaItem
+from worksurface import Group, WorkPieceElement
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
@@ -20,7 +20,7 @@ class GroupWidget(GroupBox):
         for child in group.children:
             self.add_item(child)
 
-    def add_item(self, item: WorkAreaItem):
+    def add_workpiece(self, item: WorkPieceElement):
         label = Gtk.Label(label=item.name)
         label.set_xalign(0)
         row = Gtk.ListBoxRow()
@@ -34,9 +34,9 @@ if __name__ == "__main__":
             super().__init__(**kwargs)
 
             group = Group('My test group', 0, 0, 300, 300)
-            group.add(WorkAreaItem('Item one', 0, 0, 10, 10,
-                                   renderer=object,
-                                   data=object))
+            group.add(WorkPieceElement('Item one', 0, 0, 10, 10,
+                                       renderer=object,
+                                       data=object))
 
             group_widget = GroupWidget(group)
             self.set_child(group_widget)

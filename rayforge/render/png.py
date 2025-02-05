@@ -20,5 +20,5 @@ class PNGRenderer(Renderer):
         return surface.get_width()/surface.get_height()
 
     @classmethod
-    def render_item(cls, item, width=None, height=None):
-        return cairo.ImageSurface.create_from_png(io.BytesIO(item.data))
+    def render_workpiece(cls, wp, width=None, height=None):
+        return cairo.ImageSurface.create_from_png(io.BytesIO(wp.data))

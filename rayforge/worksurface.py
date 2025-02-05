@@ -23,7 +23,7 @@ def _copy_surface(source, target, width, height):
 
 
 @dataclass
-class WorkAreaItem(CanvasElement):
+class WorkPieceElement(CanvasElement):
     renderer: Renderer = None
     data: object = None
 
@@ -36,7 +36,7 @@ class WorkAreaItem(CanvasElement):
     def render(self):
         assert self.surface is not None
         width, height = self.size_px()
-        surface = self.renderer.render_item(self, width, height)
+        surface = self.renderer.render_workpiece(self, width, height)
         if not surface:
             return self.surface  # we assume surface was changed in-place
         self.surface = _copy_surface(surface, self.surface, width, height)
@@ -108,13 +108,13 @@ class WorkSurface(Canvas):
         data = renderer.prepare(data)
         aspect_ratio = renderer.get_aspect_ratio(data)
         width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
-        item = WorkAreaItem(name,
-                            self.root.width_mm/2-width_mm/2,
-                            self.root.height_mm/2-height_mm/2,
-                            width_mm,
-                            height_mm,
-                            renderer=renderer,
-                            data=data)
+        item = WorkPieceElement(name,
+                                self.root.width_mm/2-width_mm/2,
+                                self.root.height_mm/2-height_mm/2,
+                                width_mm,
+                                height_mm,
+                                renderer=renderer,
+                                data=data)
         self.groups[0].add(item)
         self.queue_draw()
 

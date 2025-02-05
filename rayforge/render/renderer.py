@@ -20,8 +20,8 @@ class Renderer(ABC):
 
     @classmethod
     @abstractmethod
-    def render_item(cls, item, width=None, height=None):
+    def render_workpiece(cls, wp, width=None, height=None):
         """
-        Renders a WorkAreaItem to a Cairo surface.
+        Renders a WorkPiece to a Cairo surface.
         """
         pass

@@ -25,8 +25,8 @@ class SVGRenderer(Renderer):
         return surface.get_width()/surface.get_height()
 
     @classmethod
-    def render_item(cls, item, width=None, height=None):
-        return cls._render_data(item.data, width, height)
+    def render_workpiece(cls, wp, width=None, height=None):
+        return cls._render_data(wp.data, width, height)
 
     @classmethod
     def _render_data(cls, data, width=None, height=None):
