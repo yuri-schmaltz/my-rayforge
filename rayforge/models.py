@@ -2,6 +2,11 @@ from render import Renderer
 
 
 class WorkPiece:
+    """
+    A WorkPiece represents a real world work piece, It is usually
+    loaded from an image file and serves as input for all other
+    operations.
+    """
     name: str
     data: bytes
     renderer: Renderer
@@ -22,6 +27,10 @@ class WorkPiece:
 
 
 class Path:
+    """
+    Represents a set of generated paths that are used for
+    making gcode, but also to generate vactor graphics for display.
+    """
     def __init__(self):
         self.paths = []
 
@@ -42,6 +51,11 @@ class Path:
 
 
 class WorkStep:
+    """
+    A WorkStep is a set of Processors that operate on a set of
+    WorkPieces. It normally generates a Path in the end, but
+    may also include processors that manipulate the input image.
+    """
     name: str
     description: str = 'An operation on a group of workpieces'
     workpieces: list[WorkPiece]
@@ -63,6 +77,9 @@ class WorkStep:
 
 
 class Doc:
+    """
+    Represents a loaded Rayforge document.
+    """
     workpieces: list[WorkPiece]
     worksteps: list[WorkStep]
 

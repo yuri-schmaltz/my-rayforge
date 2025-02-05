@@ -42,6 +42,11 @@ def _path2surface(path, surface, scale_x, scale_y, ymax):
 
 @dataclass
 class WorkPieceElement(CanvasElement):
+    """
+    WorkPieceElements display WorkPiece objects on the WorkSurface.
+    This is the "standard" element used to display workpieces on the
+    WorkSurface.
+    """
     workpiece: WorkPiece = None
 
     def __post_init__(self):
@@ -61,6 +66,12 @@ class WorkPieceElement(CanvasElement):
 
 @dataclass
 class WorkStepElement(CanvasElement):
+    """
+    WorkStepElements display the result of a WorkStep on the
+    WorkSurface. WorkSteps produce output such as the laser path,
+    but can also include bitmap operations such as converting from color
+    to grayscale.
+    """
     workstep: WorkStep = None
 
     def __post_init__(self):
@@ -105,6 +116,11 @@ class WorkStepElement(CanvasElement):
 
 
 class WorkSurface(Canvas):
+    """
+    The WorkSurface displays a grid area with
+    WorkPieces and WorkStep results according to real world
+    dimensions.
+    """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.aspect_ratio = self.root.width_mm/self.root.height_mm

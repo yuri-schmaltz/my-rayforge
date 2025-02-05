@@ -2,6 +2,10 @@ from abc import ABC, abstractmethod
 
 
 class Renderer(ABC):
+    """
+    Reads image data and renders to a Cairo surface.
+    """
+
     @classmethod
     def prepare(cls, data):
         """

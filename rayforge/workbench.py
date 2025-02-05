@@ -7,6 +7,9 @@ from gi.repository import Gtk, Graphene  # noqa: E402
 
 
 class Axis(Gtk.DrawingArea):
+    """
+    This widget displays a simple axis line with labels.
+    """
     def __init__(self,
                  length_mm=100,
                  orientation=Gtk.Orientation.HORIZONTAL,
@@ -78,6 +81,9 @@ class Axis(Gtk.DrawingArea):
 
 
 class WorkBench(Gtk.Grid):
+    """
+    A WorkBench wraps the WorkSurface to add an X and Y axis.
+    """
     def __init__(self, width_mm, height_mm, **kwargs):
         super().__init__(**kwargs)
         self.axis_thickness = 25
