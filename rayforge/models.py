@@ -1,7 +1,4 @@
-import cairo
-from dataclasses import field
 from render import Renderer
-from processor import processor_by_name
 
 
 class WorkPiece:

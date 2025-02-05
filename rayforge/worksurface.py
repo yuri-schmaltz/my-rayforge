@@ -1,9 +1,9 @@
 from __future__ import annotations
 import cairo
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from canvas import Canvas, CanvasElement
-from models import Path
 from processor import processor_by_name
+from models import WorkStep, WorkPiece
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -46,7 +46,7 @@ class WorkPieceElement(CanvasElement):
 
     def __post_init__(self):
         if self.workpiece is None:
-            raise TypeError("__init__ missing 1 required argument: 'workpiece'")
+            raise TypeError("__init__ missing required argument: 'workpiece'")
 
     def render(self):
         assert self.surface is not None
@@ -107,7 +107,6 @@ class WorkStepElement(CanvasElement):
 class WorkSurface(Canvas):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.worksteps = []
         self.aspect_ratio = self.root.width_mm/self.root.height_mm
         self.grid_size = 10  # in mm
 
@@ -115,7 +114,6 @@ class WorkSurface(Canvas):
         we = WorkStepElement(*self.root.rect(),
                              workstep=workstep,
                              selectable=False)
-        self.worksteps.append(we)
         self.add(we)
 
         for workpiece in workstep.workpieces:

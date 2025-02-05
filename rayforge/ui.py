@@ -3,7 +3,7 @@ import argparse
 import gi
 from models import Doc, WorkStep, WorkPiece
 from workbench import WorkBench
-from groupwidget import WorkStepBox
+from workstepbox import WorkStepBox
 from draglist import DragListBox
 from gcode import GCodeSerializer
 from render import SVGRenderer, PNGRenderer
@@ -144,20 +144,19 @@ class MainWindow(Adw.ApplicationWindow):
             print(f"Error opening file: {e.message}")
 
     def load_file(self, filename):
-        with open(filename, 'rb') as fp:
-            ext = os.path.splitext(filename)[1].lower()
-            match ext:
-                case '.svg':
-                    renderer = SVGRenderer()
-                case '.png':
-                    renderer = PNGRenderer()
-                case _:
-                    print(f"unknown extension: {filename}")
-                    return
-            wp = WorkPiece.from_file(filename, renderer)
-            workstep = self.doc.worksteps[0]
-            workstep.add_workpiece(wp)
-            self.workbench.surface.add_workstep(workstep)
+        ext = os.path.splitext(filename)[1].lower()
+        match ext:
+            case '.svg':
+                renderer = SVGRenderer()
+            case '.png':
+                renderer = PNGRenderer()
+            case _:
+                print(f"unknown extension: {filename}")
+                return
+        wp = WorkPiece.from_file(filename, renderer)
+        workstep = self.doc.worksteps[0]
+        workstep.add_workpiece(wp)
+        self.workbench.surface.add_workstep(workstep)
 
     def show_about_dialog(self, action, param):
         about_dialog = Adw.AboutDialog(
