@@ -3,7 +3,6 @@ import argparse
 import gi
 from workareaaxis import WorkAreaWithAxis
 from groupwidget import GroupWidget
-from axiswidget import AxisWidget
 from draglist import DragListBox
 from gcode import GCodeSerializer
 from rayforge import __version__
@@ -185,6 +184,7 @@ def run():
     args = parser.parse_args()
     app = MyApp(args)
     app.run(None)
+
 
 if __name__ == '__main__':
     run()

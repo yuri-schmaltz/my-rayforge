@@ -12,7 +12,6 @@ class WorkAreaWithAxis(Gtk.Grid):
         self.axis_thickness = 25
 
         # Create a work area to display the image and paths
-        ratio = width_mm/height_mm
         self.workarea = WorkAreaWidget(width_mm=width_mm, height_mm=height_mm)
         self.workarea.set_hexpand(True)
         self.workarea.set_vexpand(True)

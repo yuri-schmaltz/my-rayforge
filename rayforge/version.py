@@ -3,6 +3,7 @@ import subprocess
 
 __dir__ = os.path.dirname(__file__)
 
+
 def get_version_from_git() -> str:
     try:
         output = subprocess.check_output(['git', 'describe'],
@@ -11,6 +12,7 @@ def get_version_from_git() -> str:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return None
     return output.decode('ascii').strip()
+
 
 def get_version_from_pkg() -> str:
     try:

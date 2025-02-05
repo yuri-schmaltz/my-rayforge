@@ -1,7 +1,7 @@
 import gi
 
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk, Gdk  # noqa: E402
 
 css = """
 .material-list {
@@ -38,13 +38,14 @@ css = """
 }
 """
 
+
 class DragListBox(Gtk.ListBox):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_selection_mode(Gtk.SelectionMode.NONE)
         self.add_css_class("material-list")
         self.apply_css()
-    
+
     def apply_css(self):
         provider = Gtk.CssProvider()
         provider.load_from_data(css.encode())
@@ -53,12 +54,12 @@ class DragListBox(Gtk.ListBox):
             provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
-    
+
     def add_row(self, row):
         row.add_css_class("material-row")
         self.append(row)
         self.make_row_draggable(row)
-    
+
     def make_row_draggable(self, row):
         drag_source = Gtk.DragSource()
         drag_source.set_actions(Gdk.DragAction.MOVE)
@@ -70,7 +71,7 @@ class DragListBox(Gtk.ListBox):
         drop_target.connect("drop", self.on_drop, row)
         drop_target.connect("motion", self.on_drag_motion, row)
         row.add_controller(drop_target)
-    
+
     def _remove_drop_marker(self):
         row = self.get_first_child()
         while row:
@@ -101,7 +102,7 @@ class DragListBox(Gtk.ListBox):
 
     def on_drag_end(self, source, drag, delete_data, row):
         self._remove_drop_marker()
-    
+
     def on_drop(self, drop_target, value, x, y, target_row):
         if not isinstance(value, Gtk.ListBoxRow):
             return False
@@ -125,6 +126,7 @@ class DragListBox(Gtk.ListBox):
         self.insert(source_row, target_index)
 
         return True
+
 
 if __name__ == "__main__":
     class DragListWindow(Gtk.ApplicationWindow):

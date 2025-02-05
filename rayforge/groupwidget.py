@@ -4,7 +4,7 @@ from draglist import DragListBox
 from workarea import Group, WorkAreaItem
 
 gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk, Gdk  # noqa: E402
+from gi.repository import Gtk  # noqa: E402
 
 
 class GroupWidget(GroupBox):

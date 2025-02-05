@@ -1,6 +1,5 @@
 from __future__ import annotations
 import cairo
-from copy import copy
 from dataclasses import dataclass, field
 from canvas import Canvas, CanvasElement
 from pathdom import PathDOM
@@ -9,7 +8,8 @@ from processor import Processor, MakeTransparent, ToGrayscale, OutlineTracer
 import gi
 
 gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
+from gi.repository import Graphene  # noqa: E402
+
 
 def _copy_surface(source, target, width, height):
     in_width, in_height = source.get_width(), source.get_height()
@@ -20,6 +20,7 @@ def _copy_surface(source, target, width, height):
     ctx.set_source_surface(source, 0, 0)
     ctx.paint()
     return target
+
 
 @dataclass
 class WorkAreaItem(CanvasElement):
