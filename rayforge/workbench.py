@@ -1,12 +1,12 @@
 import gi
-from workarea import WorkSurface
+from worksurface import WorkSurface
 from axiswidget import AxisWidget
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk  # noqa: E402
 
 
-class WorkAreaWithAxis(Gtk.Grid):
+class WorkBench(Gtk.Grid):
     def __init__(self, width_mm, height_mm, **kwargs):
         super().__init__(**kwargs)
         self.axis_thickness = 25

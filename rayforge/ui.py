@@ -1,7 +1,7 @@
 import os
 import argparse
 import gi
-from workareaaxis import WorkAreaWithAxis
+from workbench import WorkBench
 from groupwidget import GroupWidget
 from draglist import DragListBox
 from gcode import GCodeSerializer
@@ -75,7 +75,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.frame.set_hexpand(True)
         self.paned.set_start_child(self.frame)
 
-        self.area = WorkAreaWithAxis(width_mm, height_mm)
+        self.area = WorkBench(width_mm, height_mm)
         self.area.set_hexpand(True)
         self.frame.set_child(self.area)
 

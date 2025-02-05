@@ -1,7 +1,7 @@
 import gi
 from groupbox import GroupBox
 from draglist import DragListBox
-from workarea import Group, WorkAreaItem
+from worksurface import Group, WorkAreaItem
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
