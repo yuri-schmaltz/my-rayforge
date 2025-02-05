@@ -49,7 +49,7 @@ class OutlineTracer(Processor):
         # subtract Y from the machine's Y axis maximum.
         canvas = group.get_canvas()
         ymax = canvas.root.height_mm
-        scale = group.get_pixels_per_mm()
+        scale_x, scale_y = group.get_pixels_per_mm()
         for contour in contours:
             # Smooth contour
             peri = cv2.arcLength(contour, True)
@@ -57,9 +57,9 @@ class OutlineTracer(Processor):
 
             # Append (scaled to mm)
             if len(contour) > 0:
-                group.pathdom.move_to(contour[0][0][0]/scale,
-                                      ymax-contour[0][0][1]/scale)
+                group.pathdom.move_to(contour[0][0][0]/scale_x,
+                                      ymax-contour[0][0][1]/scale_y)
                 for point in contour:
                     x, y = point[0]
-                    group.pathdom.line_to(x/scale, ymax-y/scale)
+                    group.pathdom.line_to(x/scale_x, ymax-y/scale_y)
                 group.pathdom.close_path()

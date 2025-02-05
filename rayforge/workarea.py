@@ -75,7 +75,7 @@ class Group(CanvasItem):
         # Render the processed result.
         canvas = self.get_canvas()
         self.pathdom.render(self.surface,
-                            self.get_pixels_per_mm(),
+                            *self.get_pixels_per_mm(),
                             canvas.root.height_mm)
 
         return self.surface
@@ -126,17 +126,13 @@ class WorkAreaWidget(CanvasWidget):
         return width_mm, height_mm
 
     def do_snapshot(self, snapshot):
-        width, height = self.get_width(), self.get_height()
-        height = width/self.aspect_ratio
-        if height > self.get_height():
-            height = self.get_height()
-            width = height*self.aspect_ratio
-
         # Create a Cairo context for the snapshot
+        width, height = self.get_width(), self.get_height()
         bounds = Graphene.Rect().init(0, 0, width, height)
         ctx = snapshot.append_cairo(bounds)
 
-        self.pixels_per_mm = width/self.root.width_mm
+        self.pixels_per_mm_x = width/self.root.width_mm
+        self.pixels_per_mm_y = height/self.root.height_mm
         self._draw_grid(ctx, width, height)
 
         super().do_snapshot(snapshot)
@@ -147,7 +143,7 @@ class WorkAreaWidget(CanvasWidget):
         """
         # Draw vertical lines
         for x in range(0, int(self.root.width_mm)+1, self.grid_size):
-            x_px = x*self.pixels_per_mm
+            x_px = x*self.pixels_per_mm_x
             ctx.move_to(x_px, 0)
             ctx.line_to(x_px, height)
             ctx.set_source_rgb(.9, .9, .9)
@@ -155,7 +151,7 @@ class WorkAreaWidget(CanvasWidget):
 
         # Draw horizontal lines
         for y in range(0, int(self.root.height_mm)+1, self.grid_size):
-            y_px = y*self.pixels_per_mm
+            y_px = y*self.pixels_per_mm_y
             ctx.move_to(0, y_px)
             ctx.line_to(width, y_px)
             ctx.set_source_rgb(.9, .9, .9)

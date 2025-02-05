@@ -28,7 +28,8 @@ class CanvasItem:
         return self.parent
 
     def get_pixels_per_mm(self):
-        return self.get_canvas().pixels_per_mm
+        return self.get_canvas().pixels_per_mm_x, \
+               self.get_canvas().pixels_per_mm_y
 
     def copy(self):
         return deepcopy(self)
@@ -50,8 +51,8 @@ class CanvasItem:
         return self.x_mm, self.y_mm
 
     def pos_px(self):
-        pixels_per_mm = self.get_pixels_per_mm()
-        return self.x_mm*pixels_per_mm, self.y_mm*pixels_per_mm
+        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
+        return self.x_mm*pixels_per_mm_x, self.y_mm*pixels_per_mm_y
 
     def pos_abs(self):
         parent_x, parent_y = 0, 0
@@ -60,17 +61,17 @@ class CanvasItem:
         return self.x_mm+parent_x, self.y_mm+parent_y
 
     def pos_abs_px(self):
-        pixels_per_mm = self.get_pixels_per_mm()
+        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
         x_mm, y_mm = self.pos_abs()
-        return x_mm*pixels_per_mm, y_mm*pixels_per_mm
+        return x_mm*pixels_per_mm_x, y_mm*pixels_per_mm_y
 
     def size(self):
         return self.width_mm, self.height_mm
 
     def size_px(self):
-        pixels_per_mm = self.get_pixels_per_mm()
-        return (int(self.width_mm*pixels_per_mm),
-                int(self.height_mm*pixels_per_mm))
+        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
+        return (int(self.width_mm*pixels_per_mm_x),
+                int(self.height_mm*pixels_per_mm_y))
 
     def rect(self):
         return self.x_mm, self.y_mm, self.width_mm, self.height_mm
@@ -80,11 +81,11 @@ class CanvasItem:
         return x_mm, y_mm, self.width_mm, self.height_mm
 
     def rect_px(self):
-        px_mm = self.get_pixels_per_mm()
-        return (self.x_mm*px_mm,
-                self.y_mm*px_mm,
-                self.width_mm*px_mm,
-                self.height_mm*px_mm)
+        px_mm_x, px_mm_y = self.get_pixels_per_mm()
+        return (self.x_mm*px_mm_x,
+                self.y_mm*px_mm_y,
+                self.width_mm*px_mm_x,
+                self.height_mm*px_mm_y)
 
     def get_aspect_ratio(self):
         return self.width_mm / self.height_mm
@@ -157,7 +158,8 @@ class CanvasWidget(Gtk.DrawingArea):
                                width_mm,
                                height_mm,
                                parent=self)
-        self.pixels_per_mm = 1  # Updated in do_size_allocate()
+        self.pixels_per_mm_x = 1  # Updated in do_size_allocate()
+        self.pixels_per_mm_y = 1  # Updated in do_size_allocate()
         self.handle_size = 10   # Resize handle size
         self.active_item = None
         self.active_rect = None, None, None, None
@@ -187,7 +189,8 @@ class CanvasWidget(Gtk.DrawingArea):
         self.grab_focus()
 
     def do_size_allocate(self, width: int, height: int, baseline: int):
-        self.pixels_per_mm = width/self.root.width_mm
+        self.pixels_per_mm_x = width/self.root.width_mm
+        self.pixels_per_mm_y = width/self.root.height_mm
         self.root.allocate()
 
     def do_snapshot(self, snapshot):
@@ -205,10 +208,10 @@ class CanvasWidget(Gtk.DrawingArea):
         # Calculate absolute position of the item
         absolute_x_mm = parent_x_mm + item.x_mm
         absolute_y_mm = parent_y_mm + item.y_mm
-        item_x = absolute_x_mm * self.pixels_per_mm
-        item_y = absolute_y_mm * self.pixels_per_mm
-        target_width = item.width_mm * self.pixels_per_mm
-        target_height = item.height_mm * self.pixels_per_mm
+        item_x = absolute_x_mm * self.pixels_per_mm_x
+        item_y = absolute_y_mm * self.pixels_per_mm_y
+        target_width = item.width_mm * self.pixels_per_mm_x
+        target_height = item.height_mm * self.pixels_per_mm_y
 
         # Draw rectangle around selected items
         if item.selected:
@@ -262,8 +265,8 @@ class CanvasWidget(Gtk.DrawingArea):
     def on_button_press(self, gesture, n_press, x, y):
         self.grab_focus()
 
-        x_mm = x/self.pixels_per_mm
-        y_mm = y/self.pixels_per_mm
+        x_mm = x/self.pixels_per_mm_x
+        y_mm = y/self.pixels_per_mm_y
 
         hit = self.get_item_handle_hit(self.root, x_mm, y_mm, selectable=True)
 
@@ -294,8 +297,8 @@ class CanvasWidget(Gtk.DrawingArea):
             return
 
         start_x_mm, start_y_mm, start_w_mm, start_h_mm = self.active_origin
-        delta_x_mm = x/self.pixels_per_mm
-        delta_y_mm = y/self.pixels_per_mm
+        delta_x_mm = x/self.pixels_per_mm_x
+        delta_y_mm = y/self.pixels_per_mm_y
 
         if self.moving:
             self.active_item.x_mm = start_x_mm+delta_x_mm

@@ -1,8 +1,9 @@
 import os
 import argparse
 import gi
-from workarea import WorkAreaWidget
+from workareaaxis import WorkAreaWithAxis
 from groupwidget import GroupWidget
+from axiswidget import AxisWidget
 from draglist import DragListBox
 from gcode import GCodeSerializer
 from rayforge import __version__
@@ -47,6 +48,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Create a toolbar
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        toolbar.set_margin_bottom(2)
+        toolbar.set_margin_top(2)
+        toolbar.set_margin_start(12)
+        toolbar.set_margin_end(12)
         vbox.append(toolbar)
         open_button = Gtk.Button(icon_name="document-import-symbolic")
         open_button.set_tooltip_text("Import Image")
@@ -62,11 +67,18 @@ class MainWindow(Adw.ApplicationWindow):
         vbox.append(self.paned)
 
         # Create a work area to display the image and paths
-        self.workarea = WorkAreaWidget(width_mm=200, height_mm=200)
-        self.workarea.set_hexpand(True)
-        self.workarea.set_vexpand(True)
-        self.workarea.set_size_request(400, 400)   # Used to define min size
-        self.paned.set_start_child(self.workarea)
+        width_mm = 600  # TODO: load from machine parameter settings
+        height_mm = 300
+        ratio = width_mm/height_mm
+        self.frame = Gtk.AspectFrame(ratio=ratio, obey_child=False)
+        self.frame.set_margin_start(12)
+        self.frame.set_margin_end(12)
+        self.frame.set_hexpand(True)
+        self.paned.set_start_child(self.frame)
+
+        self.area = WorkAreaWithAxis(width_mm, height_mm)
+        self.area.set_hexpand(True)
+        self.frame.set_child(self.area)
 
         # Add the GroupListWidget
         grouplistview = DragListBox()
@@ -79,9 +91,9 @@ class MainWindow(Adw.ApplicationWindow):
         # Add a group to the list.
         row = Gtk.ListBoxRow()
         grouplistview.add_row(row)
-        group = self.workarea.groups[0]
+        group = self.area.workarea.groups[0]
         group.name = 'Step 1: Outline'
-        #group.description = '100% power, feed 200'
+        group.description = '100% power, feed 200'
         self.groupview = GroupWidget(group)
         row.set_child(self.groupview)
 
@@ -108,7 +120,7 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_generate_clicked(self, button):
         serializer = GCodeSerializer()
-        group = self.workarea.groups[0]
+        group = self.area.workarea.groups[0]
         group.render()
         gcode = serializer.serialize(group.pathdom)
         print(gcode)
@@ -129,9 +141,9 @@ class MainWindow(Adw.ApplicationWindow):
             ext = os.path.splitext(filename)[1].lower()
             match ext:
                 case '.svg':
-                    self.workarea.add_svg(filename, fp.read())
+                    self.area.workarea.add_svg(filename, fp.read())
                 case '.png':
-                    self.workarea.add_png(filename, fp.read())
+                    self.area.workarea.add_png(filename, fp.read())
                 case _:
                     print(f"unknown extension: {filename}")
                     return
