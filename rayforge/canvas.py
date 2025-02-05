@@ -149,7 +149,7 @@ class CanvasElement:
         return None
 
 
-class CanvasWidget(Gtk.DrawingArea):
+class Canvas(Gtk.DrawingArea):
     def __init__(self, width_mm=100, height_mm=100, **kwargs):
         super().__init__(**kwargs)
         self.root = CanvasElement("root",
@@ -345,7 +345,7 @@ if __name__ == "__main__":
         def do_activate(self):
             win = Gtk.ApplicationWindow(application=self)
             win.set_default_size(800, 800)
-            canvas = CanvasWidget(200, 200)
+            canvas = Canvas(200, 200)
             win.set_child(canvas)
             group = CanvasElement("GROUP", 50, 50, 140, 130,
                                   background=(0, 1, 1, 1))

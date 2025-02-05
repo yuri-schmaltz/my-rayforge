@@ -2,7 +2,7 @@ from __future__ import annotations
 import cairo
 from copy import copy
 from dataclasses import dataclass, field
-from canvas import CanvasWidget, CanvasElement
+from canvas import Canvas, CanvasElement
 from pathdom import PathDOM
 from render import Renderer, SVGRenderer, PNGRenderer
 from processor import Processor, MakeTransparent, ToGrayscale, OutlineTracer
@@ -81,7 +81,7 @@ class Group(CanvasElement):
         return self.surface
 
 
-class WorkAreaWidget(CanvasWidget):
+class WorkAreaWidget(Canvas):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.groups = [Group("default",
