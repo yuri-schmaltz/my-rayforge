@@ -8,7 +8,7 @@ css = """
     background-color: #ffffff;
     border-radius: 8px;
     margin: 0;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 8px rgba(0, 0, 0, 0.1);
 }
 .material-list row {
     padding: 12px 16px;
@@ -19,7 +19,7 @@ css = """
     border-bottom: none;
 }
 .material-list row:hover {
-    background-color: #f5f5f5;
+    background-color: #fff;
 }
 .material-list row:drop(active) {
     outline: none;
@@ -34,7 +34,6 @@ css = """
     border-width: 0px 0px 2px 0px;
 }
 .material-list row:active {
-    background-color: #e0e0e0;
 }
 """
 
