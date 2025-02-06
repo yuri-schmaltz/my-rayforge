@@ -107,3 +107,10 @@ class WorkBench(Gtk.Grid):
                     thickness=self.axis_thickness,
                     orientation=Gtk.Orientation.VERTICAL)
         self.attach(axis, 0, 0, 1, 1)
+
+    def clear(self):
+        self.surface.clear()
+
+    def update(self, doc):
+        for workstep in doc.worksteps:
+            self.surface.add_workstep(workstep)

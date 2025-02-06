@@ -1,4 +1,5 @@
 import argparse
+import mimetypes
 import gi
 from models import Doc, WorkStep, WorkPiece
 from workbench import WorkBench
@@ -102,8 +103,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_state()
 
     def update_state(self):
+        self.workbench.update(self.doc)
+
+        # Add worksteps to the side panel.
+        self.worksteplistview.remove_all()
         for workstep in self.doc.worksteps:
-            # Add a workstep to the list.
             row = Gtk.ListBoxRow()
             self.worksteplistview.add_row(row)
             workstepbox = WorkStepBox(workstep)
@@ -162,7 +166,7 @@ class MainWindow(Adw.ApplicationWindow):
         wp = WorkPiece.from_file(filename, renderer)
         workstep = self.doc.worksteps[0]
         workstep.add_workpiece(wp)
-        self.workbench.surface.add_workstep(workstep)
+        self.update_state()
 
     def show_about_dialog(self, action, param):
         about_dialog = Adw.AboutDialog(
@@ -187,7 +191,8 @@ class MyApp(Adw.Application):
     def do_activate(self):
         win = MainWindow(application=self)
         if self.args.filename:
-            win.load_file(self.args.filename)
+            mime_type, _ = mimetypes.guess_type(self.args.filename)
+            win.load_file(self.args.filename, mime_type)
         win.present()
 
 

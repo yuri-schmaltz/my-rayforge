@@ -18,7 +18,7 @@ class WorkStepBox(GroupBox):
         self.add_child(self.listbox)
 
         for workpiece in workstep.workpieces:
-            self.add_workpiece(workpiece)
+            pass  # TODO: self.add_workpiece(workpiece)
 
     def add_workpiece(self, workpiece: WorkPiece):
         label = Gtk.Label(label=workpiece.name)

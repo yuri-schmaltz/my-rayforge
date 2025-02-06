@@ -20,6 +20,7 @@ class CanvasElement:
     parent: object = None
     children: list = field(default_factory=list)
     background: (float, float, float, float) = 0, 0, 0, 0
+    data: object = None
 
     def get_canvas(self):
         if isinstance(self.parent, CanvasElement):
@@ -38,6 +39,18 @@ class CanvasElement:
         elem.parent = self
         elem.allocate()
 
+    def find_by_data(self, data):
+        if data == self.data:
+            return self
+        for child in self.children:
+            result = child.find_by_data(data)
+            if result:
+                return result
+        return None
+
+    def clear(self):
+        self.children = []
+
     def remove_selected(self):
         self.children = [i for i in self.children if not i.selected]
 
@@ -45,6 +58,18 @@ class CanvasElement:
         for child in self.children:
             child.unselect_all()
         self.selected = False
+
+    def get_max_child_size(self, aspect_ratio):
+        """
+        Returns the maximum size for a child with the given
+        aspect ratio.
+        """
+        width_mm = self.width_mm
+        height_mm = width_mm/aspect_ratio
+        if height_mm > self.height_mm:
+            height_mm = self.height_mm
+            width_mm = height_mm*aspect_ratio
+        return width_mm, height_mm
 
     def pos(self):
         return self.x_mm, self.y_mm

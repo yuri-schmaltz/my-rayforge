@@ -46,17 +46,13 @@ class WorkPieceElement(CanvasElement):
     This is the "standard" element used to display workpieces on the
     WorkSurface.
     """
-    workpiece: WorkPiece = None
-
-    def __post_init__(self):
-        if self.workpiece is None:
-            raise TypeError("__init__ missing required argument: 'workpiece'")
 
     def render(self):
         assert self.surface is not None
         width, height = self.size_px()
-        renderer = self.workpiece.renderer
-        surface = renderer.render_workpiece(self.workpiece, width, height)
+        workpiece = self.data
+        renderer = workpiece.renderer
+        surface = renderer.render_workpiece(workpiece, width, height)
         if not surface:
             return self.surface  # we assume surface was changed in-place
         self.surface = _copy_surface(surface, self.surface, width, height)
@@ -71,19 +67,15 @@ class WorkStepElement(CanvasElement):
     but can also include bitmap modifiers such as converting from color
     to grayscale.
     """
-    workstep: WorkStep = None
-
-    def __post_init__(self):
-        if self.workstep is None:
-            raise TypeError("__init__ missing 1 required argument: 'workstep'")
 
     def render(self):
         super().render()
 
         # Run the modifiers.
         width, height = self.size_px()
-        self.workstep.path.clear()
-        for modifier in self.workstep.modifiers:
+        workstep = self.data
+        workstep.path.clear()
+        for modifier in workstep.modifiers:
             # The modifier can *optionally* return the result on a
             # new surface, in which case we copy it to the existing
             # one (or replace it if it has the same size).
@@ -92,7 +84,7 @@ class WorkStepElement(CanvasElement):
             canvas = self.get_canvas()
             ymax = canvas.root.height_mm
             pixels_per_mm = self.get_pixels_per_mm()
-            surface = modifier.run(self.workstep,
+            surface = modifier.run(workstep,
                                    self.surface,
                                    pixels_per_mm,
                                    ymax)
@@ -105,7 +97,7 @@ class WorkStepElement(CanvasElement):
 
         # Render the modified result.
         canvas = self.get_canvas()
-        _path2surface(self.workstep.path,
+        _path2surface(workstep.path,
                       self.surface,
                       *self.get_pixels_per_mm(),
                       canvas.root.height_mm)
@@ -125,36 +117,50 @@ class WorkSurface(Canvas):
         self.grid_size = 10  # in mm
 
     def add_workstep(self, workstep):
-        we = WorkStepElement(*self.root.rect(),
-                             workstep=workstep,
-                             selectable=False)
-        self.add(we)
+        """
+        Adds the workstep, but only if it does not yet exist.
+        Also adds each of the WorkPieces, but only if they
+        do not exist.
+        """
+        # Add or find the WorkStep.
+        we = self.find_workitem(workstep)
+        if we is None:
+            we = WorkStepElement(*self.root.rect(),
+                                 data=workstep,
+                                 selectable=False)
+            self.add(we)
 
+        # Add any WorkPieces that were not yet added.
         for workpiece in workstep.workpieces:
-            self.add_workpiece(workpiece, we)
+            if not we.find_by_data(workpiece):
+                self.add_workpiece(workpiece, we)
+
         self.queue_draw()
 
-    def add_workpiece(self, workpiece, workstep_elem):
+    def add_workpiece(self, workpiece, parent_elem=None):
+        """
+        Adds a workpiece. If not parent element is given, it is
+        inserted into the root element.
+        """
         aspect_ratio = workpiece.get_aspect_ratio()
-        width_mm, height_mm = self._get_default_size_mm(aspect_ratio)
+        we = parent_elem or self.root
+        width_mm, height_mm = we.get_max_child_size(aspect_ratio)
         elem = WorkPieceElement(self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,
                                 width_mm,
                                 height_mm,
-                                workpiece=workpiece)
-        if workstep_elem:
-            workstep_elem.add(elem)
-        else:
-            self.add(elem)
+                                data=workpiece)
+        we.add(elem)
         self.queue_draw()
 
-    def _get_default_size_mm(self, aspect_ratio):
-        width_mm = self.root.width_mm
-        height_mm = width_mm/aspect_ratio
-        if height_mm > self.root.height_mm:
-            height_mm = self.root.height_mm
-            width_mm = height_mm*aspect_ratio
-        return width_mm, height_mm
+    def clear(self):
+        self.root.clear()
+
+    def find_workitem(self, item):
+        """
+        Item may be a WorkPiece or a WorkStep. Returns the CanvasElement.
+        """
+        return self.root.find_by_data(item)
 
     def do_snapshot(self, snapshot):
         # Create a Cairo context for the snapshot
