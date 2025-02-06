@@ -1,7 +1,7 @@
 from pathlib import Path
 from platformdirs import user_config_dir
-from models.machine import Machine
-from models.config import Config
+from .models.machine import Machine
+from .models.config import Config
 
 CONFIG_DIR = Path(user_config_dir("rayforge"))
 MACHINE_DIR = CONFIG_DIR / "machines"

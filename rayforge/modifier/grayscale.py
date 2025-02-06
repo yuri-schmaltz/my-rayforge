@@ -1,5 +1,5 @@
 from .modifier import Modifier
-from rayforge.util.cairoutil import convert_surface_to_greyscale
+from ..util.cairoutil import convert_surface_to_greyscale
 
 class ToGrayscale(Modifier):
     """

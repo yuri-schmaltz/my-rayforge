@@ -1,4 +1,4 @@
-from rayforge.render import Renderer
+from ..render import Renderer
 
 
 class WorkPiece:

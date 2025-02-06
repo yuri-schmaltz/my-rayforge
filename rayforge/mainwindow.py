@@ -1,16 +1,15 @@
-import argparse
 import mimetypes
 import gi
-from config import config
-from models.doc import Doc
-from models.workstep import WorkStep
-from models.workpiece import WorkPiece
-from workbench import WorkBench
-from workstepbox import WorkStepBox
-from draglist import DragListBox
-from gcode import GCodeSerializer
-from render import renderers, renderer_by_mime_type
-from rayforge import __version__
+from .config import config
+from .models.doc import Doc
+from .models.workstep import WorkStep
+from .models.workpiece import WorkPiece
+from .workbench import WorkBench
+from .workstepbox import WorkStepBox
+from .draglist import DragListBox
+from .gcode import GCodeSerializer
+from .render import renderers, renderer_by_mime_type
+from . import __version__
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
@@ -184,34 +183,3 @@ class MainWindow(Adw.ApplicationWindow):
             license_type=Gtk.License.MIT_X11
         )
         about_dialog.present()
-
-
-class MyApp(Adw.Application):
-    def __init__(self, args):
-        super().__init__(application_id='com.barebaric.Rayforge')
-        self.set_accels_for_action("win.quit", ["<Ctrl>Q"])
-        self.args = args
-
-    def do_activate(self):
-        win = MainWindow(application=self)
-        if self.args.filename:
-            mime_type, _ = mimetypes.guess_type(self.args.filename)
-            win.load_file(self.args.filename, mime_type)
-        win.present()
-
-
-def run():
-    parser = argparse.ArgumentParser(
-            description="A GCode generator for laser cutters.")
-    parser.add_argument("filename",
-                        help="Path to the input SVG or image file.",
-                        nargs='?')
-
-    args = parser.parse_args()
-    app = MyApp(args)
-    app.run(None)
-    config.save()
-
-
-if __name__ == '__main__':
-    run()

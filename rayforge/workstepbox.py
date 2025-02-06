@@ -1,9 +1,9 @@
 import gi
-from groupbox import GroupBox
-from draglist import DragListBox
-from models.workpiece import WorkPiece
-from models.workstep import WorkStep
-from workstepsettings import WorkStepSettingsDialog
+from .groupbox import GroupBox
+from .draglist import DragListBox
+from .models.workpiece import WorkPiece
+from .models.workstep import WorkStep
+from .workstepsettings import WorkStepSettingsDialog
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402

@@ -1,4 +1,4 @@
-from rayforge.util.cairoutil import make_transparent
+from ..util.cairoutil import make_transparent
 from .modifier import Modifier
 
 

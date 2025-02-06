@@ -1,6 +1,6 @@
 import gi
 from blinker import Signal
-from rayforge.config import config
+from .config import config
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')

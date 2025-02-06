@@ -1,9 +1,9 @@
 from typing import List
-from rayforge.config import config
-from rayforge.modifier import Modifier, \
-                              MakeTransparent, \
-                              ToGrayscale, \
-                              OutlineTracer
+from ..config import config
+from ..modifier import Modifier, \
+                       MakeTransparent, \
+                       ToGrayscale, \
+                       OutlineTracer
 from .machine import LaserHead
 from .workpiece import WorkPiece
 from .path import Path

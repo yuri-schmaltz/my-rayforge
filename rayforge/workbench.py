@@ -1,6 +1,6 @@
 import cairo
 import gi
-from worksurface import WorkSurface
+from .worksurface import WorkSurface
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Graphene  # noqa: E402

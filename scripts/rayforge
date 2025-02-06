@@ -1,0 +1,20 @@
+#!/usr/bin/python3
+import argparse
+from rayforge.app import App
+from rayforge.config import config, CONFIG_FILE
+
+
+def main():
+    parser = argparse.ArgumentParser(
+            description="A GCode generator for laser cutters.")
+    parser.add_argument("filename",
+                        help="Path to the input SVG or image file.",
+                        nargs='?')
+
+    args = parser.parse_args()
+    app = App(args)
+    app.run(None)
+    config.save(CONFIG_FILE)
+
+if __name__ == "__main__":
+    main()

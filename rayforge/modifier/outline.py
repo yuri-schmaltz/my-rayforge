@@ -3,7 +3,7 @@ import cairo
 import numpy as np
 import cv2
 from svgpathtools import svg2paths2
-from rayforge.render import SVGRenderer
+from ..render import SVGRenderer
 from .modifier import Modifier
 
 

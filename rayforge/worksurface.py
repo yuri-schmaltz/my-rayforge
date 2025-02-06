@@ -1,6 +1,6 @@
 import cairo
 from dataclasses import dataclass
-from canvas import Canvas, CanvasElement
+from .canvas import Canvas, CanvasElement
 import gi
 
 gi.require_version('Gtk', '4.0')

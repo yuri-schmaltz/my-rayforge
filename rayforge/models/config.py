@@ -26,7 +26,7 @@ class Config:
 
     def save(self, filename):
         with open(filename, 'w') as f:
-            yaml.safe_dump(self.to_yaml(), f)
+            yaml.safe_dump(self.to_dict(), f)
 
     @classmethod
     def load(cls, filename, machines) -> 'Config':

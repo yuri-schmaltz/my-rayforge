@@ -35,4 +35,4 @@ find = {}
 enabled = true
 
 [project.scripts]
-rayforge = "rayforge.ui:run"
+rayforge = "scripts.rayforge:main"
