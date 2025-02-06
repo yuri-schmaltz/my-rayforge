@@ -1,3 +1,5 @@
+from .modifier import Modifier
+
 
 class Rasterizer(Modifier):
     """
@@ -6,14 +8,14 @@ class Rasterizer(Modifier):
     across filled pixels in the surface.
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):
-        pass #TODO
+        pass  # TODO
 
 
 class Engrave(Modifier):
     """
     THIS MODIFIER IS WORK IN PROGRESS. IT IS NOT USABLE.
-    A smarter version of Rasterizer that attempts to find the shortes
+    A smarter version of Rasterizer that attempts to find the shortest
     path for engraving.
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):
-        pass #TODO
+        pass  # TODO

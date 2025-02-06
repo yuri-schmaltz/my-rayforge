@@ -1,6 +1,3 @@
-from abc import ABC, abstractmethod
-
-
 class Modifier:
     """
     Any process that operates on WorkPieces.

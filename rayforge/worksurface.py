@@ -2,7 +2,6 @@ from __future__ import annotations
 import cairo
 from dataclasses import dataclass
 from canvas import Canvas, CanvasElement
-from modifier import modifier_by_name
 from models import WorkStep, WorkPiece
 import gi
 

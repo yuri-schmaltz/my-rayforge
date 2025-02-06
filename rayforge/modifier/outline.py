@@ -1,3 +1,4 @@
+import io
 import cairo
 import numpy as np
 import cv2
@@ -82,4 +83,5 @@ class SVGOutline(Modifier):
             width = svg_attributes.get('width'),
             height = svg_attributes.get('height')
             for svgpath, attr in zip(paths, attributes):
-                print("NOT IMPLEMENTED", path, attr)  #TODO: append stuff to workstep.path
+                print("NOT IMPLEMENTED", svgpath, attr, width, height)
+                # TODO: append stuff to workstep.path

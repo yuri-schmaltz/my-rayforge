@@ -1,4 +1,3 @@
-import os
 import argparse
 import gi
 from models import Doc, WorkStep, WorkPiece
@@ -159,7 +158,6 @@ class MainWindow(Adw.ApplicationWindow):
             print(f"Error opening file: {e.message}")
 
     def load_file(self, filename, mime_type):
-        ext = os.path.splitext(filename)[1].lower()
         renderer = renderer_by_mime_type[mime_type]
         wp = WorkPiece.from_file(filename, renderer)
         workstep = self.doc.worksteps[0]
