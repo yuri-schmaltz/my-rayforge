@@ -1,7 +1,7 @@
 import argparse
 import mimetypes
 import gi
-from models import Machine, Doc, WorkStep, WorkPiece
+from models import config, Doc, WorkStep, WorkPiece
 from workbench import WorkBench
 from workstepbox import WorkStepBox
 from draglist import DragListBox
@@ -74,8 +74,7 @@ class MainWindow(Adw.ApplicationWindow):
         vbox.append(self.paned)
 
         # Create a work area to display the image and paths
-        width_mm = 200  # TODO: load from machine parameter settings
-        height_mm = 200
+        width_mm, height_mm = config.machine.dimensions
         ratio = width_mm/height_mm
         self.frame = Gtk.AspectFrame(ratio=ratio, obey_child=False)
         self.frame.set_margin_start(12)
@@ -93,9 +92,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.paned.set_end_child(self.worksteplistview)
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
-
-        # Make a default machine.
-        self.machine = Machine()
 
         # Make a default document.
         self.doc = Doc()
@@ -145,7 +141,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.open(self, None, self.on_file_dialog_response)
 
     def on_generate_clicked(self, button):
-        serializer = GCodeSerializer(self.machine)
+        serializer = GCodeSerializer(config.machine)
         workstep = self.doc.worksteps[0]
         gcode = serializer.serialize(workstep.path)
         print(gcode)
@@ -212,6 +208,7 @@ def run():
     args = parser.parse_args()
     app = MyApp(args)
     app.run(None)
+    config.save()
 
 
 if __name__ == '__main__':
