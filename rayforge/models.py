@@ -225,21 +225,21 @@ class WorkStep:
     WorkPieces. It normally generates a Path in the end, but
     may also include modifiers that manipulate the input image.
     """
-    name: str
     description: str = 'An operation on a group of workpieces'
-    workpieces: list[WorkPiece]
-    modifiers: list[Modifier]
-    path: Path
 
     def __init__(self, name):
-        self.name = name
-        self.workpieces = []
-        self.modifiers = [
+        self.name: str = name
+        self.workpieces: List[WorkPiece] = []
+        self.modifiers: List[Modifier] = [
             MakeTransparent(),
             ToGrayscale(),
             OutlineTracer(),
         ]
-        self.path = Path()
+        self.path: Path = Path()
+        self.laser: LaserHead = config.machine.heads[0]
+        self.power = self.laser.max_power
+        self.cut_speed = config.machine.max_cut_speed
+        self.travel_speed = config.machine.max_travel_speed
 
     def add_workpiece(self, workpiece: WorkPiece):
         self.workpieces.append(workpiece)

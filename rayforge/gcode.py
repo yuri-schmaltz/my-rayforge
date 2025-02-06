@@ -1,52 +1,53 @@
 class GCodeSerializer:
-    """Serializes a Path model to G-code."""
+    """Serializes a WorkStep to G-code."""
     def __init__(self, machine):
         self.machine = machine
-        self.power = self.machine.heads[0].max_power
-        self.travel_speed = self.machine.max_travel_speed
-        self.cut_speed = self.machine.max_cut_speed
         self.gcode = []+self.machine.preamble
         self.is_cutting = False
 
-    def laser_on(self):
+    def laser_on(self, workstep):
         if not self.is_cutting:
-            self.gcode.append(f"M4 S{self.power}")
+            self.gcode.append(f"M4 S{workstep.power}")
         self.is_cutting = True
 
-    def laser_off(self):
+    def laser_off(self, workstep):
         if self.is_cutting:
             self.gcode.append("M5 ; Disable laser")
         self.is_cutting = False
 
-    def finish(self):
-        self.laser_off()
+    def finish(self, workstep):
+        self.laser_off(workstep)
         self.gcode += self.machine.postscript
 
-    def move_to(self, x, y):
-        self.laser_off()
-        self.gcode.append(f"G0 X{x:.3f} Y{y:.3f} F{self.travel_speed}")
+    def move_to(self, workstep, x, y):
+        self.laser_off(workstep)
+        self.gcode.append(f"G0 X{x:.3f} Y{y:.3f} F{workstep.travel_speed}")
 
-    def line_to(self, x, y):
+    def line_to(self, workstep, x, y):
         if not self.is_cutting:
-            self.laser_on()
-        self.gcode.append(f"G1 X{x:.3f} Y{y:.3f} F{self.cut_speed}")
+            self.laser_on(workstep)
+        self.gcode.append(f"G1 X{x:.3f} Y{y:.3f} F{workstep.cut_speed}")
 
-    def close_path(self, start_x, start_y):
-        self.line_to(start_x, start_y)  # Ensure path is closed
-        self.laser_off()
+    def close_path(self, workstep, start_x, start_y):
+        self.line_to(workstep, start_x, start_y)  # Ensure path is closed
+        self.laser_off(workstep)
 
-    def serialize(self, path_dom):
+    def serialize(self, workstep):
+        laser = workstep.laser
+        assert laser.min_power <= workstep.power <= laser.max_power
+        assert workstep.cut_speed <= self.machine.max_cut_speed
+        assert workstep.travel_speed <= self.machine.max_travel_speed
         start_x, start_y = None, None
-        for command, *args in path_dom.paths:
+        for command, *args in workstep.path.paths:
             if command == 'move_to':
                 start_x, start_y = args
 
             elif command == 'close_path' and start_x is not None:
-                self.close_path(start_x, start_y)
+                self.close_path(workstep, start_x, start_y)
                 continue
 
             op = getattr(self, command)
-            op(*args)
+            op(workstep, *args)
 
-        self.finish()
+        self.finish(workstep)
         return "\n".join(self.gcode)

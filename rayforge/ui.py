@@ -143,7 +143,7 @@ class MainWindow(Adw.ApplicationWindow):
     def on_generate_clicked(self, button):
         serializer = GCodeSerializer(config.machine)
         workstep = self.doc.worksteps[0]
-        gcode = serializer.serialize(workstep.path)
+        gcode = serializer.serialize(workstep)
         print(gcode)
 
     def on_file_dialog_response(self, dialog, result):
