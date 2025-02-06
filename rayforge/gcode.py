@@ -1,15 +1,16 @@
 class GCodeSerializer:
     """Serializes a Path model to G-code."""
-    def __init__(self, laser_power=1000, travel_speed=3000, cut_speed=1000):
-        self.laser_power = laser_power  # Max power (0-1000 for GRBL)
-        self.travel_speed = travel_speed  # Travel speed (mm/min)
-        self.cut_speed = cut_speed  # Cutting speed (mm/min)
-        self.gcode = ["G21 ; Set units to mm", "G90 ; Absolute positioning"]
+    def __init__(self, machine):
+        self.machine = machine
+        self.power = self.machine.heads[0].max_power
+        self.travel_speed = self.machine.max_travel_speed
+        self.cut_speed = self.machine.max_cut_speed
+        self.gcode = []+self.machine.preamble
         self.is_cutting = False
 
     def laser_on(self):
         if not self.is_cutting:
-            self.gcode.append(f"M4 S{self.laser_power}")
+            self.gcode.append(f"M4 S{self.power}")
         self.is_cutting = True
 
     def laser_off(self):
@@ -19,7 +20,7 @@ class GCodeSerializer:
 
     def finish(self):
         self.laser_off()
-        self.gcode.append("G0 X0 Y0 ; Return to origin")
+        self.gcode += self.machine.postscript
 
     def move_to(self, x, y):
         self.laser_off()

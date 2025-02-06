@@ -2,6 +2,24 @@ from render import Renderer
 from modifier import Modifier, MakeTransparent, ToGrayscale, OutlineTracer
 
 
+class LaserHead:
+    min_power: int = 0
+    max_power: int = 1000  # Max power (0-1000 for GRBL)
+
+
+class Machine:
+    name: str
+    preamble: list[str] = ["G21 ; Set units to mm", "G90 ; Absolute positioning"]
+    postscript: list[str] = ["G0 X0 Y0 ; Return to origin"]
+    heads: list[LaserHead]
+    max_travel_speed: int = 3000   # in mm/min
+    max_cut_speed: int = 1000   # in mm/min
+    dimensions: tuple[int, int] = 200, 200
+
+    def __init__(self):
+        self.heads = [LaserHead()]
+
+
 class WorkPiece:
     """
     A WorkPiece represents a real world work piece, It is usually

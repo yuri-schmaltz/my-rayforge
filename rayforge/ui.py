@@ -1,7 +1,7 @@
 import argparse
 import mimetypes
 import gi
-from models import Doc, WorkStep, WorkPiece
+from models import Machine, Doc, WorkStep, WorkPiece
 from workbench import WorkBench
 from workstepbox import WorkStepBox
 from draglist import DragListBox
@@ -94,6 +94,9 @@ class MainWindow(Adw.ApplicationWindow):
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
 
+        # Make a default machine.
+        self.machine = Machine()
+
         # Make a default document.
         self.doc = Doc()
         workstep = WorkStep('Step 1: Outline')
@@ -142,7 +145,7 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.open(self, None, self.on_file_dialog_response)
 
     def on_generate_clicked(self, button):
-        serializer = GCodeSerializer()
+        serializer = GCodeSerializer(self.machine)
         workstep = self.doc.worksteps[0]
         gcode = serializer.serialize(workstep.path)
         print(gcode)
