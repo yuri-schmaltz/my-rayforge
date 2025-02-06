@@ -26,6 +26,9 @@ class WorkPiece:
         wp.renderer = renderer
         return wp
 
+    def dump(self, indent=0):
+        print("  "*indent, self.name, self.renderer.label)
+
 
 class Path:
     """
@@ -75,6 +78,14 @@ class WorkStep:
 
     def add_workpiece(self, workpiece: WorkPiece):
         self.workpieces.append(workpiece)
+
+    def remove_workpiece(self, workpiece):
+        self.workpieces.remove(workpiece)
+
+    def dump(self, indent=0):
+        print("  "*indent, self.name)
+        for workpiece in self.workpieces:
+            workpiece.dump(1)
 
 
 class Doc:

@@ -53,6 +53,8 @@ class CanvasElement:
 
     def remove_selected(self):
         self.children = [i for i in self.children if not i.selected]
+        for child in self.children:
+            child.remove_selected()
 
     def unselect_all(self):
         for child in self.children:
@@ -171,6 +173,11 @@ class CanvasElement:
             return self
 
         return None
+
+    def dump(self, indent=0):
+        print("  "*indent, self.__class__.__name__)
+        for child in self.children:
+            child.dump(indent+1)
 
 
 class Canvas(Gtk.DrawingArea):

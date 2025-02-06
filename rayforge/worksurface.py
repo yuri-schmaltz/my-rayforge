@@ -1,8 +1,6 @@
-from __future__ import annotations
 import cairo
 from dataclasses import dataclass
 from canvas import Canvas, CanvasElement
-from models import WorkStep, WorkPiece
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -67,6 +65,16 @@ class WorkStepElement(CanvasElement):
     but can also include bitmap modifiers such as converting from color
     to grayscale.
     """
+
+    def remove_selected(self):
+        # Remove selected from model, too.
+        # Better way would be using events...
+        for child in self.children:
+            if child.selected:
+                self.data.remove_workpiece(child.data)
+            child.remove_selected()
+
+        super().remove_selected()
 
     def render(self):
         super().render()
