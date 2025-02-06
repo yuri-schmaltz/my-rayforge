@@ -1,6 +1,6 @@
 import cairo
 import io
-from rayforge.modifier.transparency import make_transparent
+from rayforge.util.cairoutil import make_transparent
 from .renderer import Renderer
 
 

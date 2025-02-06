@@ -1,7 +1,8 @@
 import gi
 from groupbox import GroupBox
 from draglist import DragListBox
-from models import WorkPiece, WorkStep
+from models.workpiece import WorkPiece
+from models.workstep import WorkStep
 from workstepsettings import WorkStepSettingsDialog
 
 gi.require_version("Gtk", "4.0")

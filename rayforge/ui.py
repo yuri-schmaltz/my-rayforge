@@ -1,7 +1,10 @@
 import argparse
 import mimetypes
 import gi
-from models import config, Doc, WorkStep, WorkPiece
+from config import config
+from models.doc import Doc
+from models.workstep import WorkStep
+from models.workpiece import WorkPiece
 from workbench import WorkBench
 from workstepbox import WorkStepBox
 from draglist import DragListBox

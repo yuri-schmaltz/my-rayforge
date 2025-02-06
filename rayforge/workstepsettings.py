@@ -1,6 +1,6 @@
 import gi
 from blinker import Signal
-from rayforge.models import config
+from rayforge.config import config
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
@@ -71,7 +71,8 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
         self.changed = Signal()
 
     def on_power_changed(self, scale):
-        self.workstep.power = self.workstep.laser.max_power/100*scale.get_value()
+        max_power = self.workstep.laser.max_power
+        self.workstep.power = max_power/100*scale.get_value()
         self.changed.send(self)
 
     def on_cut_speed_changed(self, spin_row):
