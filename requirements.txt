@@ -1,5 +1,4 @@
-argparse
-cairosvg
-cairocffi
-pycairo
-pygobject
+CairoSVG~=2.7.1
+numpy~=2.2.2
+opencv-python~=4.11.0.86
+pycairo~=1.27.0
