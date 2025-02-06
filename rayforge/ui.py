@@ -64,10 +64,10 @@ class MainWindow(Adw.ApplicationWindow):
         open_button.set_tooltip_text("Import Image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
-        generate_button = Gtk.Button(icon_name="document-save-symbolic")
-        generate_button.set_tooltip_text("Generate GCode")
-        generate_button.connect("clicked", self.on_generate_clicked)
-        toolbar.append(generate_button)
+        self.generate_button = Gtk.Button(icon_name="document-save-symbolic")
+        self.generate_button.set_tooltip_text("Generate GCode")
+        self.generate_button.connect("clicked", self.on_generate_clicked)
+        toolbar.append(self.generate_button)
 
         # Create the Paned splitting the window into left and right sections.
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -112,6 +112,9 @@ class MainWindow(Adw.ApplicationWindow):
             self.worksteplistview.add_row(row)
             workstepbox = WorkStepBox(workstep)
             row.set_child(workstepbox)
+
+        # Update button states.
+        self.generate_button.set_sensitive(self.doc.has_workpiece())
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
@@ -165,7 +168,7 @@ class MainWindow(Adw.ApplicationWindow):
         renderer = renderer_by_mime_type[mime_type]
         wp = WorkPiece.from_file(filename, renderer)
         workstep = self.doc.worksteps[0]
-        workstep.add_workpiece(wp)
+        self.doc.add_workpiece(wp, workstep)
         self.update_state()
 
     def show_about_dialog(self, action, param):
