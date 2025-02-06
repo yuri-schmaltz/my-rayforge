@@ -1,4 +1,4 @@
-from .processor import Processor
+from .modifier import Modifier
 import cairo
 import numpy as np
 
@@ -24,10 +24,9 @@ def convert_surface_to_greyscale(surface):
     return surface
 
 
-class ToGrayscale(Processor):
+class ToGrayscale(Modifier):
     """
     Removes colors from input surface.
     """
-    @staticmethod
-    def process(workstep, surface, pixels_per_mm, ymax):
+    def run(self, workstep, surface, pixels_per_mm, ymax):
         convert_surface_to_greyscale(surface)

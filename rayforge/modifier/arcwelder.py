@@ -1,5 +1,9 @@
 import math
 
+"""
+THIS FILE IS CURRENTLY DYSFUNCT AND UNUSED. WILL BE RESTORED TO A WORKING MODIFIER IN THE FUTURE
+"""
+
 def compute_circle(p1, p2, p3):
     """Return (cx, cy, r) for the circle through p1, p2, p3.
     Returns None if the points are collinear."""

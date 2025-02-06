@@ -1,4 +1,5 @@
 from render import Renderer
+from modifier import Modifier, MakeTransparent, ToGrayscale, OutlineTracer
 
 
 class WorkPiece:
@@ -52,23 +53,23 @@ class Path:
 
 class WorkStep:
     """
-    A WorkStep is a set of Processors that operate on a set of
+    A WorkStep is a set of Modifiers that operate on a set of
     WorkPieces. It normally generates a Path in the end, but
-    may also include processors that manipulate the input image.
+    may also include modifiers that manipulate the input image.
     """
     name: str
     description: str = 'An operation on a group of workpieces'
     workpieces: list[WorkPiece]
-    processors: list[str]
+    modifiers: list[Modifier]
     path: Path
 
     def __init__(self, name):
         self.name = name
         self.workpieces = []
-        self.processors = [
-            'MakeTransparent',
-            'ToGrayscale',
-            'OutlineTracer',
+        self.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            OutlineTracer(),
         ]
         self.path = Path()
 

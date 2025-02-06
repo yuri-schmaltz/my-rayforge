@@ -2,7 +2,7 @@ from __future__ import annotations
 import cairo
 from dataclasses import dataclass
 from canvas import Canvas, CanvasElement
-from processor import processor_by_name
+from modifier import modifier_by_name
 from models import WorkStep, WorkPiece
 import gi
 
@@ -69,7 +69,7 @@ class WorkStepElement(CanvasElement):
     """
     WorkStepElements display the result of a WorkStep on the
     WorkSurface. WorkSteps produce output such as the laser path,
-    but can also include bitmap operations such as converting from color
+    but can also include bitmap modifiers such as converting from color
     to grayscale.
     """
     workstep: WorkStep = None
@@ -81,12 +81,11 @@ class WorkStepElement(CanvasElement):
     def render(self):
         super().render()
 
-        # Run the processors.
+        # Run the modifiers.
         width, height = self.size_px()
         self.workstep.path.clear()
-        for name in self.workstep.processors:
-            processor = processor_by_name[name]
-            # The processor can *optionally* return the result on a
+        for modifier in self.workstep.modifiers:
+            # The modifier can *optionally* return the result on a
             # new surface, in which case we copy it to the existing
             # one (or replace it if it has the same size).
             # If no surface was returned, we assume that the surface
@@ -94,10 +93,10 @@ class WorkStepElement(CanvasElement):
             canvas = self.get_canvas()
             ymax = canvas.root.height_mm
             pixels_per_mm = self.get_pixels_per_mm()
-            surface = processor.process(self.workstep,
-                                        self.surface,
-                                        pixels_per_mm,
-                                        ymax)
+            surface = modifier.run(self.workstep,
+                                   self.surface,
+                                   pixels_per_mm,
+                                   ymax)
             if not surface:
                 continue
             self.surface = _copy_surface(surface,
@@ -105,7 +104,7 @@ class WorkStepElement(CanvasElement):
                                          width,
                                          height)
 
-        # Render the processed result.
+        # Render the modified result.
         canvas = self.get_canvas()
         _path2surface(self.workstep.path,
                       self.surface,

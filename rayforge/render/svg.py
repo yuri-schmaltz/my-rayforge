@@ -15,6 +15,10 @@ def parse_length(s):
 
 
 class SVGRenderer(Renderer):
+    label = 'SVG files'
+    mime_types = ('image/svg+xml',)
+    extensions = ('.svg',)
+
     @classmethod
     def prepare(cls, data):
         return cls._crop_to_content(data)

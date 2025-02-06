@@ -6,7 +6,7 @@ from workbench import WorkBench
 from workstepbox import WorkStepBox
 from draglist import DragListBox
 from gcode import GCodeSerializer
-from render import SVGRenderer, PNGRenderer
+from render import renderers, renderer_by_mime_type
 from rayforge import __version__
 
 gi.require_version('Adw', '1')
@@ -115,18 +115,22 @@ class MainWindow(Adw.ApplicationWindow):
         dialog = Gtk.FileDialog.new()
         dialog.set_title("Open SVG File")
 
-        # Create a file filter for SVG files
-        filter_svg = Gtk.FileFilter()
-        filter_svg.set_name("SVG files")
-        filter_svg.add_mime_type("image/svg+xml")
-        filter_svg.add_mime_type("image/png")
-
         # Create a Gio.ListModel for the filters
-        filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(filter_svg)
+        filter_list = Gio.ListStore.new(Gtk.FileFilter)
+        all_supported = Gtk.FileFilter()
+        all_supported.set_name("All supported")
+        for renderer in renderers:
+            file_filter = Gtk.FileFilter()
+            file_filter.set_name(renderer.label)
+            for mime_type in renderer.mime_types:
+                file_filter.add_mime_type(mime_type)
+                all_supported.add_mime_type(mime_type)
+            filter_list.append(file_filter)
+        filter_list.append(all_supported)
 
         # Set the filters for the dialog
-        dialog.set_filters(filters)
+        dialog.set_filters(filter_list)
+        dialog.set_default_filter(all_supported)
 
         # Show the dialog and handle the response
         dialog.open(self, None, self.on_file_dialog_response)
@@ -144,20 +148,19 @@ class MainWindow(Adw.ApplicationWindow):
             if file:
                 # Load the SVG file and convert it to a grayscale surface
                 file_path = file.get_path()
-                self.load_file(file_path)
+                file_info = file.query_info(
+                    Gio.FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+                    Gio.FileQueryInfoFlags.NONE,
+                    None
+                )
+                mime_type = file_info.get_content_type()
+                self.load_file(file_path, mime_type)
         except GLib.Error as e:
             print(f"Error opening file: {e.message}")
 
-    def load_file(self, filename):
+    def load_file(self, filename, mime_type):
         ext = os.path.splitext(filename)[1].lower()
-        match ext:
-            case '.svg':
-                renderer = SVGRenderer()
-            case '.png':
-                renderer = PNGRenderer()
-            case _:
-                print(f"unknown extension: {filename}")
-                return
+        renderer = renderer_by_mime_type[mime_type]
         wp = WorkPiece.from_file(filename, renderer)
         workstep = self.doc.worksteps[0]
         workstep.add_workpiece(wp)

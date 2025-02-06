@@ -1,15 +1,16 @@
 import cairo
 import numpy as np
 import cv2
-from .processor import Processor
+from svgpathtools import svg2paths2
+from rayforge.render import SVGRenderer
+from .modifier import Modifier
 
 
-class OutlineTracer(Processor):
+class OutlineTracer(Modifier):
     """
     Find outlines for laser cutting.
     """
-    @staticmethod
-    def process(workstep, surface, pixels_per_mm, ymax):
+    def run(self, workstep, surface, pixels_per_mm, ymax):
         # Get the surface format
         surface_format = surface.get_format()
 
@@ -61,3 +62,24 @@ class OutlineTracer(Processor):
                     x, y = point[0]
                     workstep.path.line_to(x/scale_x, ymax-y/scale_y)
                 workstep.path.close_path()
+
+
+class SVGOutline(Modifier):
+    """
+    Transforms SVG paths to our internal Path objects, as
+    outlines for laser cutting.
+    """
+    def run(self, workstep, surface, pixels_per_mm, ymax):
+        # Use svgpathtools to extract paths and attributes of each of the
+        # SVG workpieces.
+        for workpiece in workstep.workpieces:
+            if not issubclass(workpiece.renderer, SVGRenderer):
+                continue  # not an SVG
+
+            fp = io.Bytes(workpiece.data)
+            paths, attributes, svg_attributes = svg2paths2(fp)
+
+            width = svg_attributes.get('width'),
+            height = svg_attributes.get('height')
+            for svgpath, attr in zip(paths, attributes):
+                print("NOT IMPLEMENTED", path, attr)  #TODO: append stuff to workstep.path

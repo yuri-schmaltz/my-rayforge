@@ -1,10 +1,14 @@
 import cairo
 import io
-from rayforge.processor.transparency import make_transparent
+from rayforge.modifier.transparency import make_transparent
 from .renderer import Renderer
 
 
 class PNGRenderer(Renderer):
+    label = 'PNG files'
+    mime_types = ('image/png',)
+    extensions = ('.png',)
+
     @classmethod
     def prepare(cls, data):
         stream = io.BytesIO(data)

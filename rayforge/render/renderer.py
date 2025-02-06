@@ -5,6 +5,9 @@ class Renderer(ABC):
     """
     Reads image data and renders to a Cairo surface.
     """
+    label = None
+    mime_types = None
+    extensions = None
 
     @classmethod
     def prepare(cls, data):

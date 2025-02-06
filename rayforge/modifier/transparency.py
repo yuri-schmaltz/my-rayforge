@@ -1,4 +1,4 @@
-from .processor import Processor
+from .modifier import Modifier
 import cairo
 import numpy as np
 
@@ -34,10 +34,9 @@ def make_transparent(surface, threshold=250):
     # No need to return anything as the surface is modified in place
 
 
-class MakeTransparent(Processor):
+class MakeTransparent(Modifier):
     """
     Makes white pixels transparent.
     """
-    @staticmethod
-    def process(workstep, surface, pixels_per_mm, ymax):
+    def run(self, workstep, surface, pixels_per_mm, ymax):
         make_transparent(surface)
