@@ -29,7 +29,18 @@ css = """
 .group-icon-button {
     background-color: transparent;
     border: none;
-    padding: 4px;
+    border-radius: 12px;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 6px;
+}
+
+.group-icon-button:hover {
+    background-color: #eee;
+}
+
+.group-icon-button:active {
+    background-color: #ddd;
 }
 
 .group-view > box > box:last-child {
@@ -59,22 +70,22 @@ class GroupBox(Gtk.Box):
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         header_box.set_hexpand(True)
         header_box.set_valign(Gtk.Align.CENTER)
-        title_label = Gtk.Label(label=title, halign=Gtk.Align.START)
-        title_label.set_css_classes(["group-title"])
-        subtitle_label = Gtk.Label(label=subtitle, halign=Gtk.Align.START)
-        subtitle_label.set_css_classes(["group-subtitle"])
-        header_box.append(title_label)
-        header_box.append(subtitle_label)
+        self.title_label = Gtk.Label(label=title, halign=Gtk.Align.START)
+        self.title_label.set_css_classes(["group-title"])
+        self.subtitle_label = Gtk.Label(label=subtitle, halign=Gtk.Align.START)
+        self.subtitle_label.set_css_classes(["group-subtitle"])
+        header_box.append(self.title_label)
+        header_box.append(self.subtitle_label)
         header_hbox.append(header_box)
 
         # Add icon
         if icon_name:
             icon = Gtk.Image.new_from_icon_name(icon_name)
-            icon_button = Gtk.Button()
-            icon_button.set_child(icon)
-            icon_button.set_css_classes(["group-icon-button"])
-            icon_button.set_valign(Gtk.Align.CENTER)
-            header_hbox.append(icon_button)
+            self.button = Gtk.Button()
+            self.button.set_child(icon)
+            self.button.set_css_classes(["group-icon-button"])
+            self.button.set_valign(Gtk.Align.CENTER)
+            header_hbox.append(self.button)
 
         # Child widget area
         self.child_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)

@@ -96,7 +96,6 @@ class MainWindow(Adw.ApplicationWindow):
         # Make a default document.
         self.doc = Doc()
         workstep = WorkStep('Step 1: Outline')
-        workstep.description = '100% power, feed 200'
         self.doc.add_workstep(workstep)
 
         self.update_state()

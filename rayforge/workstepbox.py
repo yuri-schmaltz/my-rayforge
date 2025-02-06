@@ -2,6 +2,7 @@ import gi
 from groupbox import GroupBox
 from draglist import DragListBox
 from models import WorkPiece, WorkStep
+from workstepsettings import WorkStepSettingsDialog
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
@@ -11,14 +12,20 @@ class WorkStepBox(GroupBox):
     def __init__(self, workstep: WorkStep):
         # Hint: possible icon names can be found using gtk3-icon-browser
         super().__init__(workstep.name,
-                         workstep.description,
-                         icon_name=None)
-
+                         workstep.get_summary(),
+                         icon_name='applications-engineering')
+        self.workstep = workstep
         self.listbox = DragListBox()
         self.add_child(self.listbox)
 
         for workpiece in workstep.workpieces:
             pass  # TODO: self.add_workpiece(workpiece)
+
+        self.button.connect('clicked', self.on_button_clicked)
+
+    def on_workstep_changed(self, sender, **kwargs):
+        self.title_label.set_label(self.workstep.name)
+        self.subtitle_label.set_label(self.workstep.get_summary())
 
     def add_workpiece(self, workpiece: WorkPiece):
         label = Gtk.Label(label=workpiece.name)
@@ -26,6 +33,11 @@ class WorkStepBox(GroupBox):
         row = Gtk.ListBoxRow()
         row.set_child(label)
         self.listbox.add_row(row)
+
+    def on_button_clicked(self, button):
+        dialog = WorkStepSettingsDialog(self.workstep)
+        dialog.present()
+        dialog.changed.connect(self.on_workstep_changed)
 
 
 if __name__ == "__main__":

@@ -34,7 +34,7 @@ class GCodeSerializer:
 
     def serialize(self, workstep):
         laser = workstep.laser
-        assert laser.min_power <= workstep.power <= laser.max_power
+        assert workstep.power <= laser.max_power
         assert workstep.cut_speed <= self.machine.max_cut_speed
         assert workstep.travel_speed <= self.machine.max_travel_speed
         start_x, start_y = None, None

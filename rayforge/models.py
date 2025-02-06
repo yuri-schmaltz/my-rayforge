@@ -14,19 +14,16 @@ print(f"Config dir is {CONFIG_DIR}")
 
 class LaserHead:
     def __init__(self):
-        self.min_power: int = 0
         self.max_power: int = 1000  # Max power (0-1000 for GRBL)
 
     def to_yaml(self) -> Dict[str, Any]:
         return {
-            "min_power": self.min_power,
             "max_power": self.max_power,
         }
 
     @classmethod
     def from_yaml(cls, data: Dict[str, Any]) -> 'LaserHead':
         lh = cls()
-        lh.min_power = data.get("min_power", lh.min_power)
         lh.max_power = data.get("max_power", lh.max_power)
         return lh
 
@@ -225,7 +222,6 @@ class WorkStep:
     WorkPieces. It normally generates a Path in the end, but
     may also include modifiers that manipulate the input image.
     """
-    description: str = 'An operation on a group of workpieces'
 
     def __init__(self, name):
         self.name: str = name
@@ -240,6 +236,11 @@ class WorkStep:
         self.power = self.laser.max_power
         self.cut_speed = config.machine.max_cut_speed
         self.travel_speed = config.machine.max_travel_speed
+
+    def get_summary(self):
+        power = int(self.power/self.laser.max_power*100)
+        speed = int(self.cut_speed)
+        return f"{power}% power, {speed} mm/min"
 
     def add_workpiece(self, workpiece: WorkPiece):
         self.workpieces.append(workpiece)
