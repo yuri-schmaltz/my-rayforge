@@ -16,6 +16,7 @@ class CanvasElement:
     height_mm: float  # Real-world height in mm
     selected: bool = False
     selectable: bool = True
+    crop_region_mm: tuple[float, float, float, float|None] = 0, 0, None, None
     surface: cairo.Surface = None
     parent: object = None
     children: list = field(default_factory=list)
@@ -94,10 +95,35 @@ class CanvasElement:
     def size(self):
         return self.width_mm, self.height_mm
 
+    def set_size(self, width_mm, height_mm):
+        self.width_mm, self.height_mm = width_mm, height_mm
+
+    def crop(self, x_mm, y_mm, width_mm, height_mm):
+        x_mm = 0 if x_mm is None or x_mm <= 0 else x_mm
+        y_mm = 0 if y_mm is None or y_mm <= 0 else y_mm
+        width_mm = None if width_mm is None or width_mm >= self.width_mm \
+                        else width_mm
+        height_mm = None if height_mm is None or height_mm >= self.height_mm \
+                        else height_mm
+
+        self.crop_region_mm = x_mm, y_mm, width_mm, height_mm
+        width_mm = self.width_mm if width_mm is None else width_mm
+        height_mm = self.height_mm if height_mm is None else height_mm
+
     def size_px(self):
         pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
         return (int(self.width_mm*pixels_per_mm_x),
                 int(self.height_mm*pixels_per_mm_y))
+
+    def crop_region_px(self):
+        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
+        x_mm, y_mm, width_mm, height_mm = self.crop_region_mm
+        width_mm = width_mm if width_mm is not None else self.width_mm
+        height_mm = height_mm if height_mm is not None else self.height_mm
+        return (int(x_mm*pixels_per_mm_x),
+                int(y_mm*pixels_per_mm_y),
+                int(width_mm*pixels_per_mm_x),
+                int(height_mm*pixels_per_mm_y))
 
     def rect(self):
         return self.x_mm, self.y_mm, self.width_mm, self.height_mm
@@ -120,7 +146,7 @@ class CanvasElement:
         if not self.get_canvas():
             return  # cannot allocate if i don't know pixels per mm
 
-        width, height = self.size_px()
+        _, _, width, height = self.crop_region_px()
 
         for child in self.children:
             child.allocate()
@@ -133,9 +159,23 @@ class CanvasElement:
 
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 
-    def render(self):
+    def _rect_to_child_coords_px(self, child, rect_px):
+        x, y, w, h = rect_px
+        child_x, child_y, child_w, child_h = child.rect_px()
+        return x-child_x, y-child_y, w, h
+
+    def render(self, clip=None):
+        """
+        clip: x, y, w, h. the region to render
+        """
+        if clip is None:
+            clip = self.rect_px()
+
         # Paint background
+        x, y, w, h = clip
         ctx = cairo.Context(self.surface)
+        ctx.rectangle(0, 0, x+w, y+h)
+        ctx.clip()
         ctx.save()
         ctx.set_source_rgba(*self.background)
         ctx.set_operator(cairo.OPERATOR_SOURCE)
@@ -143,11 +183,8 @@ class CanvasElement:
         ctx.restore()
 
         # Paint children
-        self.render_children(ctx)
-
-    def render_children(self, ctx):
         for child in self.children:
-            child.render()
+            child.render(self._rect_to_child_coords_px(child, clip))
             ctx.set_source_surface(child.surface, *child.pos_px())
             ctx.paint()
 
@@ -175,7 +212,14 @@ class CanvasElement:
         return None
 
     def dump(self, indent=0):
-        print("  "*indent, self.__class__.__name__)
+        print("  "*indent,
+              self.__class__.__name__,
+              "SIZE", self.rect(),
+              "CROP", self.crop_region_mm)
+        print("  "*indent,
+              " "*len(self.__class__.__name__),
+              "SIZEPX", self.rect_px(),
+              "CROPPX", self.crop_region_px())
         for child in self.children:
             child.dump(indent+1)
 
@@ -220,7 +264,7 @@ class Canvas(Gtk.DrawingArea):
 
     def do_size_allocate(self, width: int, height: int, baseline: int):
         self.pixels_per_mm_x = width/self.root.width_mm
-        self.pixels_per_mm_y = width/self.root.height_mm
+        self.pixels_per_mm_y = height/self.root.height_mm
         self.root.allocate()
 
     def do_snapshot(self, snapshot):

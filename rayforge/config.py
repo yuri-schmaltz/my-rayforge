@@ -19,5 +19,5 @@ if not machines:
 
 config = Config.load(CONFIG_FILE, machines)
 if not config.machine:
-    config.machine = list(machines.values())[0]
+    config.set_machine(list(machines.values())[0])
 print(f"Config loaded. Using machine {config.machine.id}")

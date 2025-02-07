@@ -7,13 +7,19 @@ gi.require_version('Gtk', '4.0')
 from gi.repository import Graphene  # noqa: E402
 
 
-def _copy_surface(source, target, width, height):
+def _copy_surface(source, target, width, height, clip, crop_region):
     in_width, in_height = source.get_width(), source.get_height()
     scale_x = width/in_width
     scale_y = height/in_height
     ctx = cairo.Context(target)
+    clip_x, clip_y, clip_w, clip_h = clip
+    ctx.rectangle(0, 0, clip_x+clip_w, clip_y+clip_h)
+    ctx.clip()
+    crop_x, crop_y, crop_w, crop_h = crop_region
+    ctx.rectangle(0, 0, crop_x+crop_w, crop_y+crop_h)
+    ctx.clip()
     ctx.scale(scale_x, scale_y)
-    ctx.set_source_surface(source, 0, 0)
+    ctx.set_source_surface(source, crop_x, crop_y)
     ctx.paint()
     return target
 
@@ -45,7 +51,7 @@ class WorkPieceElement(CanvasElement):
     WorkSurface.
     """
 
-    def render(self):
+    def render(self, rect):
         assert self.surface is not None
         width, height = self.size_px()
         workpiece = self.data
@@ -53,7 +59,12 @@ class WorkPieceElement(CanvasElement):
         surface = renderer.render_workpiece(workpiece, width, height)
         if not surface:
             return self.surface  # we assume surface was changed in-place
-        self.surface = _copy_surface(surface, self.surface, width, height)
+        self.surface = _copy_surface(surface,
+                                     self.surface,
+                                     width,
+                                     height,
+                                     rect,
+                                     self.crop_region_px())
         return self.surface
 
 
@@ -76,8 +87,8 @@ class WorkStepElement(CanvasElement):
 
         super().remove_selected()
 
-    def render(self):
-        super().render()
+    def render(self, rect):
+        super().render(rect)
 
         # Run the modifiers.
         width, height = self.size_px()
@@ -101,6 +112,7 @@ class WorkStepElement(CanvasElement):
             self.surface = _copy_surface(surface,
                                          self.surface,
                                          width,
+                                         rect,
                                          height)
 
         # Render the modified result.
@@ -121,8 +133,23 @@ class WorkSurface(Canvas):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.aspect_ratio = self.root.width_mm/self.root.height_mm
         self.grid_size = 10  # in mm
+        self.update()
+
+    def set_size(self, width_mm, height_mm):
+        self.root.set_size(width_mm, height_mm)
+        for elem in self.root.children:
+            if isinstance(elem, WorkStepElement):
+                elem.set_size(width_mm, height_mm)
+        self.update()
+
+    def update(self):
+        self.aspect_ratio = self.root.width_mm/self.root.height_mm
+        self.root.allocate()
+        self.queue_draw()
+
+    def do_size_allocate(self, width: int, height: int, baseline: int):
+        super().do_size_allocate(width, height, baseline)
 
     def add_workstep(self, workstep):
         """
@@ -195,7 +222,7 @@ class WorkSurface(Canvas):
             ctx.stroke()
 
         # Draw horizontal lines
-        for y in range(0, int(self.root.height_mm)+1, self.grid_size):
+        for y in range(int(self.root.height_mm), -1, -self.grid_size):
             y_px = y*self.pixels_per_mm_y
             ctx.move_to(0, y_px)
             ctx.line_to(width, y_px)

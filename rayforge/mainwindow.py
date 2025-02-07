@@ -7,6 +7,7 @@ from .models.workpiece import WorkPiece
 from .workbench import WorkBench
 from .workstepbox import WorkStepBox
 from .draglist import DragListBox
+from .machinesettings import MachineSettingsDialog
 from .gcode import GCodeSerializer
 from .render import renderers, renderer_by_mime_type
 from . import __version__
@@ -40,7 +41,7 @@ class MainWindow(Adw.ApplicationWindow):
         menu_button = Gtk.MenuButton()
         menu_model = Gio.Menu()
         menu_model.append("About", "win.about")
-        menu_model.append("Quit", "win.quit")
+        menu_model.append("Preferences", "win.settings")
         menu_button.set_menu_model(menu_model)
         header_bar.pack_end(menu_button)
 
@@ -51,9 +52,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Add the "quit" action
         app = self.get_application()
-        quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda a, p: app.quit())
-        self.add_action(quit_action)
+        settings_action = Gio.SimpleAction.new("settings", None)
+        settings_action.connect("activate", self.show_machine_settings)
+        self.add_action(settings_action)
 
         # Create a toolbar
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -101,6 +102,13 @@ class MainWindow(Adw.ApplicationWindow):
         self.doc.add_workstep(workstep)
 
         self.update_state()
+        config.changed.connect(self.on_config_changed)
+
+    def on_config_changed(self, sender, **kwargs):
+        self.workbench.set_size(*config.machine.dimensions)
+        width_mm, height_mm = config.machine.dimensions
+        ratio = width_mm/height_mm
+        self.frame.set_ratio(ratio)
 
     def update_state(self):
         self.workbench.update(self.doc)
@@ -183,3 +191,7 @@ class MainWindow(Adw.ApplicationWindow):
             license_type=Gtk.License.MIT_X11
         )
         about_dialog.present()
+
+    def show_machine_settings(self, action, param):
+        dialog = MachineSettingsDialog(config.machine)
+        dialog.present()

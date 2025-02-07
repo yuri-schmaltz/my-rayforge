@@ -3,6 +3,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw
 from .models.machine import LaserHead
+from .util.adwfix import get_spinrow_int
 
 
 class MachineSettingsDialog(Adw.PreferencesDialog):
@@ -59,7 +60,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
 
         width_adjustment = Gtk.Adjustment(
             value=self.machine.dimensions[0],
-            lower=20,
+            lower=50,
             upper=10000,
             step_increment=1,
             page_increment=10
@@ -74,7 +75,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
 
         height_adjustment = Gtk.Adjustment(
             value=self.machine.dimensions[1],
-            lower=20,
+            lower=50,
             upper=10000,
             step_increment=1,
             page_increment=10
@@ -211,7 +212,8 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         selected_row = self.laserhead_list.get_selected_row()
         if selected_row:
             index = selected_row.get_index()
-            self.machine.heads[index].max_power = spinrow.get_value()
+            value = get_spinrow_int(spinrow)
+            self.machine.heads[index].max_power = value
             self.update_laserhead_list()
 
     def update_laserhead_list(self):
@@ -240,20 +242,22 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
 
     def on_travel_speed_changed(self, spinrow):
         """Update the max travel speed when the value changes."""
-        self.machine.set_max_travel_speed(spinrow.get_value())
+        value = get_spinrow_int(spinrow)
+        self.machine.set_max_travel_speed(value)
 
     def on_cut_speed_changed(self, spinrow):
         """Update the max cut speed when the value changes."""
-        self.machine.set_max_cut_speed(spinrow.get_value())
+        value = get_spinrow_int(spinrow)
+        self.machine.set_max_cut_speed(value)
 
     def on_width_changed(self, spinrow):
         """Update the width when the value changes."""
-        width = spinrow.get_value()
+        width = get_spinrow_int(spinrow)
         height = self.machine.dimensions[1]
         self.machine.set_dimensions(width, height)
 
     def on_height_changed(self, spinrow):
         """Update the height when the value changes."""
         width = self.machine.dimensions[0]
-        height = spinrow.get_value()
+        height = get_spinrow_int(spinrow)
         self.machine.set_dimensions(width, height)

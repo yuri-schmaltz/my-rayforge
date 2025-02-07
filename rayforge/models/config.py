@@ -1,5 +1,6 @@
 import yaml
 from typing import Dict, Any
+from blinker import Signal
 from .machine import Machine
 
 
@@ -7,6 +8,7 @@ class Config:
     def __init__(self):
         self.machine: Machine = None
         self.paned_position = 60  # in percent
+        self.changed = Signal()
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -14,12 +16,21 @@ class Config:
             "paned_position": self.paned_position
         }
 
+    def set_machine(self, machine: Machine):
+        if self.machine == machine:
+            return
+        if self.machine:
+            self.machine.changed.disconnect()
+        self.machine = machine
+        self.changed.send(self)
+        self.machine.changed.connect(self.changed.send)
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any], machines) -> 'Config':
         config = cls()
         if not data:
             return config
-        config.machine = machines.get(data.get("machine"))
+        config.set_machine(machines.get(data.get("machine")))
         config.paned_position = data.get("paned_position",
                                          config.paned_position)
         return config

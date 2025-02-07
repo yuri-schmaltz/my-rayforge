@@ -1,6 +1,7 @@
 import gi
 from blinker import Signal
 from .config import config
+from .util.adwfix import get_spinrow_int
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
@@ -76,19 +77,9 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
         self.changed.send(self)
 
     def on_cut_speed_changed(self, spin_row):
-        # Workaround: SpinRow seems to have a bug that the value is not always
-        # updated if it was edited using the keyboard in the edit field.
-        # i.e. get_value() still returns the previous value.
-        # So I convert it manually from text if possible.
-        try:
-            self.workstep.cut_speed = int(spin_row.get_text())
-        except ValueError:
-            self.workstep.cut_speed = spin_row.get_value()
+        self.workstep.cut_speed = get_spinrow_int(spin_row)
         self.changed.send(self)
 
     def on_travel_speed_changed(self, spin_row):
-        try:
-            self.workstep.travel_speed = int(spin_row.get_text())
-        except ValueError:
-            self.workstep.travel_speed = spin_row.get_value()
+        self.workstep.travel_speed = get_spinrow_int(spin_row)
         self.changed.send(self)

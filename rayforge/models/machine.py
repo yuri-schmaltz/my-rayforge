@@ -2,6 +2,8 @@ import yaml
 import uuid
 import logging
 from typing import List, Dict, Any
+from blinker import Signal
+
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +37,31 @@ class Machine:
     def __init__(self):
         self.id = str(uuid.uuid4())
         self.heads = [LaserHead()]
+        self.changed = Signal()
+
+    def set_preamble(self, preamble: List[str]):
+        self.preamble = preamble
+        self.changed.send(self)
+
+    def set_postscript(self, postscript: List[str]):
+        self.postscript = postscript
+        self.changed.send(self)
+
+    def set_max_travel_speed(self, speed: int):
+        self.max_travel_speed = speed
+        self.changed.send(self)
+
+    def set_max_cut_speed(self, speed: int):
+        self.max_cut_speed = speed
+        self.changed.send(self)
+
+    def set_dimensions(self, width: int, height: int):
+        self.dimensions = (width, height)
+        self.changed.send(self)
+
+    def add_head(self, head: LaserHead):
+        self.heads.append(head)
+        self.changed.send(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

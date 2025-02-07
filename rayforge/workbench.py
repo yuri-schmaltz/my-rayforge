@@ -37,6 +37,10 @@ class Axis(Gtk.DrawingArea):
                     or extents.width+2*self.label_padding+self.stroke
             self.set_size_request(self.thickness, -1)
 
+    def set_length(self, length_mm):
+        self.length_mm = length_mm
+        self.queue_draw()
+
     def do_snapshot(self, snapshot):
         # Calculate size in pixels.
         if self.orientation == Gtk.Orientation.HORIZONTAL:
@@ -63,20 +67,20 @@ class Axis(Gtk.DrawingArea):
         ctx.stroke()
 
         # Draw axis labels
-        for pos in range(self.grid_size, self.length_mm+1, self.grid_size):
-            pos_px = pos*length/self.length_mm
+        for pos in range(self.grid_size, int(self.length_mm)+1, self.grid_size):
+            pos_px = int(pos*length/self.length_mm)
             label = f"{pos}"
             extents = ctx.text_extents(label)
             if self.orientation == Gtk.Orientation.HORIZONTAL:
-                if pos_px+extents.width/2 >= length:
-                    pos_px -= extents.width/2
-                ctx.move_to(pos_px-extents.width/2,
+                if pos_px+int(extents.width/2) >= length:
+                    pos_px -= int(extents.width/2)
+                ctx.move_to(pos_px-int(extents.width/2),
                             self.stroke+self.label_padding+extents.height)
             else:
                 if height-pos_px <= 0:
-                    pos_px -= extents.height/2
+                    pos_px -= int(extents.height/2)
                 ctx.move_to(width-self.stroke-self.label_padding-extents.width,
-                            height-pos_px+extents.height/2)
+                            height-pos_px+int(extents.height/2))
             ctx.show_text(label)
 
 
@@ -97,16 +101,21 @@ class WorkBench(Gtk.Grid):
         self.attach(self.surface, 1, 0, 1, 1)
 
         # Add the X axis
-        axis = Axis(width_mm,
-                    thickness=self.axis_thickness,
-                    orientation=Gtk.Orientation.HORIZONTAL)
-        self.attach(axis, 1, 1, 1, 1)
+        self.axis_x = Axis(width_mm,
+                           thickness=self.axis_thickness,
+                           orientation=Gtk.Orientation.HORIZONTAL)
+        self.attach(self.axis_x, 1, 1, 1, 1)
 
         # Add the Y axis
-        axis = Axis(height_mm,
-                    thickness=self.axis_thickness,
-                    orientation=Gtk.Orientation.VERTICAL)
-        self.attach(axis, 0, 0, 1, 1)
+        self.axis_y = Axis(height_mm,
+                           thickness=self.axis_thickness,
+                           orientation=Gtk.Orientation.VERTICAL)
+        self.attach(self.axis_y, 0, 0, 1, 1)
+
+    def set_size(self, width_mm, height_mm):
+        self.surface.set_size(width_mm, height_mm)
+        self.axis_x.set_length(width_mm)
+        self.axis_y.set_length(height_mm)
 
     def clear(self):
         self.surface.clear()
