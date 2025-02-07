@@ -67,10 +67,10 @@ class MainWindow(Adw.ApplicationWindow):
         open_button.set_tooltip_text("Import Image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
-        self.generate_button = Gtk.Button(icon_name="document-save-symbolic")
-        self.generate_button.set_tooltip_text("Generate GCode")
-        self.generate_button.connect("clicked", self.on_generate_clicked)
-        toolbar.append(self.generate_button)
+        self.export_button = Gtk.Button(icon_name="document-save-symbolic")
+        self.export_button.set_tooltip_text("Generate GCode")
+        self.export_button.connect("clicked", self.on_export_clicked)
+        toolbar.append(self.export_button)
 
         # Create the Paned splitting the window into left and right sections.
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -122,7 +122,7 @@ class MainWindow(Adw.ApplicationWindow):
             row.set_child(workstepbox)
 
         # Update button states.
-        self.generate_button.set_sensitive(self.doc.has_workpiece())
+        self.export_button.set_sensitive(self.doc.has_workpiece())
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
@@ -149,11 +149,45 @@ class MainWindow(Adw.ApplicationWindow):
         # Show the dialog and handle the response
         dialog.open(self, None, self.on_file_dialog_response)
 
-    def on_generate_clicked(self, button):
-        serializer = GCodeSerializer(config.machine)
-        workstep = self.doc.worksteps[0]
-        gcode = serializer.serialize(workstep)
-        print(gcode)
+    def on_export_clicked(self, button):
+        # Create a file chooser dialog for saving the file
+        dialog = Gtk.FileDialog.new()
+        dialog.set_title("Save G-code File")
+
+        # Set the default file name
+        dialog.set_initial_name("output.gcode")
+
+        # Create a Gio.ListModel for the filters
+        filter_list = Gio.ListStore.new(Gtk.FileFilter)
+        gcode_filter = Gtk.FileFilter()
+        gcode_filter.set_name("G-code files")
+        gcode_filter.add_mime_type("text/x-gcode")
+        filter_list.append(gcode_filter)
+
+        # Set the filters for the dialog
+        dialog.set_filters(filter_list)
+        dialog.set_default_filter(gcode_filter)
+
+        # Show the dialog and handle the response
+        dialog.save(self, None, self.on_save_dialog_response)
+
+    def on_save_dialog_response(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+            if not file:
+                return
+            file_path = file.get_path()
+
+            # Serialize the G-code
+            serializer = GCodeSerializer(config.machine)
+            workstep = self.doc.worksteps[0]
+            gcode = serializer.serialize(workstep)
+
+            # Write the G-code to the file
+            with open(file_path, 'w') as f:
+                f.write(gcode)
+        except GLib.Error as e:
+            print(f"Error saving file: {e.message}")
 
     def on_file_dialog_response(self, dialog, result):
         try:
