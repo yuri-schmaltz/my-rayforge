@@ -96,31 +96,55 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         preamble_group = Adw.PreferencesGroup(title="Preamble")
         gcode_page.add(preamble_group)
         self.preamble_entry = Gtk.TextView()
-        self.preamble_entry.set_size_request(300, 100)
+        self.preamble_entry.set_size_request(300, 50)
         self.preamble_entry.get_buffer().set_text(
             "\n".join(self.machine.preamble)
         )
-        preamble_group.add(self.preamble_entry)
-
-        # Connect the preamble text buffer's "changed" signal
         self.preamble_entry.get_buffer().connect(
             "changed", self.on_preamble_changed
         )
+        preamble_group.add(self.preamble_entry)
 
         # Postscript
         postscript_group = Adw.PreferencesGroup(title="Postscript")
         gcode_page.add(postscript_group)
         self.postscript_entry = Gtk.TextView()
-        self.postscript_entry.set_size_request(300, 100)
+        self.postscript_entry.set_size_request(300, 50)
         self.postscript_entry.get_buffer().set_text(
             "\n".join(self.machine.postscript)
         )
-        postscript_group.add(self.postscript_entry)
-
-        # Connect the postscript text buffer's "changed" signal
         self.postscript_entry.get_buffer().connect(
             "changed", self.on_postscript_changed
         )
+        postscript_group.add(self.postscript_entry)
+
+        # Air Assist Settings
+        air_assist_group = Adw.PreferencesGroup(title="Air Assist")
+        gcode_page.add(air_assist_group)
+
+        # Air Assist Enable
+        self.air_assist_on_row = Adw.EntryRow()
+        gcode = self.machine.air_assist_on or ""
+        self.air_assist_on_row.set_title(
+            "Air Assist Enable GCode (blank if unsupported)"
+        )
+        self.air_assist_on_row.set_text(gcode)
+        self.air_assist_on_row.connect(
+            "changed", self.on_air_assist_on_changed
+        )
+        air_assist_group.add(self.air_assist_on_row)
+
+        # Air Assist Disable
+        self.air_assist_off_row = Adw.EntryRow()
+        gcode = self.machine.air_assist_off or ""
+        self.air_assist_off_row.set_title(
+            "Air Assist Disable GCode (blank if unsupported)"
+        )
+        self.air_assist_off_row.set_text(gcode)
+        self.air_assist_off_row.connect(
+            "changed", self.on_air_assist_off_changed
+        )
+        air_assist_group.add(self.air_assist_off_row)
 
         # Create the "Laser Heads" page
         laserhead_page = Adw.PreferencesPage(title="Laser Heads", icon_name=None)
@@ -162,7 +186,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         )
         self.max_power_row = Adw.SpinRow(
             title="Max Power",
-            subtitle="Maximum power in W",
+            subtitle="Maximum power value in GCode",
             adjustment=max_power_adjustment
         )
         self.max_power_row.connect("changed", self.on_max_power_changed)
@@ -239,6 +263,16 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             True
         )
         self.machine.set_postscript(text.splitlines())
+
+    def on_air_assist_on_changed(self, entry):
+        """Update the air assist enable GCode when the value changes."""
+        text = entry.get_text().strip()
+        self.machine.set_air_assist_on(text if text else None)
+
+    def on_air_assist_off_changed(self, entry):
+        """Update the air assist disable GCode when the value changes."""
+        text = entry.get_text().strip()
+        self.machine.set_air_assist_off(text if text else None)
 
     def on_travel_speed_changed(self, spinrow):
         """Update the max travel speed when the value changes."""

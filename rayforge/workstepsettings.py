@@ -69,6 +69,13 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
         travel_speed_row.connect('changed', self.on_travel_speed_changed)
         group.add(travel_speed_row)
 
+        # Add a switch for air assist
+        air_assist_row = Adw.SwitchRow()
+        air_assist_row.set_title("Air Assist")
+        air_assist_row.set_active(workstep.air_assist)
+        air_assist_row.connect('notify::active', self.on_air_assist_changed)
+        group.add(air_assist_row)
+
         self.changed = Signal()
 
     def on_power_changed(self, scale):
@@ -82,4 +89,8 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
 
     def on_travel_speed_changed(self, spin_row):
         self.workstep.travel_speed = get_spinrow_int(spin_row)
+        self.changed.send(self)
+
+    def on_air_assist_changed(self, row, _):
+        self.workstep.air_assist = row.get_active()
         self.changed.send(self)

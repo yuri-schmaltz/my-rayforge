@@ -4,16 +4,23 @@ class GCodeSerializer:
         self.machine = machine
         self.gcode = []+self.machine.preamble
         self.is_cutting = False
+        self.air_assist = False
 
     def laser_on(self, workstep):
         if not self.is_cutting:
             self.gcode.append(f"M4 S{workstep.power}")
-        self.is_cutting = True
+            self.is_cutting = True
+        if workstep.air_assist and not self.air_assist:
+            self.gcode.append(self.machine.air_assist_on or "")
+            self.air_assist = True
 
     def laser_off(self, workstep):
         if self.is_cutting:
             self.gcode.append("M5 ; Disable laser")
-        self.is_cutting = False
+            self.is_cutting = False
+        if self.air_assist:
+            self.gcode.append(self.machine.air_assist_off or "")
+            self.air_assist = False
 
     def finish(self, workstep):
         self.laser_off(workstep)

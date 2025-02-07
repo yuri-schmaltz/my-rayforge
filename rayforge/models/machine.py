@@ -29,6 +29,8 @@ class Machine:
     preamble: List[str] = ["G21 ; Set units to mm",
                            "G90 ; Absolute positioning"]
     postscript: List[str] = ["G0 X0 Y0 ; Return to origin"]
+    air_assist_on = "M8 ; Enable air assist"
+    air_assist_off = "M9 ; Disable air assist"
     heads: List[LaserHead] = []
     max_travel_speed: int = 3000   # in mm/min
     max_cut_speed: int = 1000   # in mm/min
@@ -45,6 +47,14 @@ class Machine:
 
     def set_postscript(self, postscript: List[str]):
         self.postscript = postscript
+        self.changed.send(self)
+
+    def set_air_assist_on(self, gcode: str|None):
+        self.air_assist_on = gcode
+        self.changed.send(self)
+
+    def set_air_assist_off(self, gcode: str|None):
+        self.air_assist_off = gcode
         self.changed.send(self)
 
     def set_max_travel_speed(self, speed: int):
@@ -76,6 +86,8 @@ class Machine:
                 "gcode": {
                     "preamble": self.preamble,
                     "postscript": self.postscript,
+                    "air_assist_on": self.air_assist_on,
+                    "air_assist_off": self.air_assist_off,
                 },
             }
         }
@@ -94,6 +106,8 @@ class Machine:
         gcode = ma_data.get("gcode", {})
         ma.preamble = gcode.get("preamble", ma.preamble)
         ma.postscript = gcode.get("postscript", ma.postscript)
+        ma.air_assist_on = gcode.get("air_assist_on", ma.air_assist_on)
+        ma.air_assist_off = gcode.get("air_assist_off", ma.air_assist_off)
         return ma
 
 

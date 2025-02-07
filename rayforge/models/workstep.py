@@ -26,9 +26,10 @@ class WorkStep:
         ]
         self.path: Path = Path()
         self.laser: LaserHead = config.machine.heads[0]
-        self.power = self.laser.max_power
-        self.cut_speed = config.machine.max_cut_speed
-        self.travel_speed = config.machine.max_travel_speed
+        self.power: int = self.laser.max_power
+        self.cut_speed: int = config.machine.max_cut_speed
+        self.travel_speed: int = config.machine.max_travel_speed
+        self.air_assist: bool = False
 
     def get_summary(self):
         power = int(self.power/self.laser.max_power*100)
