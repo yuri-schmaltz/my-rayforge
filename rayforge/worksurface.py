@@ -148,9 +148,6 @@ class WorkSurface(Canvas):
         self.root.allocate()
         self.queue_draw()
 
-    def do_size_allocate(self, width: int, height: int, baseline: int):
-        super().do_size_allocate(width, height, baseline)
-
     def add_workstep(self, workstep):
         """
         Adds the workstep, but only if it does not yet exist.
@@ -177,15 +174,17 @@ class WorkSurface(Canvas):
         Adds a workpiece. If not parent element is given, it is
         inserted into the root element.
         """
-        aspect_ratio = workpiece.get_aspect_ratio()
-        we = parent_elem or self.root
-        width_mm, height_mm = we.get_max_child_size(aspect_ratio)
+        parent_elem = parent_elem or self.root
+        width_mm, height_mm = workpiece.get_natural_size()
+        if width_mm is None or height_mm is None:
+            aspect_ratio = workpiece.get_aspect_ratio()
+            width_mm, height_mm = parent_elem.get_max_child_size(aspect_ratio)
         elem = WorkPieceElement(self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,
                                 width_mm,
                                 height_mm,
                                 data=workpiece)
-        we.add(elem)
+        parent_elem.add(elem)
         self.queue_draw()
 
     def clear(self):

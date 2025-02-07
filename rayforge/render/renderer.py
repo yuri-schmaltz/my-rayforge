@@ -19,6 +19,15 @@ class Renderer(ABC):
 
     @classmethod
     @abstractmethod
+    def get_natural_size(cls, data):
+        """
+        Returns the natural (untransformed) size of the image in mm, if
+        known. Return None, None, otherwise.
+        """
+        return None, None
+
+    @classmethod
+    @abstractmethod
     def get_aspect_ratio(cls, data):
         """
         Returns the natural (untransformed) aspect ratio of the image.

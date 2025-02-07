@@ -12,6 +12,9 @@ class WorkPiece:
         self.data: bytes = None
         self.renderer: Renderer = None
 
+    def get_natural_size(self):
+        return self.renderer.get_natural_size(self.data)
+
     def get_aspect_ratio(self):
         return self.renderer.get_aspect_ratio(self.data)
 

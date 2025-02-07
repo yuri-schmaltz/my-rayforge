@@ -8,10 +8,19 @@ from .renderer import Renderer
 
 
 def parse_length(s):
-    m = re.match(r"([0-9.]+)([a-z%]*)", s)
+    m = re.match(r"([0-9.]+)\s*([a-z%]*)", s)
     if m:
         return float(m.group(1)), m.group(2) or "px"
-    return float(s)
+    return float(s), "px"
+
+
+def to_mm(value, unit):
+    """Convert a value to millimeters based on its unit."""
+    if unit == "mm":
+        return value
+    elif unit == "in":
+        return value * 25.4  # 1 inch = 25.4 mm
+    raise ValueError("Cannot convert to millimeters without DPI information.")
 
 
 class SVGRenderer(Renderer):
@@ -21,7 +30,42 @@ class SVGRenderer(Renderer):
 
     @classmethod
     def prepare(cls, data):
-        return cls._crop_to_content(data)
+        # If the document is specified in pixels, we do not know the
+        # real world size. In this case it is safe to crop any margins.
+        w, h = cls.get_natural_size(data)
+        if w is None or h is None:
+            return cls._crop_to_content(data)
+        return data
+
+
+    @classmethod
+    def get_natural_size(cls, data):
+        """
+        Returns the natural size of the document in mm as a tuple (w, h).
+        This is BEFORE cropping the margins.
+        """
+        # Parse the SVG from the bytestring
+        root = ET.fromstring(data)
+
+        # Extract width and height attributes
+        width_attr = root.get("width")
+        height_attr = root.get("height")
+
+        if not width_attr or not height_attr:
+            # SVG does not have width or height attributes.
+            return None, None
+
+        width, width_unit = parse_length(width_attr)
+        height, height_unit = parse_length(height_attr)
+
+        # Convert to millimeters
+        try:
+            width_mm = to_mm(width, width_unit)
+            height_mm = to_mm(height, height_unit)
+        except ValueError:
+            return None, None
+
+        return width_mm, height_mm
 
     @classmethod
     def get_aspect_ratio(cls, data):
