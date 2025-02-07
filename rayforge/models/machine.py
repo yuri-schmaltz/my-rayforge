@@ -96,18 +96,33 @@ class Machine:
         ma.postscript = gcode.get("postscript", ma.postscript)
         return ma
 
-    @classmethod
-    def filename_from_id(cls, base_dir, machine_id: str) -> 'Machine':
-        return base_dir / f"{machine_id}.yaml"
 
-    def save(self, base_dir):
-        machine_file = self.filename_from_id(base_dir, self.id)
+class MachineManager:
+    def __init__(self, base_dir):
+        base_dir.mkdir(parents=True, exist_ok=True)
+        self.base_dir = base_dir
+        self.machines = dict()
+        self.load()
+
+    def filename_from_id(self, machine_id: str) -> 'Machine':
+        return self.base_dir / f"{machine_id}.yaml"
+
+    def add_machine(self, machine):
+        if machine.id in self.machines:
+            return
+        self.machines[machine.id] = machine
+        machine.changed.connect(self.on_machine_changed)
+
+    def get_machine_by_id(self, machine_id):
+        return self.machines[machine_id]
+
+    def save_machine(self, machine):
+        machine_file = self.filename_from_id(machine.id)
         with open(machine_file, 'w') as f:
-            yaml.safe_dump(self.to_dict(), f)
+            yaml.safe_dump(machine.to_dict(), f)
 
-    @classmethod
-    def load(cls, base_dir, machine_id: str) -> 'Machine':
-        machine_file = cls.filename_from_id(base_dir, machine_id)
+    def load_machine(self, machine_id: str) -> 'Machine':
+        machine_file = self.filename_from_id(machine_id)
         if not machine_file.exists():
             raise FileNotFoundError(f"Machine file {machine_file} not found")
         with open(machine_file, 'r') as f:
@@ -116,22 +131,18 @@ class Machine:
                 err = f"WARN: skipping invalid machine file {f.name}"
                 logger.error(err)
                 return None
-            machine = cls.from_dict(data)
-            machine.id = machine_id
-            return machine
-
-    @classmethod
-    def create_default(cls, base_dir):
-        base_dir.mkdir(parents=True, exist_ok=True)
-        machine = Machine()
-        machine.save()
+        machine = Machine.from_dict(data)
+        machine.id = machine_id
+        self.add_machine(machine)
         return machine
 
-    @classmethod
-    def load_all(cls, base_dir):
+    def on_machine_changed(self, machine, **kwargs):
+        self.save_machine(machine)
+
+    def load(self):
         machines = dict()
-        for file in base_dir.glob("*.yaml"):
-            machine = cls.load(base_dir, file.stem)
+        for file in self.base_dir.glob("*.yaml"):
+            machine = self.load_machine(file.stem)
             if machine:
-                machines[machine.id] = machine
+                self.add_machine(machine)
         return machines

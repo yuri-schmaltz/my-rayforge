@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 import argparse
 from rayforge.app import App
-from rayforge.config import config, CONFIG_FILE
+from rayforge.config import config_mgr
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     args = parser.parse_args()
     app = App(args)
     app.run(None)
-    config.save(CONFIG_FILE)
+    config_mgr.save()
 
 if __name__ == "__main__":
     main()
