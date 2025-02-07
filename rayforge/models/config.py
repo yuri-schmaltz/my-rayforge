@@ -1,7 +1,11 @@
 import yaml
+import logging
 from typing import Dict, Any
 from blinker import Signal
 from .machine import Machine
+
+
+logger = logging.getLogger(__name__)
 
 
 class Config:
@@ -28,7 +32,19 @@ class Config:
     @classmethod
     def from_dict(cls, data: Dict[str, Any], get_machine_by_id) -> 'Config':
         config = cls()
-        config.set_machine(get_machine_by_id(data.get("machine")))
+
+        # Get the machine by ID. add fallbacks in case the machines
+        # no longer exist.
+        machine_id = data.get("machine")
+        machine = None
+        if machine_id is not None:
+            machine = get_machine_by_id(machine_id)
+            if machine is None:
+                msg = f"config references unknown machine {machine_id}"
+                logger.error(msg)
+        if machine:
+            config.set_machine(machine)
+
         config.paned_position = data.get("paned_position",
                                          config.paned_position)
         return config

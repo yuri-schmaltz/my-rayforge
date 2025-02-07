@@ -1,4 +1,6 @@
 #!/usr/bin/python3
+import sys
+sys.path.pop(0)  # Prevent importing myself
 import argparse
 from rayforge.app import App
 from rayforge.config import config_mgr

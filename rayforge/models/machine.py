@@ -128,7 +128,13 @@ class MachineManager:
         machine.changed.connect(self.on_machine_changed)
 
     def get_machine_by_id(self, machine_id):
-        return self.machines[machine_id]
+        return self.machines.get(machine_id)
+
+    def create_default_machine(self):
+        machine = Machine()
+        self.add_machine(machine)
+        self.save_machine(machine)
+        return machine
 
     def save_machine(self, machine):
         machine_file = self.filename_from_id(machine.id)
@@ -142,8 +148,8 @@ class MachineManager:
         with open(machine_file, 'r') as f:
             data = yaml.safe_load(f)
             if not data:
-                err = f"WARN: skipping invalid machine file {f.name}"
-                logger.error(err)
+                msg = f"skipping invalid machine file {f.name}"
+                logger.warning(msg)
                 return None
         machine = Machine.from_dict(data)
         machine.id = machine_id

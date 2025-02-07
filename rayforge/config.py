@@ -13,7 +13,8 @@ print(f"Config dir is {CONFIG_DIR}")
 machine_mgr = MachineManager(MACHINE_DIR)
 print(f"Loaded {len(machine_mgr.machines)} machines from disk")
 if not machine_mgr.machines:
-    machine_mgr.add_machine(Machine())
+    machine = machine_mgr.create_default_machine()
+    print(f"Created default machine {machine.id}")
 
 # Load the config file.
 config_mgr = ConfigManager(CONFIG_FILE, machine_mgr)
