@@ -38,5 +38,6 @@ find = {}
 enabled = true
 
 [tool.setuptools.data-files]
-"share/applications" = ["data/rayforge.desktop"]
+"share/applications" = ["data/com.barebaric.rayforge.desktop"]
+"share/metainfo" = ["data/com.barebaric.rayforge.metainfo.xml"]
 "share/icons/hicolor/scalable/apps" = ["data/rayforge.svg"]

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.barebaric.rayforge</id>
+  <developer id="com.barebaric">
+    <name translate="no">Samuel Abels</name>
+  </developer>
+  <content_rating type="oars-1.1" />
+  <url type="homepage">https://github.com/barebaric/rayforge</url>
+  <url type="bugtracker">https://github.com/barebaric/rayforge/issues</url>
+  
+  <name>Rayforge</name>
+  <summary>Laser cutting and engraving</summary>
+  
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+
+  <description>
+    <p>
+      A desktop application for laser cutters and engravers. Rayforge generates G-code from SVG, or PNGs.
+    </p>
+  </description>
+  
+  <launchable type="desktop-id">com.barebaric.rayforge.desktop</launchable>
+
+  <recommends>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <display_length compare="ge">768</display_length>
+  </recommends>
+
+  <icon type="remote">https://raw.githubusercontent.com/barebaric/rayforge/main/data/rayforge.svg</icon>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#efb0a1</color>
+    <color type="primary" scheme_preference="dark">#373f43</color>
+  </branding>
+
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/barebaric/rayforge/main/data/ss-main.png</image>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="0.1" date="2025-02-08">
+      <description>
+        <p>This is the initial release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
