@@ -1,6 +1,5 @@
 import gi
 from .groupbox import GroupBox
-from .draglist import DragListBox
 from .models.workpiece import WorkPiece
 from .models.workplan import WorkStep
 from .util.resources import get_icon_path
@@ -35,19 +34,11 @@ class WorkStepBox(GroupBox):
         self.add_button(button)
         button.connect('clicked', self.on_button_properties_clicked)
 
-        self.listbox = DragListBox()
-        self.add_child(self.listbox)
+        #TODO: self.add_child(thumbnail)
 
     def on_workstep_changed(self, sender, **kwargs):
         self.title_label.set_label(self.workstep.name)
         self.subtitle_label.set_label(self.workstep.get_summary())
-
-    def add_workpiece(self, workpiece: WorkPiece):
-        label = Gtk.Label(label=workpiece.name)
-        label.set_xalign(0)
-        row = Gtk.ListBoxRow()
-        row.set_child(label)
-        self.listbox.add_row(row)
 
     def on_button_view_click(self, button):
         self.workstep.set_visible(button.get_active())
