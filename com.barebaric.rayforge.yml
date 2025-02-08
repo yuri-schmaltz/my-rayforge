@@ -3,32 +3,30 @@ runtime: org.gnome.Platform
 runtime-version: '47'
 sdk: org.gnome.Sdk
 command: rayforge
-build-options:
-  build-args:
-    - --share=network
 
 finish-args:
   - --share=ipc
   - --socket=wayland
-  - --socket=x11
+  - --socket=fallback-x11
   - --device=all
   - --env=DISPLAY=:0
   - --share=network
   - --talk-name=org.freedesktop.DBus
 
 modules:
-  - name: dependencies
-    buildsystem: simple
-    build-commands:
-      - pip3 install --prefix=/app -r requirements.txt
-    sources:
-      - type: file
-        path: requirements.txt
+  - python3-meson-python.json   # This is a numpy/scipy requirement
+  - python3-scikit-build.json   # opencv-python requirement
+  - python3-pythran.json        # scipy-python requirement
+  - python3-pybind11.json       # scipy-python requirement
+  - python3-openblas.json       # scipy-python requirement
+  - python3-setuptools.json
+  - python3-setuptools-git-versioning.json
+  - python3-requirements.json
 
   - name: rayforge
     buildsystem: simple
     build-commands:
-      - pip3 install --prefix=/app --no-deps .
+      - pip3 install --prefix=/app --no-deps --no-build-isolation .
     sources:
       - type: dir
         path: .

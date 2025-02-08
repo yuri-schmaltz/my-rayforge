@@ -2,6 +2,9 @@ venv
 *.swp
 *.py[oc]
 __pycache__
+
 dist
 *.egg-info
+
 .flatpak-builder
+repo

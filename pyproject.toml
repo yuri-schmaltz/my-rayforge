@@ -19,6 +19,9 @@ classifiers = [
 "Homepage" = "https://github.com/barebaric/rayforce"
 "Bug Tracker" = "https://github.com/barebaric/rayforce/issues"
 
+[project.scripts]
+rayforge = "scripts.rayforge:main"
+
 [build-system]
 requires = [
   "setuptools >= 40.9.0", "setuptools-git-versioning"
@@ -34,5 +37,6 @@ find = {}
 [tool.setuptools-git-versioning]
 enabled = true
 
-[project.scripts]
-rayforge = "scripts.rayforge:main"
+[tool.setuptools.data-files]
+"share/applications" = ["data/rayforge.desktop"]
+"share/icons/hicolor/scalable/apps" = ["data/rayforge.svg"]
