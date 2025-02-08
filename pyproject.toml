@@ -40,4 +40,4 @@ enabled = true
 [tool.setuptools.data-files]
 "share/applications" = ["data/com.barebaric.rayforge.desktop"]
 "share/metainfo" = ["data/com.barebaric.rayforge.metainfo.xml"]
-"share/icons/hicolor/scalable/apps" = ["data/rayforge.svg"]
+"share/icons/hicolor/scalable/apps" = ["data/com.barebaric.rayforge.svg"]

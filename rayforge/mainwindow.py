@@ -216,6 +216,7 @@ class MainWindow(Adw.ApplicationWindow):
     def show_about_dialog(self, action, param):
         about_dialog = Adw.AboutDialog(
             application_name="Rayforge",
+            application_icon="com.barebaric.rayforge",
             developer_name="Barebaric",
             version=__version__ or 'unknown',
             copyright="© 2025 Samuel Abels",
