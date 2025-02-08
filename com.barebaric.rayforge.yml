@@ -14,14 +14,14 @@ finish-args:
   - --talk-name=org.freedesktop.DBus
 
 modules:
-  - python3-meson-python.json   # This is a numpy/scipy requirement
-  - python3-scikit-build.json   # opencv-python requirement
-  - python3-pythran.json        # scipy-python requirement
-  - python3-pybind11.json       # scipy-python requirement
-  - python3-openblas.json       # scipy-python requirement
-  - python3-setuptools.json
-  - python3-setuptools-git-versioning.json
-  - python3-requirements.json
+  - flatpak/python3-meson-python.json   # This is a numpy/scipy requirement
+  - flatpak/python3-scikit-build.json   # opencv-python requirement
+  - flatpak/python3-pythran.json        # scipy-python requirement
+  - flatpak/python3-pybind11.json       # scipy-python requirement
+  - flatpak/python3-openblas.json       # scipy-python requirement
+  - flatpak/python3-setuptools.json
+  - flatpak/python3-setuptools-git-versioning.json
+  - flatpak/python3-requirements.json
 
   - name: rayforge
     buildsystem: simple
