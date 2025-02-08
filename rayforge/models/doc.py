@@ -1,6 +1,6 @@
 from typing import List
 from .workpiece import WorkPiece
-from .workstep import WorkStep
+from .workplan import WorkPlan
 
 
 class Doc:
@@ -8,17 +8,14 @@ class Doc:
     Represents a loaded Rayforge document.
     """
     workpieces: List[WorkPiece]
-    worksteps: List[WorkStep]
+    workplan: WorkPlan
 
     def __init__(self):
         self.workpieces = []
-        self.worksteps = []
+        self.workplan = WorkPlan("Default plan")
 
-    def add_workstep(self, workstep):
-        self.worksteps.append(workstep)
-
-    def remove_workstep(self, workstep):
-        self.worksteps.remove(workstep)
+    def __iter__(self):
+        return iter(self.workpieces)
 
     def add_workpiece(self, workpiece):
         self.workpieces.append(workpiece)

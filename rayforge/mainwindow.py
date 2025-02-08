@@ -3,7 +3,6 @@ import gi
 from .config import config
 from .util.resources import get_icon_path
 from .models.doc import Doc
-from .models.workstep import WorkStep
 from .models.workpiece import WorkPiece
 from .workbench import WorkBench
 from .workstepbox import WorkStepBox
@@ -110,8 +109,6 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Make a default document.
         self.doc = Doc()
-        workstep = WorkStep('Step 1: Outline')
-        self.doc.add_workstep(workstep)
 
         self.update_state()
         config.changed.connect(self.on_config_changed)
@@ -127,7 +124,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Add worksteps to the side panel.
         self.worksteplistview.remove_all()
-        for workstep in self.doc.worksteps:
+        for workstep in self.doc.workplan:
             row = Gtk.ListBoxRow()
             self.worksteplistview.add_row(row)
             workstepbox = WorkStepBox(workstep)

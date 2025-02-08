@@ -126,7 +126,7 @@ class WorkBench(Gtk.Grid):
         self.doc = doc
         for workpiece in doc.workpieces:
             self.surface.add_workpiece(workpiece)
-        for workstep in doc.worksteps:
+        for workstep in doc.workplan:
             self.surface.add_workstep(workstep)
 
     def on_elem_removed(self, parent, child):

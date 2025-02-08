@@ -2,7 +2,7 @@ import gi
 from .groupbox import GroupBox
 from .draglist import DragListBox
 from .models.workpiece import WorkPiece
-from .models.workstep import WorkStep
+from .models.workplan import WorkStep
 from .util.resources import get_icon_path
 from .workstepsettings import WorkStepSettingsDialog
 

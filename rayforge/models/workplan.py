@@ -46,3 +46,26 @@ class WorkStep:
         print("  "*indent, self.name)
         for workpiece in self.workpieces:
             workpiece.dump(1)
+
+
+class WorkPlan:
+    """
+    Represents a sequence of worksteps.
+    """
+    def __init__(self, name):
+        self.name: str = name
+        self.worksteps: List[WorkStep] = [
+            WorkStep('Step 1: Outline')
+        ]
+        self.changed = Signal()
+
+    def __iter__(self):
+        return iter(self.worksteps)
+
+    def add_workstep(self, workstep):
+        self.worksteps.append(workstep)
+        self.changed.send(self)
+
+    def remove_workstep(self, workstep):
+        self.worksteps.remove(workstep)
+        self.changed.send(self)
