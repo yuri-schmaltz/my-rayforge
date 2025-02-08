@@ -209,8 +209,7 @@ class MainWindow(Adw.ApplicationWindow):
     def load_file(self, filename, mime_type):
         renderer = renderer_by_mime_type[mime_type]
         wp = WorkPiece.from_file(filename, renderer)
-        workstep = self.doc.worksteps[0]
-        self.doc.add_workpiece(wp, workstep)
+        self.doc.add_workpiece(wp)
         self.update_state()
 
     def show_about_dialog(self, action, param):

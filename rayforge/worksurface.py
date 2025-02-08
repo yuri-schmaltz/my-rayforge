@@ -51,7 +51,7 @@ class WorkPieceElement(CanvasElement):
     WorkSurface.
     """
 
-    def render(self, rect):
+    def render(self, clip):
         assert self.surface is not None
         width, height = self.size_px()
         workpiece = self.data
@@ -63,7 +63,7 @@ class WorkPieceElement(CanvasElement):
                                      self.surface,
                                      width,
                                      height,
-                                     rect,
+                                     clip,
                                      self.crop_region_px())
         return self.surface
 
@@ -77,18 +77,19 @@ class WorkStepElement(CanvasElement):
     to grayscale.
     """
 
-    def remove_selected(self):
-        # Remove selected from model, too.
-        # Better way would be using events...
-        for child in self.children:
-            if child.selected:
-                self.data.remove_workpiece(child.data)
-            child.remove_selected()
-
-        super().remove_selected()
-
-    def render(self, rect):
-        super().render(rect)
+    def render(self, clip):
+        # Make a copy of the Cairo surface that contains all workpieces.
+        super().render(clip)
+        width, height = self.size_px()
+        workpiece_surface = self.canvas.workpiece_elements.surface
+        assert width == workpiece_surface.get_width()
+        assert height == workpiece_surface.get_height()
+        self.surface = _copy_surface(workpiece_surface,
+                                     self.surface,
+                                     width,
+                                     height,
+                                     clip,
+                                     self.crop_region_px())
 
         # Run the modifiers.
         width, height = self.size_px()
@@ -100,8 +101,7 @@ class WorkStepElement(CanvasElement):
             # one (or replace it if it has the same size).
             # If no surface was returned, we assume that the surface
             # was changed in-place, so we can just continue.
-            canvas = self.get_canvas()
-            ymax = canvas.root.height_mm
+            ymax = self.canvas.root.height_mm
             pixels_per_mm = self.get_pixels_per_mm()
             surface = modifier.run(workstep,
                                    self.surface,
@@ -112,15 +112,14 @@ class WorkStepElement(CanvasElement):
             self.surface = _copy_surface(surface,
                                          self.surface,
                                          width,
-                                         rect,
+                                         clip,
                                          height)
 
         # Render the modified result.
-        canvas = self.get_canvas()
         _path2surface(workstep.path,
                       self.surface,
                       *self.get_pixels_per_mm(),
-                      canvas.root.height_mm)
+                      self.canvas.root.height_mm)
 
         return self.surface
 
@@ -133,6 +132,11 @@ class WorkSurface(Canvas):
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.workpiece_elements = CanvasElement(
+            *self.root.rect(),
+            selectable=False
+        )
+        self.root.add(self.workpiece_elements)
         self.grid_size = 10  # in mm
         self.update()
 
@@ -145,6 +149,8 @@ class WorkSurface(Canvas):
 
     def update(self):
         self.aspect_ratio = self.root.width_mm/self.root.height_mm
+        self.workpiece_elements.width_mm = self.root.width_mm
+        self.workpiece_elements.height_mm = self.root.height_mm
         self.root.allocate()
         self.queue_draw()
 
@@ -155,46 +161,37 @@ class WorkSurface(Canvas):
         do not exist.
         """
         # Add or find the WorkStep.
-        we = self.find_workitem(workstep)
-        if we is None:
+        if not self.find_by_data(workstep):
             we = WorkStepElement(*self.root.rect(),
                                  data=workstep,
                                  selectable=False)
             self.add(we)
-
-        # Add any WorkPieces that were not yet added.
-        for workpiece in workstep.workpieces:
-            if not we.find_by_data(workpiece):
-                self.add_workpiece(workpiece, we)
-
         self.queue_draw()
 
-    def add_workpiece(self, workpiece, parent_elem=None):
+    def add_workpiece(self, workpiece):
         """
-        Adds a workpiece. If not parent element is given, it is
-        inserted into the root element.
+        Adds a workpiece.
         """
-        parent_elem = parent_elem or self.root
+        if self.workpiece_elements.find_by_data(workpiece):
+            self.queue_draw()
+            return
         width_mm, height_mm = workpiece.get_natural_size()
         if width_mm is None or height_mm is None:
             aspect_ratio = workpiece.get_aspect_ratio()
-            width_mm, height_mm = parent_elem.get_max_child_size(aspect_ratio)
+            width_mm, height_mm = self.root.get_max_child_size(aspect_ratio)
         elem = WorkPieceElement(self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,
                                 width_mm,
                                 height_mm,
                                 data=workpiece)
-        parent_elem.add(elem)
+        self.workpiece_elements.add(elem)
         self.queue_draw()
 
     def clear(self):
         self.root.clear()
 
-    def find_workitem(self, item):
-        """
-        Item may be a WorkPiece or a WorkStep. Returns the CanvasElement.
-        """
-        return self.root.find_by_data(item)
+    def find_by_type(self, thetype):
+        return [c for c in self.root.children if isinstance(child, thetype)]
 
     def do_snapshot(self, snapshot):
         # Create a Cairo context for the snapshot

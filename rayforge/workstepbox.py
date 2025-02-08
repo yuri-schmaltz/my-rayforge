@@ -19,9 +19,6 @@ class WorkStepBox(GroupBox):
         self.listbox = DragListBox()
         self.add_child(self.listbox)
 
-        for workpiece in workstep.workpieces:
-            pass  # TODO: self.add_workpiece(workpiece)
-
         self.button.connect('clicked', self.on_button_clicked)
 
     def on_workstep_changed(self, sender, **kwargs):

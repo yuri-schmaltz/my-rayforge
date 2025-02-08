@@ -91,6 +91,7 @@ class WorkBench(Gtk.Grid):
     def __init__(self, width_mm, height_mm, **kwargs):
         super().__init__(**kwargs)
         self.axis_thickness = 25
+        self.doc = None
 
         # Create a work area to display the image and paths
         self.surface = WorkSurface(width_mm=width_mm, height_mm=height_mm)
@@ -99,6 +100,7 @@ class WorkBench(Gtk.Grid):
         self.surface.set_halign(Gtk.Align.FILL)
         self.surface.set_valign(Gtk.Align.FILL)
         self.attach(self.surface, 1, 0, 1, 1)
+        self.surface.elem_removed.connect(self.on_elem_removed)
 
         # Add the X axis
         self.axis_x = Axis(width_mm,
@@ -121,5 +123,11 @@ class WorkBench(Gtk.Grid):
         self.surface.clear()
 
     def update(self, doc):
+        self.doc = doc
+        for workpiece in doc.workpieces:
+            self.surface.add_workpiece(workpiece)
         for workstep in doc.worksteps:
             self.surface.add_workstep(workstep)
+
+    def on_elem_removed(self, parent, child):
+        self.doc.remove_workpiece(child.data)

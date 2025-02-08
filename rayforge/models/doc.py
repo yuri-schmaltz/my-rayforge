@@ -17,10 +17,14 @@ class Doc:
     def add_workstep(self, workstep):
         self.worksteps.append(workstep)
 
-    def add_workpiece(self, workpiece, workstep=None):
+    def remove_workstep(self, workstep):
+        self.worksteps.remove(workstep)
+
+    def add_workpiece(self, workpiece):
         self.workpieces.append(workpiece)
-        if workstep:
-            workstep.add_workpiece(workpiece)
+
+    def remove_workpiece(self, workpiece):
+        self.workpieces.remove(workpiece)
 
     def has_workpiece(self):
         return bool(self.workpieces)

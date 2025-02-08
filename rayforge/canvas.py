@@ -3,6 +3,7 @@ import cairo
 import gi
 from copy import deepcopy
 from dataclasses import dataclass, field
+from blinker import Signal
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
@@ -18,25 +19,22 @@ class CanvasElement:
     selectable: bool = True
     crop_region_mm: tuple[float, float, float, float|None] = 0, 0, None, None
     surface: cairo.Surface = None
+    canvas: object = None
     parent: object = None
     children: list = field(default_factory=list)
     background: (float, float, float, float) = 0, 0, 0, 0
     data: object = None
 
-    def get_canvas(self):
-        if isinstance(self.parent, CanvasElement):
-            return self.parent.get_canvas()
-        return self.parent
-
     def get_pixels_per_mm(self):
-        return self.get_canvas().pixels_per_mm_x, \
-               self.get_canvas().pixels_per_mm_y
+        return self.canvas.pixels_per_mm_x, \
+               self.canvas.pixels_per_mm_y
 
     def copy(self):
         return deepcopy(self)
 
     def add(self, elem):
         self.children.append(elem)
+        elem.canvas = self.canvas
         elem.parent = self
         elem.allocate()
 
@@ -53,8 +51,10 @@ class CanvasElement:
         self.children = []
 
     def remove_selected(self):
-        self.children = [i for i in self.children if not i.selected]
-        for child in self.children:
+        for child in self.children[:]:
+            if child.selected:
+                self.children.remove(child)
+                self.canvas.elem_removed.send(self, child=child)
             child.remove_selected()
 
     def unselect_all(self):
@@ -143,7 +143,7 @@ class CanvasElement:
         return self.width_mm / self.height_mm
 
     def allocate(self):
-        if not self.get_canvas():
+        if not self.canvas:
             return  # cannot allocate if i don't know pixels per mm
 
         _, _, width, height = self.crop_region_px()
@@ -231,6 +231,7 @@ class Canvas(Gtk.DrawingArea):
                                   0,
                                   width_mm,
                                   height_mm,
+                                  canvas=self,
                                   parent=self)
         self.pixels_per_mm_x = 1  # Updated in do_size_allocate()
         self.pixels_per_mm_y = 1  # Updated in do_size_allocate()
@@ -241,6 +242,13 @@ class Canvas(Gtk.DrawingArea):
 
     def add(self, elem):
         self.root.add(elem)
+
+    def find_by_data(self, data):
+        """
+        Returns the CanvasElement with the given data, or None if none
+        was found.
+        """
+        return self.root.find_by_data(data)
 
     def _setup_interactions(self):
         self.click_gesture = Gtk.GestureClick()
@@ -261,6 +269,8 @@ class Canvas(Gtk.DrawingArea):
         self.shift_pressed = False
         self.set_focusable(True)
         self.grab_focus()
+
+        self.elem_removed = Signal()
 
     def do_size_allocate(self, width: int, height: int, baseline: int):
         self.pixels_per_mm_x = width/self.root.width_mm

@@ -8,3 +8,4 @@ dist
 
 .flatpak-builder
 repo
+builddir

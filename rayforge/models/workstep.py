@@ -18,7 +18,6 @@ class WorkStep:
 
     def __init__(self, name):
         self.name: str = name
-        self.workpieces: List[WorkPiece] = []
         self.modifiers: List[Modifier] = [
             MakeTransparent(),
             ToGrayscale(),
@@ -35,12 +34,6 @@ class WorkStep:
         power = int(self.power/self.laser.max_power*100)
         speed = int(self.cut_speed)
         return f"{power}% power, {speed} mm/min"
-
-    def add_workpiece(self, workpiece: WorkPiece):
-        self.workpieces.append(workpiece)
-
-    def remove_workpiece(self, workpiece):
-        self.workpieces.remove(workpiece)
 
     def dump(self, indent=0):
         print("  "*indent, self.name)
