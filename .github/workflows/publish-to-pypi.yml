@@ -21,11 +21,10 @@ jobs:
       with:
         python-version: "3.x"
 
-    - name: Install packages from apt
-      run: apt install libcairo2
-
     - name: Install build environment
-      run: python3 -m pip install build --user
+      run: |
+        sudo apt install libcairo2
+        python3 -m pip install build --user
 
     - name: Install requirements
       run: pip install --no-cache-dir -r requirements.txt
