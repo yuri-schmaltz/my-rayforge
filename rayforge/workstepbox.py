@@ -3,23 +3,40 @@ from .groupbox import GroupBox
 from .draglist import DragListBox
 from .models.workpiece import WorkPiece
 from .models.workstep import WorkStep
+from .util.resources import get_icon_path
 from .workstepsettings import WorkStepSettingsDialog
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
 
+
 class WorkStepBox(GroupBox):
     def __init__(self, workstep: WorkStep):
-        # Hint: possible icon names can be found using gtk3-icon-browser
-        super().__init__(workstep.name,
-                         workstep.get_summary(),
-                         icon_name='applications-engineering')
+        super().__init__(workstep.name, workstep.get_summary())
         self.workstep = workstep
+
+        self.visibility_on_icon = Gtk.Image.new_from_file(
+            get_icon_path('visibility_on')
+        )
+        self.visibility_off_icon = Gtk.Image.new_from_file(
+            get_icon_path('visibility_off')
+        )
+        button = Gtk.ToggleButton()
+        button.set_active(workstep.visible)
+        button.set_child(self.visibility_on_icon)
+        self.add_button(button)
+        button.connect('clicked', self.on_button_view_click)
+        self.on_button_view_click(button)
+
+        icon = Gtk.Image.new_from_file(get_icon_path('settings'))
+        button = Gtk.Button()
+        button.set_child(icon)
+        self.add_button(button)
+        button.connect('clicked', self.on_button_properties_clicked)
+
         self.listbox = DragListBox()
         self.add_child(self.listbox)
-
-        self.button.connect('clicked', self.on_button_clicked)
 
     def on_workstep_changed(self, sender, **kwargs):
         self.title_label.set_label(self.workstep.name)
@@ -32,7 +49,14 @@ class WorkStepBox(GroupBox):
         row.set_child(label)
         self.listbox.add_row(row)
 
-    def on_button_clicked(self, button):
+    def on_button_view_click(self, button):
+        self.workstep.set_visible(button.get_active())
+        if button.get_active():
+            button.set_child(self.visibility_on_icon)
+        else:
+            button.set_child(self.visibility_off_icon)
+
+    def on_button_properties_clicked(self, button):
         dialog = WorkStepSettingsDialog(self.workstep)
         dialog.present()
         dialog.changed.connect(self.on_workstep_changed)

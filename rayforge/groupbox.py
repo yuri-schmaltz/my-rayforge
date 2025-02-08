@@ -30,8 +30,8 @@ css = """
     background-color: transparent;
     border: none;
     border-radius: 12px;
-    min-width: 24px;
-    min-height: 24px;
+    min-width: 22px;
+    min-height: 22px;
     padding: 6px;
 }
 
@@ -50,21 +50,23 @@ css = """
 
 
 class GroupBox(Gtk.Box):
-    def __init__(self, title, subtitle, icon_name=None):
+    def __init__(self, title, subtitle):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=0)
 
         # Rounded corners and "Material Design" styling (basic implementation)
         self.set_css_classes(["group-view"])  # Use CSS for styling
 
         # Add box for header, subtitle and icon
-        header_hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
-                              spacing=6)
-        header_hbox.set_margin_start(12)
-        header_hbox.set_margin_end(12)
-        header_hbox.set_margin_top(12)
-        header_hbox.set_margin_bottom(6)
-        header_hbox.set_halign(Gtk.Align.FILL)
-        self.append(header_hbox)
+        self.header_hbox = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=6
+        )
+        self.header_hbox.set_margin_start(12)
+        self.header_hbox.set_margin_end(12)
+        self.header_hbox.set_margin_top(12)
+        self.header_hbox.set_margin_bottom(6)
+        self.header_hbox.set_halign(Gtk.Align.FILL)
+        self.append(self.header_hbox)
 
         # Header Box (title, subtitle)
         header_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
@@ -76,16 +78,7 @@ class GroupBox(Gtk.Box):
         self.subtitle_label.set_css_classes(["group-subtitle"])
         header_box.append(self.title_label)
         header_box.append(self.subtitle_label)
-        header_hbox.append(header_box)
-
-        # Add icon
-        if icon_name:
-            icon = Gtk.Image.new_from_icon_name(icon_name)
-            self.button = Gtk.Button()
-            self.button.set_child(icon)
-            self.button.set_css_classes(["group-icon-button"])
-            self.button.set_valign(Gtk.Align.CENTER)
-            header_hbox.append(self.button)
+        self.header_hbox.append(header_box)
 
         # Child widget area
         self.child_area = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -102,6 +95,11 @@ class GroupBox(Gtk.Box):
             provider,
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
+
+    def add_button(self, button):
+        button.set_css_classes(["group-icon-button"])
+        button.set_valign(Gtk.Align.CENTER)
+        self.header_hbox.append(button)
 
     def add_child(self, widget):
         self.child_area.append(widget)

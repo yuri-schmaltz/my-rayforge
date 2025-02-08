@@ -7,6 +7,7 @@ from ..modifier import Modifier, \
 from .machine import LaserHead
 from .workpiece import WorkPiece
 from .path import Path
+from blinker import Signal
 
 
 class WorkStep:
@@ -18,6 +19,7 @@ class WorkStep:
 
     def __init__(self, name):
         self.name: str = name
+        self.visible: bool = True
         self.modifiers: List[Modifier] = [
             MakeTransparent(),
             ToGrayscale(),
@@ -29,6 +31,11 @@ class WorkStep:
         self.cut_speed: int = config.machine.max_cut_speed
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
+        self.changed = Signal()
+
+    def set_visible(self, visible=True):
+        self.visible = visible
+        self.changed.send(self)
 
     def get_summary(self):
         power = int(self.power/self.laser.max_power*100)

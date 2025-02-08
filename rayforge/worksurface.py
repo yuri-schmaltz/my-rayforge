@@ -162,10 +162,16 @@ class WorkSurface(Canvas):
         """
         # Add or find the WorkStep.
         if not self.find_by_data(workstep):
-            we = WorkStepElement(*self.root.rect(),
-                                 data=workstep,
-                                 selectable=False)
-            self.add(we)
+            elem = WorkStepElement(*self.root.rect(),
+                                   data=workstep,
+                                   selectable=False)
+            self.add(elem)
+            workstep.changed.connect(self.on_workstep_changed)
+        self.queue_draw()
+
+    def on_workstep_changed(self, workstep, **kwargs):
+        elem = self.find_by_data(workstep)
+        elem.visible = workstep.visible
         self.queue_draw()
 
     def add_workpiece(self, workpiece):

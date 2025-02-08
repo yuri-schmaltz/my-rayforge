@@ -17,6 +17,7 @@ class CanvasElement:
     height_mm: float  # Real-world height in mm
     selected: bool = False
     selectable: bool = True
+    visible: bool = True
     crop_region_mm: tuple[float, float, float, float|None] = 0, 0, None, None
     surface: cairo.Surface = None
     canvas: object = None
@@ -185,8 +186,9 @@ class CanvasElement:
         # Paint children
         for child in self.children:
             child.render(self._rect_to_child_coords_px(child, clip))
-            ctx.set_source_surface(child.surface, *child.pos_px())
-            ctx.paint()
+            if child.visible:
+                ctx.set_source_surface(child.surface, *child.pos_px())
+                ctx.paint()
 
     def get_elem_hit(self, x_mm, y_mm, selectable=False):
         """
