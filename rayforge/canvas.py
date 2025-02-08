@@ -51,6 +51,19 @@ class CanvasElement:
     def clear(self):
         self.children = []
 
+    def remove(self):
+        assert self.parent is not None
+        self.parent.remove_child(self)
+
+    def remove_child(self, elem):
+        """
+        Not recursive.
+        """
+        for child in self.children[:]:
+            if child == elem:
+                self.children.remove(child)
+                self.canvas.elem_removed.send(self, child=child)
+
     def remove_selected(self):
         for child in self.children[:]:
             if child.selected:
@@ -244,6 +257,9 @@ class Canvas(Gtk.DrawingArea):
 
     def add(self, elem):
         self.root.add(elem)
+
+    def remove(self, elem):
+        self.root.remove(elem)
 
     def find_by_data(self, data):
         """

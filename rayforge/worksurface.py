@@ -197,7 +197,7 @@ class WorkSurface(Canvas):
         self.root.clear()
 
     def find_by_type(self, thetype):
-        return [c for c in self.root.children if isinstance(child, thetype)]
+        return [c for c in self.root.children if isinstance(c, thetype)]
 
     def do_snapshot(self, snapshot):
         # Create a Cairo context for the snapshot

@@ -1,6 +1,8 @@
 import cairo
 import gi
-from .worksurface import WorkSurface
+from .worksurface import WorkSurface, WorkPieceElement, WorkStepElement
+from .models.workpiece import WorkPiece
+from .models.workplan import WorkPlan, WorkStep
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Graphene  # noqa: E402
@@ -124,6 +126,16 @@ class WorkBench(Gtk.Grid):
 
     def update(self, doc):
         self.doc = doc
+
+        # Remove anything from the canvas that no longer exists.
+        print("ASDKJH")
+        for elem in self.surface.find_by_type(WorkStepElement):
+            if elem.data not in doc.workplan:
+                elem.remove()
+        for elem in self.surface.find_by_type(WorkPieceElement):
+            if elem.data not in doc:
+                elem.remove()
+
         for workpiece in doc.workpieces:
             self.surface.add_workpiece(workpiece)
         for workstep in doc.workplan:

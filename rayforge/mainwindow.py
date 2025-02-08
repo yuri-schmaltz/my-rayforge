@@ -101,6 +101,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Make a default document.
         self.doc = Doc()
+        self.doc.changed.connect(self.on_doc_changed)
 
         # Show the work plan.
         self.workplanview = WorkPlanView(self.doc.workplan)
@@ -111,6 +112,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.update_state()
         config.changed.connect(self.on_config_changed)
+
+    def on_doc_changed(self, sender, **kwargs):
+        self.update_state()
 
     def on_config_changed(self, sender, **kwargs):
         self.workbench.set_size(*config.machine.dimensions)
