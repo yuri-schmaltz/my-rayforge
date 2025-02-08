@@ -20,11 +20,7 @@ class WorkStep:
     def __init__(self, name):
         self.name: str = name
         self.visible: bool = True
-        self.modifiers: List[Modifier] = [
-            MakeTransparent(),
-            ToGrayscale(),
-            OutlineTracer(),
-        ]
+        self.modifiers: List[Modifier] = []
         self.path: Path = Path()
         self.laser: LaserHead = config.machine.heads[0]
         self.power: int = self.laser.max_power
@@ -32,6 +28,16 @@ class WorkStep:
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
         self.changed = Signal()
+
+    @staticmethod
+    def for_outline():
+        workstep = WorkStep('Outline')
+        workstep.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            OutlineTracer(),
+        ]
+        return workstep
 
     def set_visible(self, visible=True):
         self.visible = visible
@@ -55,7 +61,8 @@ class WorkPlan:
     def __init__(self, name):
         self.name: str = name
         self.worksteps: List[WorkStep] = [
-            WorkStep('Step 1: Outline')
+            WorkStep.for_outline(),
+            WorkStep.for_outline(),
         ]
         self.changed = Signal()
 
@@ -68,4 +75,11 @@ class WorkPlan:
 
     def remove_workstep(self, workstep):
         self.worksteps.remove(workstep)
+        self.changed.send(self)
+
+    def set_worksteps(self, worksteps):
+        """
+        Replace all worksteps.
+        """
+        self.worksteps = worksteps
         self.changed.send(self)

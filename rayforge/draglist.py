@@ -1,18 +1,13 @@
 import gi
+from blinker import Signal
 
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gdk  # noqa: E402
 
 css = """
-.material-list {
-    background-color: #ffffff;
-    border-radius: 8px;
-    margin: 0;
-    box-shadow: 0 8px 8px rgba(0, 0, 0, 0.1);
-}
 .material-list row {
     padding: 12px 16px;
-    border-bottom: 1px solid #e0e0e0;
+    border: none;
     transition: background-color 0.2s ease;
 }
 .material-list row:last-child {
@@ -44,6 +39,7 @@ class DragListBox(Gtk.ListBox):
         self.set_selection_mode(Gtk.SelectionMode.NONE)
         self.add_css_class("material-list")
         self.apply_css()
+        self.reordered = Signal()
 
     def apply_css(self):
         provider = Gtk.CssProvider()
@@ -124,6 +120,7 @@ class DragListBox(Gtk.ListBox):
         self.remove(source_row)
         self.insert(source_row, target_index)
 
+        self.reordered.send(self)
         return True
 
 

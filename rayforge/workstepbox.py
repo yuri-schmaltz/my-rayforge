@@ -1,4 +1,5 @@
 import gi
+from blinker import Signal
 from .groupbox import GroupBox
 from .models.workpiece import WorkPiece
 from .models.workplan import WorkStep
@@ -10,9 +11,11 @@ from gi.repository import Gtk  # noqa: E402
 
 
 class WorkStepBox(GroupBox):
-    def __init__(self, workstep: WorkStep):
+    def __init__(self, workstep: WorkStep, prefix=''):
         super().__init__(workstep.name, workstep.get_summary())
         self.workstep = workstep
+        self.prefix = prefix
+        self.delete_clicked = Signal()
 
         self.visibility_on_icon = Gtk.Image.new_from_file(
             get_icon_path('visibility_on')
@@ -33,10 +36,20 @@ class WorkStepBox(GroupBox):
         self.add_button(button)
         button.connect('clicked', self.on_button_properties_clicked)
 
+        icon = Gtk.Image.new_from_file(get_icon_path('delete'))
+        button = Gtk.Button()
+        button.set_child(icon)
+        self.add_button(button)
+        button.connect('clicked', self.on_button_delete_clicked)
+
+        self.on_workstep_changed(self.workstep)   # trigger label update
         #TODO: self.add_child(thumbnail)
 
+    def set_prefix(self, prefix):
+        self.prefix = prefix
+
     def on_workstep_changed(self, sender, **kwargs):
-        self.title_label.set_label(self.workstep.name)
+        self.title_label.set_label(f"{self.prefix}{self.workstep.name}")
         self.subtitle_label.set_label(self.workstep.get_summary())
 
     def on_button_view_click(self, button):
@@ -50,6 +63,9 @@ class WorkStepBox(GroupBox):
         dialog = WorkStepSettingsDialog(self.workstep)
         dialog.present()
         dialog.changed.connect(self.on_workstep_changed)
+
+    def on_button_delete_clicked(self, button):
+        self.delete_clicked.send(self, workstep=self.workstep)
 
 
 if __name__ == "__main__":

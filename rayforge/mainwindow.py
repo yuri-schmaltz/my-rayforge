@@ -104,7 +104,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Show the work plan.
         self.workplanview = WorkPlanView(self.doc.workplan)
-        self.workplanview.set_size_request(350, -1)
+        self.workplanview.set_size_request(400, -1)
         self.paned.set_end_child(self.workplanview)
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
