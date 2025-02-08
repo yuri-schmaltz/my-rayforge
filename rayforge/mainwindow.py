@@ -5,8 +5,7 @@ from .util.resources import get_icon_path
 from .models.doc import Doc
 from .models.workpiece import WorkPiece
 from .workbench import WorkBench
-from .workstepbox import WorkStepBox
-from .draglist import DragListBox
+from .workplanview import WorkPlanView
 from .machinesettings import MachineSettingsDialog
 from .gcode import GCodeSerializer
 from .render import renderers, renderer_by_mime_type
@@ -100,15 +99,15 @@ class MainWindow(Adw.ApplicationWindow):
         self.workbench.set_hexpand(True)
         self.frame.set_child(self.workbench)
 
-        # Add the GroupListWidget
-        self.worksteplistview = DragListBox()
-        self.worksteplistview.set_size_request(350, -1)
-        self.paned.set_end_child(self.worksteplistview)
-        self.paned.set_resize_end_child(False)
-        self.paned.set_shrink_end_child(False)
-
         # Make a default document.
         self.doc = Doc()
+
+        # Show the work plan.
+        self.workplanview = WorkPlanView(self.doc.workplan)
+        self.workplanview.set_size_request(350, -1)
+        self.paned.set_end_child(self.workplanview)
+        self.paned.set_resize_end_child(False)
+        self.paned.set_shrink_end_child(False)
 
         self.update_state()
         config.changed.connect(self.on_config_changed)
@@ -121,14 +120,6 @@ class MainWindow(Adw.ApplicationWindow):
 
     def update_state(self):
         self.workbench.update(self.doc)
-
-        # Add worksteps to the side panel.
-        self.worksteplistview.remove_all()
-        for workstep in self.doc.workplan:
-            row = Gtk.ListBoxRow()
-            self.worksteplistview.add_row(row)
-            workstepbox = WorkStepBox(workstep)
-            row.set_child(workstepbox)
 
         # Update button states.
         self.export_button.set_sensitive(self.doc.has_workpiece())
@@ -173,7 +164,7 @@ class MainWindow(Adw.ApplicationWindow):
         filter_list = Gio.ListStore.new(Gtk.FileFilter)
         gcode_filter = Gtk.FileFilter()
         gcode_filter.set_name("G-code files")
-        gcode_filter.add_mime_type("text/x-gcode")
+        gcode_filter.add_mime_type("text/x.gcode")
         filter_list.append(gcode_filter)
 
         # Set the filters for the dialog
@@ -192,8 +183,7 @@ class MainWindow(Adw.ApplicationWindow):
 
             # Serialize the G-code
             serializer = GCodeSerializer(config.machine)
-            workstep = self.doc.worksteps[0]
-            gcode = serializer.serialize(workstep)
+            gcode = serializer.serialize_workplan(self.doc.workplan)
 
             # Write the G-code to the file
             with open(file_path, 'w') as f:

@@ -9,7 +9,6 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk  # noqa: E402
 
 
-
 class WorkStepBox(GroupBox):
     def __init__(self, workstep: WorkStep):
         super().__init__(workstep.name, workstep.get_summary())

@@ -22,6 +22,9 @@ class GCodeSerializer:
             self.gcode.append(self.machine.air_assist_off or "")
             self.air_assist = False
 
+    def finish_step(self, workstep):
+        self.laser_off(workstep)
+
     def finish(self, workstep):
         self.laser_off(workstep)
         self.gcode += self.machine.postscript
@@ -39,7 +42,7 @@ class GCodeSerializer:
         self.line_to(workstep, start_x, start_y)  # Ensure path is closed
         self.laser_off(workstep)
 
-    def serialize(self, workstep):
+    def _serialize_workstep(self, workstep):
         laser = workstep.laser
         assert workstep.power <= laser.max_power
         assert workstep.cut_speed <= self.machine.max_cut_speed
@@ -55,6 +58,11 @@ class GCodeSerializer:
 
             op = getattr(self, command)
             op(workstep, *args)
+        self.finish_step(workstep)
+        return "\n".join(self.gcode)
 
-        self.finish(workstep)
+    def serialize_workplan(self, workplan):
+        for step in workplan:
+            self._serialize_workstep(step)
+        self.finish(None)
         return "\n".join(self.gcode)
