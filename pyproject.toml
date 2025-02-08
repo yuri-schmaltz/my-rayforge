@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/barebaric/rayforce"
-"Bug Tracker" = "https://github.com/barebaric/rayforce/issues"
+"Homepage" = "https://github.com/barebaric/rayforge"
+"Bug Tracker" = "https://github.com/barebaric/rayforge/issues"
 
 [project.scripts]
 rayforge = "scripts.rayforge:main"
