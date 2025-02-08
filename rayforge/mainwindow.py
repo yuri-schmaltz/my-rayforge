@@ -1,6 +1,7 @@
 import mimetypes
 import gi
 from .config import config
+from .util.resources import get_icon_path
 from .models.doc import Doc
 from .models.workstep import WorkStep
 from .models.workpiece import WorkPiece
@@ -63,11 +64,17 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar.set_margin_start(12)
         toolbar.set_margin_end(12)
         vbox.append(toolbar)
-        open_button = Gtk.Button(icon_name="document-import-symbolic")
+
+        icon = Gtk.Image.new_from_file(get_icon_path('open'))
+        open_button = Gtk.Button()
+        open_button.set_child(icon)
         open_button.set_tooltip_text("Import Image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
-        self.export_button = Gtk.Button(icon_name="document-save-symbolic")
+
+        icon = Gtk.Image.new_from_file(get_icon_path('send'))
+        self.export_button = Gtk.Button()
+        self.export_button.set_child(icon)
         self.export_button.set_tooltip_text("Generate GCode")
         self.export_button.connect("clicked", self.on_export_clicked)
         toolbar.append(self.export_button)
