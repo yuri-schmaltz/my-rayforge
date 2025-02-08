@@ -30,6 +30,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.set_default_size(int(geometry.width*0.6),
                               int(geometry.height*0.6))
 
+        # Define a "window quit" action.
+        quit_action = Gio.SimpleAction.new("quit", None)
+        quit_action.connect("activate", self.on_quit_action)
+        self.add_action(quit_action)
+
         # Create the main vbox
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         self.set_content(vbox)
@@ -130,6 +135,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Update button states.
         self.export_button.set_sensitive(self.doc.has_workpiece())
+
+    def on_quit_action(self, action, parameter):
+        self.close()
 
     def on_open_clicked(self, button):
         # Create a file chooser dialog
