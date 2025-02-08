@@ -16,6 +16,8 @@ def parse_length(s):
 
 def to_mm(value, unit):
     """Convert a value to millimeters based on its unit."""
+    if unit == "cm":
+        return value*10
     if unit == "mm":
         return value
     elif unit == "in":
@@ -30,13 +32,7 @@ class SVGRenderer(Renderer):
 
     @classmethod
     def prepare(cls, data):
-        # If the document is specified in pixels, we do not know the
-        # real world size. In this case it is safe to crop any margins.
-        w, h = cls.get_natural_size(data)
-        if w is None or h is None:
-            return cls._crop_to_content(data)
-        return data
-
+        return cls._crop_to_content(data)
 
     @classmethod
     def get_natural_size(cls, data):
@@ -125,7 +121,8 @@ class SVGRenderer(Renderer):
         # Adjust viewBox by applying the margin percentages
         viewbox_str = root.get("viewBox")
         if not viewbox_str:
-            return  # not sure what to do in this case. bail out
+            return data # not sure what to do in this case. bail out
+
         vb_x, vb_y, vb_w, vb_h = map(float, viewbox_str.split())
         new_x = vb_x + left_pct * vb_w
         new_y = vb_y + top_pct * vb_h
