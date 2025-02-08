@@ -49,7 +49,10 @@ class CanvasElement:
         return None
 
     def clear(self):
+        children = self.children
         self.children = []
+        for child in children:
+            self.canvas.elem_removed.send(self, child=child)
 
     def remove(self):
         assert self.parent is not None

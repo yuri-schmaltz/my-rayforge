@@ -75,6 +75,13 @@ class MainWindow(Adw.ApplicationWindow):
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
 
+        icon = Gtk.Image.new_from_file(get_icon_path('clear-layers'))
+        clear_button = Gtk.Button()
+        clear_button.set_child(icon)
+        clear_button.set_tooltip_text("Remove All Workpieces")
+        clear_button.connect("clicked", self.on_clear_clicked)
+        toolbar.append(clear_button)
+
         icon = Gtk.Image.new_from_file(get_icon_path('send'))
         self.export_button = Gtk.Button()
         self.export_button.set_child(icon)
@@ -155,6 +162,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Show the dialog and handle the response
         dialog.open(self, None, self.on_file_dialog_response)
+
+    def on_clear_clicked(self, button):
+        self.workbench.clear()
 
     def on_export_clicked(self, button):
         # Create a file chooser dialog for saving the file

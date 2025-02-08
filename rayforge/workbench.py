@@ -122,13 +122,12 @@ class WorkBench(Gtk.Grid):
         self.axis_y.set_length(height_mm)
 
     def clear(self):
-        self.surface.clear()
+        self.surface.clear_workpieces()
 
     def update(self, doc):
         self.doc = doc
 
         # Remove anything from the canvas that no longer exists.
-        print("ASDKJH")
         for elem in self.surface.find_by_type(WorkStepElement):
             if elem.data not in doc.workplan:
                 elem.remove()
@@ -136,6 +135,7 @@ class WorkBench(Gtk.Grid):
             if elem.data not in doc:
                 elem.remove()
 
+        # Add any new elements.
         for workpiece in doc.workpieces:
             self.surface.add_workpiece(workpiece)
         for workstep in doc.workplan:

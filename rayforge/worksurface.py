@@ -193,8 +193,13 @@ class WorkSurface(Canvas):
         self.workpiece_elements.add(elem)
         self.queue_draw()
 
+    def clear_workpieces(self):
+        self.workpiece_elements.clear()
+        self.queue_draw()
+
     def clear(self):
         self.root.clear()
+        self.queue_draw()
 
     def find_by_type(self, thetype):
         return [c for c in self.root.children if isinstance(c, thetype)]
