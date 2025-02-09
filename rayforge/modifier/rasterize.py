@@ -95,7 +95,6 @@ def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
                 path.move_to(start_mm, ymax-y_mm)
                 # Draw a line to the end of the black segment
                 path.line_to(end_mm, ymax-y_mm)
-                path.close_path()
 
         # Move to the next raster line
         y_mm += raster_size_mm

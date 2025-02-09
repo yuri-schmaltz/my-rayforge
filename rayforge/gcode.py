@@ -34,13 +34,11 @@ class GCodeSerializer:
         self.gcode.append(f"G0 X{x:.3f} Y{y:.3f} F{workstep.travel_speed}")
 
     def line_to(self, workstep, x, y):
-        if not self.is_cutting:
-            self.laser_on(workstep)
+        self.laser_on(workstep)
         self.gcode.append(f"G1 X{x:.3f} Y{y:.3f} F{workstep.cut_speed}")
 
     def close_path(self, workstep, start_x, start_y):
         self.line_to(workstep, start_x, start_y)  # Ensure path is closed
-        self.laser_off(workstep)
 
     def _serialize_workstep(self, workstep):
         laser = workstep.laser
@@ -63,6 +61,7 @@ class GCodeSerializer:
 
     def serialize_workplan(self, workplan):
         for step in workplan:
+            self.gcode.append(f"; Starting step: {step.name}")
             self._serialize_workstep(step)
         self.finish(None)
         return "\n".join(self.gcode)

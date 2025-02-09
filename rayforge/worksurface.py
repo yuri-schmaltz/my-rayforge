@@ -38,9 +38,14 @@ def _path2surface(path, surface, scale_x, scale_y, ymax):
         op = getattr(ctx, opname)
         if opname in ('move_to', 'line_to'):
             args[1] = ymax-args[1]  # zero point correction
-        op(*args)
         if opname == 'close_path':
+            op(*args)
             ctx.stroke()
+        elif opname == 'move_to':
+            ctx.stroke()
+            op(*args)
+        else:
+            op(*args)
 
 
 @dataclass
