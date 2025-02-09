@@ -3,8 +3,9 @@ from ..config import config
 from ..modifier import Modifier, \
                        MakeTransparent, \
                        ToGrayscale, \
-                       OutlineTracer
-from .machine import LaserHead
+                       OutlineTracer, \
+                       Rasterizer
+from .machine import Laser
 from .workpiece import WorkPiece
 from .path import Path
 from blinker import Signal
@@ -22,7 +23,7 @@ class WorkStep:
         self.visible: bool = True
         self.modifiers: List[Modifier] = []
         self.path: Path = Path()
-        self.laser: LaserHead = config.machine.heads[0]
+        self.laser: Laser = config.machine.heads[0]
         self.power: int = self.laser.max_power
         self.cut_speed: int = config.machine.max_cut_speed
         self.travel_speed: int = config.machine.max_travel_speed
@@ -36,6 +37,16 @@ class WorkStep:
             MakeTransparent(),
             ToGrayscale(),
             OutlineTracer(),
+        ]
+        return workstep
+
+    @staticmethod
+    def for_rasterizing():
+        workstep = WorkStep('Raster Engrave')
+        workstep.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            Rasterizer(),
         ]
         return workstep
 
@@ -62,7 +73,7 @@ class WorkPlan:
         self.name: str = name
         self.worksteps: List[WorkStep] = [
             WorkStep.for_outline(),
-            WorkStep.for_outline(),
+            WorkStep.for_rasterizing(),
         ]
         self.changed = Signal()
 

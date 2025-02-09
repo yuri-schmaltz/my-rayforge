@@ -67,6 +67,7 @@ class OutlineTracer(Modifier):
 
 class SVGOutline(Modifier):
     """
+    DYSFUNCT FOR NOW! THIS IS A TODO
     Transforms SVG paths to our internal Path objects, as
     outlines for laser cutting.
     """

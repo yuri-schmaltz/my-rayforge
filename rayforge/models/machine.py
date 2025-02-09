@@ -8,19 +8,22 @@ from blinker import Signal
 logger = logging.getLogger(__name__)
 
 
-class LaserHead:
+class Laser:
     def __init__(self):
         self.max_power: int = 1000  # Max power (0-1000 for GRBL)
+        self.point_size_mm: int = 0.1  # Point size in millimeters
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "max_power": self.max_power,
+            "point_size_mm": self.point_size_mm,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LaserHead':
+    def from_dict(cls, data: Dict[str, Any]) -> 'Laser':
         lh = cls()
         lh.max_power = data.get("max_power", lh.max_power)
+        lh.point_size_mm = data.get("point_size_mm", lh.point_size_mm)
         return lh
 
 
@@ -31,14 +34,14 @@ class Machine:
     postscript: List[str] = ["G0 X0 Y0 ; Return to origin"]
     air_assist_on = "M8 ; Enable air assist"
     air_assist_off = "M9 ; Disable air assist"
-    heads: List[LaserHead] = []
+    heads: List[Laser] = []
     max_travel_speed: int = 3000   # in mm/min
     max_cut_speed: int = 1000   # in mm/min
     dimensions: tuple[int, int] = 200, 200
 
     def __init__(self):
         self.id = str(uuid.uuid4())
-        self.heads = [LaserHead()]
+        self.heads = [Laser()]
         self.changed = Signal()
 
     def set_preamble(self, preamble: List[str]):
@@ -69,7 +72,7 @@ class Machine:
         self.dimensions = (width, height)
         self.changed.send(self)
 
-    def add_head(self, head: LaserHead):
+    def add_head(self, head: Laser):
         self.heads.append(head)
         self.changed.send(self)
 
@@ -98,7 +101,7 @@ class Machine:
         ma_data = data.get("machine", {})
         ma.name = ma_data.get("name", ma.name)
         ma.dimensions = tuple(ma_data.get("dimensions", ma.dimensions))
-        ma.heads = [LaserHead.from_dict(o) for o in ma_data.get("heads", {})]
+        ma.heads = [Laser.from_dict(o) for o in ma_data.get("heads", {})]
         speeds = ma_data.get("speeds", {})
         ma.max_cut_speed = speeds.get("max_cut_speed", ma.max_cut_speed)
         ma.max_travel_speed = speeds.get("max_travel_speed",

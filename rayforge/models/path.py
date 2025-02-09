@@ -10,10 +10,10 @@ class Path:
         self.paths = []
 
     def move_to(self, x, y):
-        self.paths.append(('move_to', x, y))
+        self.paths.append(('move_to', float(x), float(y)))
 
     def line_to(self, x, y):
-        self.paths.append(('line_to', x, y))
+        self.paths.append(('line_to', float(x), float(y)))
 
     def close_path(self):
         self.paths.append(('close_path',))

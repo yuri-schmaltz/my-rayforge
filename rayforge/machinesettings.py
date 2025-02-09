@@ -2,7 +2,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw
-from .models.machine import LaserHead
+from .models.machine import Laser
 from .util.adwfix import get_spinrow_int
 
 
@@ -150,7 +150,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         laserhead_page = Adw.PreferencesPage(title="Laser Heads", icon_name=None)
         self.add(laserhead_page)
 
-        # List of LaserHeads
+        # List of Lasers
         laserhead_list_group = Adw.PreferencesGroup(title="Laser Heads")
         laserhead_page.add(laserhead_list_group)
         self.laserhead_list = Gtk.ListBox()
@@ -172,7 +172,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         button_box.append(remove_button)
         laserhead_list_group.add(button_box)
 
-        # Configuration panel for the selected LaserHead
+        # Configuration panel for the selected Laser
         self.laserhead_config_group = Adw.PreferencesGroup(
             title="Laser Head Configuration"
         )
@@ -192,32 +192,32 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         self.max_power_row.connect("changed", self.on_max_power_changed)
         self.laserhead_config_group.add(self.max_power_row)
 
-        # Populate the list with existing LaserHeads
+        # Populate the list with existing Lasers
         self.populate_laserhead_list()
 
         # Connect signals
         self.laserhead_list.connect("row-selected", self.on_laserhead_selected)
 
     def populate_laserhead_list(self):
-        """Populate the list of LaserHeads."""
+        """Populate the list of Lasers."""
         for head in self.machine.heads:
-            row = Adw.ActionRow(title=f"LaserHead (Max Power: {head.max_power} W)")
+            row = Adw.ActionRow(title=f"Laser (Max Power: {head.max_power} W)")
             row.set_margin_top(5)
             row.set_margin_bottom(5)
             self.laserhead_list.append(row)
 
     def on_add_laserhead(self, button):
-        """Add a new LaserHead to the machine."""
-        new_head = LaserHead()
+        """Add a new Laser to the machine."""
+        new_head = Laser()
         self.machine.add_head(new_head)
-        row = Adw.ActionRow(title=f"LaserHead (Max Power: {new_head.max_power} W)")
+        row = Adw.ActionRow(title=f"Laser (Max Power: {new_head.max_power} W)")
         row.set_margin_top(5)
         row.set_margin_bottom(5)
         self.laserhead_list.append(row)
         self.laserhead_list.select_row(row)
 
     def on_remove_laserhead(self, button):
-        """Remove the selected LaserHead from the machine."""
+        """Remove the selected Laser from the machine."""
         selected_row = self.laserhead_list.get_selected_row()
         if selected_row:
             index = selected_row.get_index()
@@ -225,14 +225,14 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             self.laserhead_list.remove(selected_row)
 
     def on_laserhead_selected(self, listbox, row):
-        """Update the configuration panel when a LaserHead is selected."""
+        """Update the configuration panel when a Laser is selected."""
         if row is not None:
             index = row.get_index()
             selected_head = self.machine.heads[index]
             self.max_power_row.set_value(selected_head.max_power)
 
     def on_max_power_changed(self, spinrow):
-        """Update the max power of the selected LaserHead."""
+        """Update the max power of the selected Laser."""
         selected_row = self.laserhead_list.get_selected_row()
         if selected_row:
             index = selected_row.get_index()
@@ -241,10 +241,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             self.update_laserhead_list()
 
     def update_laserhead_list(self):
-        """Update the labels in the LaserHead list."""
+        """Update the labels in the Laser list."""
         for i, row in enumerate(self.laserhead_list):
             head = self.machine.heads[i]
-            row.set_title(f"LaserHead (Max Power: {head.max_power} W)")
+            row.set_title(f"Laser (Max Power: {head.max_power} W)")
 
     def on_preamble_changed(self, buffer):
         """Update the preamble when the text changes."""

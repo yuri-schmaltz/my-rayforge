@@ -2,7 +2,7 @@ import cairo
 import numpy as np
 
 
-def convert_surface_to_greyscale(surface):
+def convert_surface_to_grayscale(surface):
     # Determine the number of channels based on the format
     surface_format = surface.get_format()
     if surface_format != cairo.FORMAT_ARGB32:
