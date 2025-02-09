@@ -6,7 +6,7 @@ from gi.repository import Gtk, Gdk  # noqa: E402
 
 css = """
 .material-list row {
-    padding: 12px 16px;
+    padding: 2px 16px;
     border: none;
     transition: background-color 0.2s ease;
 }
