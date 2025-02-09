@@ -1,7 +1,7 @@
 class Path:
     """
     Represents a set of generated paths that are used for
-    making gcode, but also to generate vactor graphics for display.
+    making gcode, but also to generate vector graphics for display.
     """
     def __init__(self):
         self.paths = []
