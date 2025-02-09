@@ -33,29 +33,9 @@ class WorkStep:
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
 
-    @staticmethod
-    def for_outline():
-        workstep = WorkStep('Outline')
-        workstep.modifiers = [
-            MakeTransparent(),
-            ToGrayscale(),
-            OutlineTracer(),
-        ]
-        return workstep
-
-    @staticmethod
-    def for_rasterizing():
-        workstep = WorkStep('Raster Engrave')
-        workstep.modifiers = [
-            MakeTransparent(),
-            ToGrayscale(),
-            Rasterizer(),
-        ]
-        return workstep
-
     def set_visible(self, visible=True):
         self.visible = visible
-        self.changed.send(self, workstep=self)
+        self.changed.send(self)
 
     def set_laser(self, laser):
         self.laser = laser
@@ -76,6 +56,26 @@ class WorkStep:
             workpiece.dump(1)
 
 
+class Outline(WorkStep):
+    def __init__(self, name="Outline", **kwargs):
+        super().__init__(name, **kwargs)
+        self.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            OutlineTracer(),
+        ]
+
+
+class Rasterize(WorkStep):
+    def __init__(self, name="Raster Engrave", **kwargs):
+        super().__init__(name, **kwargs)
+        self.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            Rasterizer(),
+        ]
+
+
 class WorkPlan:
     """
     Represents a sequence of worksteps.
@@ -83,8 +83,8 @@ class WorkPlan:
     def __init__(self, name):
         self.name: str = name
         self.worksteps: List[WorkStep] = [
-            WorkStep.for_outline(),
-            WorkStep.for_rasterizing(),
+            Outline(),
+            Rasterize(),
         ]
         self.changed = Signal()
 
