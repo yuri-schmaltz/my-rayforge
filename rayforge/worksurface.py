@@ -46,6 +46,7 @@ def _path2surface(path, surface, scale_x, scale_y, ymax):
             op(*args)
         else:
             op(*args)
+    ctx.stroke()
 
 
 @dataclass
