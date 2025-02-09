@@ -46,6 +46,7 @@ class GCodeSerializer:
         assert workstep.cut_speed <= self.machine.max_cut_speed
         assert workstep.travel_speed <= self.machine.max_travel_speed
 
+        workstep.path.optimize()
         step_gcode = []
         start_x, start_y = None, None
         for command, *args in workstep.path.paths:
