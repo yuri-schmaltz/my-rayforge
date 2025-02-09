@@ -8,7 +8,7 @@ def split_segments(path):
     segments = []
     current = []
     closed = False
-    for cmd in path.paths:
+    for cmd in path.commands:
         if cmd[0] == 'move_to':
             if current:
                 segments.append({'pts': current, 'closed': closed})
@@ -113,19 +113,37 @@ class Path:
     making gcode, but also to generate vector graphics for display.
     """
     def __init__(self):
-        self.paths = []
+        self.commands = []
 
     def clear(self):
-        self.paths = []
+        self.commands = []
 
     def move_to(self, x, y):
-        self.paths.append(('move_to', float(x), float(y)))
+        self.commands.append(('move_to', float(x), float(y)))
 
     def line_to(self, x, y):
-        self.paths.append(('line_to', float(x), float(y)))
+        self.commands.append(('line_to', float(x), float(y)))
 
     def close_path(self):
-        self.paths.append(('close_path',))
+        self.commands.append(('close_path',))
+
+    def set_color(self, r: float, g: float, b: float):
+        """Cairo-compatible RGB (0.0-1.0 floats)"""
+        self.commands.append(('set_color', (r, g, b)))
+
+    def set_power(self, power: float):
+        """Laser power (0-1000 for GRBL)"""
+        self.commands.append(('set_power', float(power)))
+
+    def set_travel_speed(self, speed: float):
+        """Rapid movement speed (mm/min)"""
+        self.commands.append(('set_travel_speed', float(speed)))
+
+    def enable_air_assist(self):
+        self.commands.append(('enable_air_assist',))
+
+    def disable_air_assist(self):
+        self.commands.append(('disable_air_assist',))
 
     def optimize(self, max_iter=1000):
         """
@@ -138,7 +156,7 @@ class Path:
         ordered = two_opt(ordered, max_iter=max_iter)
 
         # Reassemble the path.
-        self.paths = []
+        self.commands = []
         for seg in ordered:
             pts = seg['pts']
             if not pts:
@@ -158,7 +176,7 @@ class Path:
 
         start = 0, 0
         last = None
-        for op, *args in self.paths:
+        for op, *args in self.commands:
             if op == 'move_to':
                 if last is not None:
                     total += math.dist(args, last)
@@ -175,4 +193,4 @@ class Path:
         return total
 
     def dump(self):
-        print(self.paths)
+        print(self.commands)

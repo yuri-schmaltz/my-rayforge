@@ -1,6 +1,8 @@
 import cairo
 from dataclasses import dataclass
 from .canvas import Canvas, CanvasElement
+from .pathencoder.cairoencoder import CairoEncoder
+from .config import config
 import gi
 
 gi.require_version('Gtk', '4.0')
@@ -22,31 +24,6 @@ def _copy_surface(source, target, width, height, clip, crop_region):
     ctx.set_source_surface(source, crop_x, crop_y)
     ctx.paint()
     return target
-
-
-def _path2surface(path, surface, scale_x, scale_y, ymax):
-    # The path is in machine coordinates, i.e. zero point
-    # at the bottom left, and units are mm.
-    # Since Cairo coordinates put the zero point at the top left, we must
-    # subtract Y from the machine's Y axis maximum.
-    ctx = cairo.Context(surface)
-    ctx.set_source_rgb(1, 0, 1)
-    ctx.scale(scale_x, scale_y)
-
-    ctx.set_line_width(1/scale_x)
-    for opname, *args in path.paths:
-        op = getattr(ctx, opname)
-        if opname in ('move_to', 'line_to'):
-            args[1] = ymax-args[1]  # zero point correction
-        if opname == 'close_path':
-            op(*args)
-            ctx.stroke()
-        elif opname == 'move_to':
-            ctx.stroke()
-            op(*args)
-        else:
-            op(*args)
-    ctx.stroke()
 
 
 @dataclass
@@ -125,10 +102,11 @@ class WorkStepElement(CanvasElement):
         # bitmap.
         if workstep.path:
             self.allocate(True)
-            _path2surface(workstep.path,
-                          self.surface,
-                          *self.get_pixels_per_mm(),
-                          self.canvas.root.height_mm)
+            encoder = CairoEncoder()
+            encoder.encode(workstep.path,
+                           config.machine,
+                           self.surface,
+                           self.get_pixels_per_mm())
 
         return self.surface
 

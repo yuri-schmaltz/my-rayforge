@@ -49,7 +49,7 @@ class GCodeSerializer:
         workstep.path.optimize()
         step_gcode = []
         start_x, start_y = None, None
-        for command, *args in workstep.path.paths:
+        for command, *args in workstep.path.commands:
             if command == 'move_to':
                 start_x, start_y = args
 
