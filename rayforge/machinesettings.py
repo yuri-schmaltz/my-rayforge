@@ -212,7 +212,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             title="Spot Size Y",
             subtitle="Size of the laser spot in the Y direction",
             digits=3,
-            adjustment=spot_size_y_adjustment
+            adjustment=spot_size_adjustment
         )
         self.spot_size_y_row.connect("changed", self.on_spot_size_changed)
         self.laserhead_config_group.add(self.spot_size_y_row)
