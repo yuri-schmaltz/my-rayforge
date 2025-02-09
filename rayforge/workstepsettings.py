@@ -21,6 +21,21 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
         group = Adw.PreferencesGroup(title="Workstep Settings")
         page.add(group)
 
+        # Add a spin row for cut speed
+        passes_row = Adw.SpinRow(
+            title="Number of Passes",
+            subtitle=f"How often to repeat this workstep",
+            adjustment=Gtk.Adjustment(
+                value=workstep.passes,
+                lower=1,
+                upper=100,
+                step_increment=1,
+                page_increment=10
+            )
+        )
+        passes_row.connect('changed', self.on_passes_changed)
+        group.add(passes_row)
+
         # Add a slider for power
         power_row = Adw.ActionRow(title="Power (%)")
         power_scale = Gtk.Scale(
@@ -78,9 +93,13 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
 
         self.changed = Signal()
 
+    def on_passes_changed(self, spin_row):
+        self.workstep.set_passes(get_spinrow_int(spin_row))
+        self.changed.send(self)
+
     def on_power_changed(self, scale):
         max_power = self.workstep.laser.max_power
-        self.workstep.power = max_power/100*scale.get_value()
+        self.workstep.set_power(max_power/100*scale.get_value())
         self.changed.send(self)
 
     def on_cut_speed_changed(self, spin_row):

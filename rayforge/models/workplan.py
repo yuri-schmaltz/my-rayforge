@@ -23,6 +23,7 @@ class WorkStep:
         self.name: str = name or self.typelabel
         self.visible: bool = True
         self.modifiers: List[Modifier] = []
+        self.passes: int = 1
         self.path: Path = Path()
         self.laser: Laser = None
 
@@ -34,6 +35,10 @@ class WorkStep:
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
 
+    def set_passes(self, passes=True):
+        self.passes = int(passes)
+        self.changed.send(self)
+
     def set_visible(self, visible=True):
         self.visible = visible
         self.changed.send(self)
@@ -41,6 +46,10 @@ class WorkStep:
     def set_laser(self, laser):
         self.laser = laser
         laser.changed.connect(self._on_laser_changed)
+        self.changed.send(self)
+
+    def set_power(self, power):
+        self.power = power
         self.changed.send(self)
 
     def _on_laser_changed(self, sender, **kwargs):
