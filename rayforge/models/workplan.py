@@ -17,9 +17,10 @@ class WorkStep:
     WorkPieces. It normally generates a Path in the end, but
     may also include modifiers that manipulate the input image.
     """
+    typelabel = None
 
-    def __init__(self, name):
-        self.name: str = name
+    def __init__(self, name=None):
+        self.name: str = name or self.typelabel
         self.visible: bool = True
         self.modifiers: List[Modifier] = []
         self.path: Path = Path()
@@ -57,7 +58,9 @@ class WorkStep:
 
 
 class Outline(WorkStep):
-    def __init__(self, name="Outline", **kwargs):
+    typelabel = "Outline"
+
+    def __init__(self, name=None, **kwargs):
         super().__init__(name, **kwargs)
         self.modifiers = [
             MakeTransparent(),
@@ -67,7 +70,9 @@ class Outline(WorkStep):
 
 
 class Rasterize(WorkStep):
-    def __init__(self, name="Raster Engrave", **kwargs):
+    typelabel = "Raster Engrave"
+
+    def __init__(self, name=None, **kwargs):
         super().__init__(name, **kwargs)
         self.modifiers = [
             MakeTransparent(),
