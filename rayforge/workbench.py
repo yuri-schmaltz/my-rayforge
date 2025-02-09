@@ -121,6 +121,9 @@ class WorkBench(Gtk.Grid):
         self.axis_x.set_length(width_mm)
         self.axis_y.set_length(height_mm)
 
+    def set_workpieces_visible(self, visible=True):
+        self.surface.set_workpieces_visible(visible)
+
     def clear(self):
         self.surface.clear_workpieces()
 

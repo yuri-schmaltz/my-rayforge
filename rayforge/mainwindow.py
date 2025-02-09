@@ -82,6 +82,18 @@ class MainWindow(Adw.ApplicationWindow):
         clear_button.connect("clicked", self.on_clear_clicked)
         toolbar.append(clear_button)
 
+        self.visibility_on_icon = Gtk.Image.new_from_file(
+            get_icon_path('visibility_on')
+        )
+        self.visibility_off_icon = Gtk.Image.new_from_file(
+            get_icon_path('visibility_off')
+        )
+        button = Gtk.ToggleButton()
+        button.set_active(True)
+        button.set_child(self.visibility_on_icon)
+        toolbar.append(button)
+        button.connect('clicked', self.on_button_visibility_clicked)
+
         icon = Gtk.Image.new_from_file(get_icon_path('send'))
         self.export_button = Gtk.Button()
         self.export_button.set_child(icon)
@@ -162,6 +174,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Show the dialog and handle the response
         dialog.open(self, None, self.on_file_dialog_response)
+
+    def on_button_visibility_clicked(self, button):
+        self.workbench.set_workpieces_visible(button.get_active())
+        if button.get_active():
+            button.set_child(self.visibility_on_icon)
+        else:
+            button.set_child(self.visibility_off_icon)
 
     def on_clear_clicked(self, button):
         self.workbench.clear()

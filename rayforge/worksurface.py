@@ -209,6 +209,10 @@ class WorkSurface(Canvas):
     def find_by_type(self, thetype):
         return [c for c in self.root.children if isinstance(c, thetype)]
 
+    def set_workpieces_visible(self, visible=True):
+        self.workpiece_elements.visible = visible
+        self.queue_draw()
+
     def do_snapshot(self, snapshot):
         # Create a Cairo context for the snapshot
         width, height = self.get_width(), self.get_height()
