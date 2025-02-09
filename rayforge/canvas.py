@@ -159,7 +159,7 @@ class CanvasElement:
     def get_aspect_ratio(self):
         return self.width_mm / self.height_mm
 
-    def allocate(self):
+    def allocate(self, force=False):
         if not self.canvas:
             return  # cannot allocate if i don't know pixels per mm
 
@@ -171,7 +171,8 @@ class CanvasElement:
         # If the size didn't change, do nothing.
         if self.surface \
                 and self.surface.get_width() == width \
-                and self.surface.get_height() == height:
+                and self.surface.get_height() == height \
+                and not force:
             return
 
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)

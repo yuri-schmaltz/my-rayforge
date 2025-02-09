@@ -120,11 +120,14 @@ class WorkStepElement(CanvasElement):
                                          clip,
                                          height)
 
-        # Render the modified result.
-        _path2surface(workstep.path,
-                      self.surface,
-                      *self.get_pixels_per_mm(),
-                      self.canvas.root.height_mm)
+        # If a path was generated, render only it. i.e. clear the current
+        # bitmap.
+        if workstep.path:
+            self.allocate(True)
+            _path2surface(workstep.path,
+                          self.surface,
+                          *self.get_pixels_per_mm(),
+                          self.canvas.root.height_mm)
 
         return self.surface
 
