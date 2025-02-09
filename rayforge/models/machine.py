@@ -11,19 +11,28 @@ logger = logging.getLogger(__name__)
 class Laser:
     def __init__(self):
         self.max_power: int = 1000  # Max power (0-1000 for GRBL)
-        self.point_size_mm: int = 0.1  # Point size in millimeters
+        self.spot_size_mm: tuple[float, float] = 0.1, 0.1  # Point size in millimeters
+        self.changed = Signal()
+
+    def set_max_power(self, power):
+        self.max_power = power
+        self.changed.send(self)
+
+    def set_spot_size(self, spot_size_x_mm, spot_size_y_mm):
+        self.spot_size_mm = spot_size_x_mm, spot_size_y_mm
+        self.changed.send(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "max_power": self.max_power,
-            "point_size_mm": self.point_size_mm,
+            "spot_size_mm": self.spot_size_mm,
         }
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Laser':
         lh = cls()
         lh.max_power = data.get("max_power", lh.max_power)
-        lh.point_size_mm = data.get("point_size_mm", lh.point_size_mm)
+        lh.spot_size_mm = data.get("spot_size_mm", lh.spot_size_mm)
         return lh
 
 
@@ -41,8 +50,9 @@ class Machine:
 
     def __init__(self):
         self.id = str(uuid.uuid4())
-        self.heads = [Laser()]
+        self.heads = []
         self.changed = Signal()
+        self.add_head(Laser())
 
     def set_preamble(self, preamble: List[str]):
         self.preamble = preamble
@@ -74,6 +84,7 @@ class Machine:
 
     def add_head(self, head: Laser):
         self.heads.append(head)
+        head.changed.connect(self.changed.send)
         self.changed.send(self)
 
     def to_dict(self) -> Dict[str, Any]:

@@ -3,7 +3,7 @@ gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw
 from .models.machine import Laser
-from .util.adwfix import get_spinrow_int
+from .util.adwfix import get_spinrow_int, get_spinrow_float
 
 
 class MachineSettingsDialog(Adw.PreferencesDialog):
@@ -174,7 +174,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
 
         # Configuration panel for the selected Laser
         self.laserhead_config_group = Adw.PreferencesGroup(
-            title="Laser Head Configuration"
+            title="Laser Configuration"
         )
         laserhead_page.add(self.laserhead_config_group)
         max_power_adjustment = Gtk.Adjustment(
@@ -191,6 +191,31 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         )
         self.max_power_row.connect("changed", self.on_max_power_changed)
         self.laserhead_config_group.add(self.max_power_row)
+
+        spot_size_adjustment = Gtk.Adjustment(
+            value=0.1,
+            lower=0.01,
+            upper=0.2,
+            step_increment=0.01,
+            page_increment=0.05
+        )
+        self.spot_size_x_row = Adw.SpinRow(
+            title="Spot Size X",
+            subtitle="Size of the laser spot in the X direction",
+            digits=3,
+            adjustment=spot_size_adjustment
+        )
+        self.spot_size_x_row.connect("changed", self.on_spot_size_changed)
+        self.laserhead_config_group.add(self.spot_size_x_row)
+
+        self.spot_size_y_row = Adw.SpinRow(
+            title="Spot Size Y",
+            subtitle="Size of the laser spot in the Y direction",
+            digits=3,
+            adjustment=spot_size_y_adjustment
+        )
+        self.spot_size_y_row.connect("changed", self.on_spot_size_changed)
+        self.laserhead_config_group.add(self.spot_size_y_row)
 
         # Populate the list with existing Lasers
         self.populate_laserhead_list()
@@ -231,14 +256,30 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             selected_head = self.machine.heads[index]
             self.max_power_row.set_value(selected_head.max_power)
 
+    def _get_selected_laser(self):
+        selected_row = self.laserhead_list.get_selected_row()
+        if not selected_row:
+            return None
+        index = selected_row.get_index()
+        return self.machine.heads[index]
+
     def on_max_power_changed(self, spinrow):
         """Update the max power of the selected Laser."""
-        selected_row = self.laserhead_list.get_selected_row()
-        if selected_row:
-            index = selected_row.get_index()
-            value = get_spinrow_int(spinrow)
-            self.machine.heads[index].max_power = value
-            self.update_laserhead_list()
+        selected_laser = self._get_selected_laser()
+        if not selected_laser:
+            return
+        selected_laser.set_max_power(get_spinrow_int(spinrow))
+        self.update_laserhead_list()
+
+    def on_spot_size_changed(self, spinrow):
+        """Update the spot size of the selected Laser."""
+        selected_laser = self._get_selected_laser()
+        if not selected_laser:
+            return
+        x = get_spinrow_float(self.spot_size_x_row)
+        y = get_spinrow_float(self.spot_size_y_row)
+        selected_laser.set_spot_size(x, y)
+        self.update_laserhead_list()
 
     def update_laserhead_list(self):
         """Update the labels in the Laser list."""

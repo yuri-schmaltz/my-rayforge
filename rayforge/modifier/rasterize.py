@@ -113,5 +113,5 @@ class Rasterizer(Modifier):
             surface,
             ymax,
             pixels_per_mm,
-            workstep.laser.point_size_mm
+            workstep.laser.spot_size_mm[1]
         )

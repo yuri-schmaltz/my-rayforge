@@ -23,12 +23,15 @@ class WorkStep:
         self.visible: bool = True
         self.modifiers: List[Modifier] = []
         self.path: Path = Path()
-        self.laser: Laser = config.machine.heads[0]
+        self.laser: Laser = None
+
+        self.changed = Signal()
+        self.set_laser(config.machine.heads[0])
+
         self.power: int = self.laser.max_power
         self.cut_speed: int = config.machine.max_cut_speed
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
-        self.changed = Signal()
 
     @staticmethod
     def for_outline():
@@ -52,6 +55,14 @@ class WorkStep:
 
     def set_visible(self, visible=True):
         self.visible = visible
+        self.changed.send(self, workstep=self)
+
+    def set_laser(self, laser):
+        self.laser = laser
+        laser.changed.connect(self._on_laser_changed)
+        self.changed.send(self)
+
+    def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
 
     def get_summary(self):
