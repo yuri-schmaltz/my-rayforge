@@ -52,6 +52,17 @@ class WorkStep:
         self.power = power
         self.changed.send(self)
 
+    def run(self, surface, pixels_per_mm, ymax):
+        """
+        surface: the input surface containing an image that the
+        modifiers should modify (or convert to a path).
+        pixels_per_mm: tuple containing pixels_per_mm_x and pixels_per_mm_y
+        ymax: machine max y size (for Z axis inversion)
+        """
+        self.path.clear()
+        for modifier in self.modifiers:
+            modifier.run(self, surface, pixels_per_mm, ymax)
+
     def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
 

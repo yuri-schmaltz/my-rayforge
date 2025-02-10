@@ -74,29 +74,12 @@ class WorkStepElement(CanvasElement):
                                      clip,
                                      self.crop_region_px())
 
-        # Run the modifiers.
+        # Let the workstep process our surface in-place.
         width, height = self.size_px()
+        ymax = self.canvas.root.height_mm
+        pixels_per_mm = self.get_pixels_per_mm()
         workstep = self.data
-        workstep.path.clear()
-        for modifier in workstep.modifiers:
-            # The modifier can *optionally* return the result on a
-            # new surface, in which case we copy it to the existing
-            # one (or replace it if it has the same size).
-            # If no surface was returned, we assume that the surface
-            # was changed in-place, so we can just continue.
-            ymax = self.canvas.root.height_mm
-            pixels_per_mm = self.get_pixels_per_mm()
-            surface = modifier.run(workstep,
-                                   self.surface,
-                                   pixels_per_mm,
-                                   ymax)
-            if not surface:
-                continue
-            self.surface = _copy_surface(surface,
-                                         self.surface,
-                                         width,
-                                         clip,
-                                         height)
+        workstep.run(self.surface, pixels_per_mm, ymax)
 
         # If a path was generated, render only it. i.e. clear the current
         # bitmap.
