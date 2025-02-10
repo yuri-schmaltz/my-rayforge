@@ -1,6 +1,7 @@
 # flake8: noqa:F401
 import inspect
 from .renderer import Renderer
+from .dxf import DXFRenderer
 from .png import PNGRenderer
 from .svg import SVGRenderer
 
