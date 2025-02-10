@@ -15,7 +15,7 @@ class CairoEncoder(PathEncoder):
                scale: tuple[float, float]) -> None:
         # Set up Cairo context and scaling
         ctx = cairo.Context(surface)
-        ctx.set_source_rgb(1, 0, 1)  # Default magenta
+        ctx.set_source_rgb(1, 0, 1)
         
         # Calculate scaling factors from surface and machine dimensions
         # The path is in machine coordinates, i.e. zero point
@@ -32,32 +32,39 @@ class CairoEncoder(PathEncoder):
         
         # Track rendering state
         active_path = False
+        prev_point = 0, ymax
 
         for cmd in path.commands:
             match cmd:
                 case ('move_to', x, y):
                     if active_path:
+                        ctx.set_source_rgb(1, 0, 1)
                         ctx.stroke()  # Finalize previous path
+
                     adjusted_y = ymax - y
-                    ctx.move_to(x, adjusted_y)
+                    if False:  # debug toggle for painting travel moves
+                        ctx.move_to(*prev_point)
+                        ctx.set_source_rgb(.8, .8, .8)
+                        ctx.line_to(x, adjusted_y)
+                        ctx.stroke()
+
+                    prev_point = x, adjusted_y
                     active_path = True
 
                 case ('line_to', x, y):
-                    if not active_path:
-                        ctx.move_to(x, ymax - y)
-                        active_path = True
-                    else:
-                        adjusted_y = ymax - y
-                        ctx.line_to(x, adjusted_y)
+                    adjusted_y = ymax-y
+                    ctx.move_to(*prev_point)
+                    ctx.set_source_rgb(1, 0, 1)
+                    ctx.line_to(x, adjusted_y)
+                    prev_point = x, adjusted_y
+                    active_path = True
 
                 case ('close_path',):
                     if active_path:
+                        ctx.set_source_rgb(1, 0, 1)
                         ctx.close_path()
                         ctx.stroke()
                         active_path = False
-
-                case ('set_color', (r, g, b)):
-                    ctx.set_source_rgb(r, g, b)
 
                 case _:
                     pass # ignore unsupported operations

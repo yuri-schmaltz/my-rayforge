@@ -7,7 +7,7 @@ from .models.workpiece import WorkPiece
 from .workbench import WorkBench
 from .workplanview import WorkPlanView
 from .machinesettings import MachineSettingsDialog
-from .gcode import GCodeSerializer
+from .pathencoder.gcode import GcodeEncoder
 from .render import renderers, renderer_by_mime_type
 from . import __version__
 
@@ -215,8 +215,9 @@ class MainWindow(Adw.ApplicationWindow):
             file_path = file.get_path()
 
             # Serialize the G-code
-            serializer = GCodeSerializer(config.machine)
-            gcode = serializer.serialize_workplan(self.doc.workplan)
+            encoder = GcodeEncoder()
+            path = self.doc.workplan.get_result()
+            gcode = encoder.encode(path, config.machine)
 
             # Write the G-code to the file
             with open(file_path, 'w') as f:

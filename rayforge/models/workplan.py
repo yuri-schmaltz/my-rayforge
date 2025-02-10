@@ -60,8 +60,13 @@ class WorkStep:
         ymax: machine max y size (for Z axis inversion)
         """
         self.path.clear()
+        self.path.set_power(self.power)
+        self.path.set_cut_speed(self.cut_speed)
+        self.path.set_travel_speed(self.travel_speed)
+        self.path.enable_air_assist(self.air_assist)
         for modifier in self.modifiers:
             modifier.run(self, surface, pixels_per_mm, ymax)
+        self.path.disable_air_assist()
 
     def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
@@ -130,3 +135,11 @@ class WorkPlan:
         """
         self.worksteps = worksteps
         self.changed.send(self)
+
+    def get_result(self, optimize=True):
+        path = Path()
+        for step in self.worksteps:
+            if optimize:
+                step.path.optimize()
+            path += step.path*step.passes
+        return path
