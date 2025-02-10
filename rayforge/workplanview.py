@@ -3,7 +3,7 @@ from .draglist import DragListBox
 from .workstepbox import WorkStepBox
 from .stepselector import WorkStepSelector
 from .roundbutton import RoundButton
-from .models.workplan import WorkPlan, Outline, Rasterize
+from .models.workplan import WorkPlan, WorkStep
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk  # noqa: E402
@@ -61,7 +61,7 @@ class WorkPlanView(Gtk.ScrolledWindow):
             row.set_child(workstepbox)
 
     def on_button_add_clicked(self, button):
-        popup = WorkStepSelector((Outline, Rasterize))
+        popup = WorkStepSelector(WorkStep.__subclasses__())
         popup.set_parent(button)
         popup.popup()
         popup.connect("closed", self.on_add_dialog_response)

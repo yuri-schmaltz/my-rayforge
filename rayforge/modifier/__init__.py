@@ -4,6 +4,7 @@ from .modifier import Modifier
 from .transparency import MakeTransparent
 from .grayscale import ToGrayscale
 from .outline import OutlineTracer
+from .outline import EdgeTracer
 from .optimize import Optimizer
 from .rasterize import Rasterizer
 

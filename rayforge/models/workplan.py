@@ -4,6 +4,7 @@ from ..modifier import Modifier, \
                        MakeTransparent, \
                        ToGrayscale, \
                        OutlineTracer, \
+                       EdgeTracer, \
                        Rasterizer
 from .machine import Laser
 from .workpiece import WorkPiece
@@ -83,7 +84,7 @@ class WorkStep:
 
 
 class Outline(WorkStep):
-    typelabel = "Outline"
+    typelabel = "External Outline"
 
     def __init__(self, name=None, **kwargs):
         super().__init__(name, **kwargs)
@@ -91,6 +92,18 @@ class Outline(WorkStep):
             MakeTransparent(),
             ToGrayscale(),
             OutlineTracer(),
+        ]
+
+
+class Contour(WorkStep):
+    typelabel = "Contour"
+
+    def __init__(self, name=None, **kwargs):
+        super().__init__(name, **kwargs)
+        self.modifiers = [
+            MakeTransparent(),
+            ToGrayscale(),
+            EdgeTracer(),
         ]
 
 
