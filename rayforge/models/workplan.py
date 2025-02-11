@@ -126,8 +126,7 @@ class WorkPlan:
     def __init__(self, name):
         self.name: str = name
         self.worksteps: List[WorkStep] = [
-            Outline(),
-            Rasterize(),
+            Contour(),
         ]
         self.changed = Signal()
 

@@ -33,9 +33,7 @@ def prepare_surface_for_tracing(surface):
         img[alpha == 0] = 255, 255, 255, 255
 
     # Convert to binary image (thresholding)
-    gray = cv2.cvtColor(img, target_fmt)
-    _, binary = cv2.threshold(gray, 128, 255, cv2.THRESH_BINARY_INV)
-    return binary
+    return cv2.cvtColor(img, target_fmt)
 
 
 def contours2path(contours, path, pixels_per_mm, ymax):
@@ -49,7 +47,7 @@ def contours2path(contours, path, pixels_per_mm, ymax):
     for contour in contours:
         # Smooth contour
         peri = cv2.arcLength(contour, True)
-        contour = cv2.approxPolyDP(contour, 0.0001*peri, True)
+        contour = cv2.approxPolyDP(contour, 0.00015*peri, True)
 
         # Append (scaled to mm)
         if len(contour) > 0:
@@ -68,9 +66,10 @@ class OutlineTracer(Modifier):
     def run(self, workstep, surface, pixels_per_mm, ymax):
         # Find contours of the black areas
         binary = prepare_surface_for_tracing(surface)
+        _, binary = cv2.threshold(binary, 10, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(binary,
                                        cv2.RETR_EXTERNAL,
-                                       cv2.CHAIN_APPROX_SIMPLE)
+                                       cv2.CHAIN_APPROX_NONE)
         contours2path(contours, workstep.path, pixels_per_mm, ymax)
 
 
@@ -80,11 +79,15 @@ class EdgeTracer(Modifier):
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):
         binary = prepare_surface_for_tracing(surface)
+        binary = cv2.GaussianBlur(binary, (5, 5), 0)
+        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((3,3), np.uint8))
+
 
         # Retrieve all contours (including holes)
-        contours, _ = cv2.findContours(binary,
+        edges = cv2.Canny(binary, 10, 250)
+        contours, _ = cv2.findContours(edges,
                                        cv2.RETR_LIST,
-                                       cv2.CHAIN_APPROX_SIMPLE)
+                                       cv2.CHAIN_APPROX_NONE)
         contours2path(contours, workstep.path, pixels_per_mm, ymax)
 
 
