@@ -61,7 +61,7 @@ class WorkStepBox(GroupBox):
 
     def on_button_properties_clicked(self, button):
         dialog = WorkStepSettingsDialog(self.workstep)
-        dialog.present()
+        dialog.present(self)
         dialog.changed.connect(self.on_workstep_changed)
 
     def on_button_delete_clicked(self, button):

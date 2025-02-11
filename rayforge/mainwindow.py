@@ -260,8 +260,8 @@ class MainWindow(Adw.ApplicationWindow):
             developers=["Samuel Abels"],
             license_type=Gtk.License.MIT_X11
         )
-        about_dialog.present()
+        about_dialog.present(self)
 
     def show_machine_settings(self, action, param):
         dialog = MachineSettingsDialog(config.machine)
-        dialog.present()
+        dialog.present(self)
