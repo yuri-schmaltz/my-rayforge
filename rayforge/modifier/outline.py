@@ -82,7 +82,6 @@ class EdgeTracer(Modifier):
         binary = cv2.GaussianBlur(binary, (5, 5), 0)
         binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((3,3), np.uint8))
 
-
         # Retrieve all contours (including holes)
         edges = cv2.Canny(binary, 10, 250)
         contours, _ = cv2.findContours(edges,

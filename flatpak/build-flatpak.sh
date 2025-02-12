@@ -4,7 +4,7 @@ set -e
 
 # Make sure script is started from repo root.
 if [ "$0" != 'flatpak/build-flatpak.sh' ]; then
-    echo -e '\033[31m(ERROR)\033[0m: Script called from wrong dir. Please, read: https://developer.gimp.org/core/setup/build/linux/'
+    echo -e '\033[31m(ERROR)\033[0m: Script called from wrong dir. Please start from the root of the repository'
     exit 1
 fi
 
