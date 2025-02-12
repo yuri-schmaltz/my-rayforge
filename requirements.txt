@@ -22,3 +22,6 @@ tinycss2~=1.4.0
 types-setuptools~=75.8.0.20250110
 webencodings~=0.5.1
 xdg-base-dirs~=6.0.2
+aiohttp~=3.11.12
+websockets~=14.2
+pyserial-asyncio~=0.6

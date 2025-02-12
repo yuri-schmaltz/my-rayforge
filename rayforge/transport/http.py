@@ -1,7 +1,7 @@
 import asyncio
 from typing import Callable, Optional
 import aiohttp
-from .transport import Transport
+from .transport import Transport, Status
 
 
 class HttpTransport(Transport):
@@ -9,20 +9,14 @@ class HttpTransport(Transport):
     HTTP transport using persistent connection with auto-reconnect.
     """
 
-    def __init__(
-        self,
-        base_url: str,
-        receive_callback: Optional[Callable[[bytes], None]] = None,
-        status_callback: Optional[Callable[[bool], None]] = None,
-        notifier: Optional[Callable[[Callable, ...], None]] = None,
-    ):
+    def __init__(self, base_url: str):
         """
         Initialize HTTP transport.
         
         Args:
             base_url: Server endpoint URL (schema://host:port)
         """
-        super().__init__(receive_callback, status_callback, notifier)
+        super().__init__()
         self.base_url = base_url
         self.session: Optional[aiohttp.ClientSession] = None
         self._running = False
@@ -70,14 +64,15 @@ class HttpTransport(Transport):
         """
         while self._running:
             try:
+                self.status_changed.send(self, status=Status.CONNECTING)
                 self.session = aiohttp.ClientSession()
-                self._safe_notify(self.status_callback, True)
+                self.status_changed.send(self, status=Status.CONNECTED)
                 await self._receive_loop()
             except aiohttp.ClientError as e:
                 await self._handle_error(e)
             finally:
                 await self._safe_close_session()
-                self._safe_notify(self.status_callback, False)
+                self.status_changed.send(self, status=Status.DISCONNECTED)
             
             if self._running:
                 await asyncio.sleep(self._reconnect_interval)
@@ -95,7 +90,7 @@ class HttpTransport(Transport):
                     if response.status == 200:
                         data = await response.read()
                         if data:
-                            self._safe_notify(self.receive_callback, data)
+                            self.received.send(self, data=data)
             except aiohttp.ClientError as e:
                 await self._handle_error(e)
                 break
@@ -105,8 +100,9 @@ class HttpTransport(Transport):
         Log errors and update connection status.
         """
         if self._running:
-            print(f"HTTP transport error: {error}")
-            self._safe_notify(self.status_callback, False)
+            self.status_changed.send(self,
+                                     status=Status.ERROR,
+                                     message=str(e))
 
     async def _safe_close_session(self) -> None:
         """
@@ -116,4 +112,6 @@ class HttpTransport(Transport):
             if self.session and not self.session.closed:
                 await self.session.close()
         except Exception as e:
-            print(f"Error closing HTTP session: {e}")
+            self.status_changed.send(self,
+                                     status=Status.ERROR,
+                                     message=str(e))

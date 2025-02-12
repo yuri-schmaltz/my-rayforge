@@ -10,14 +10,7 @@ class SerialTransport(Transport):
     Asynchronous serial port transport.
     """
 
-    def __init__(
-        self,
-        port: str,
-        baudrate: int,
-        receive_callback: Optional[Callable[[bytes], None]] = None,
-        status_callback: Optional[Callable[[Status, str|None], None]] = None,
-        notifier: Optional[Callable[[Callable, ...], None]] = None,
-    ):
+    def __init__(self, port: str, baudrate: int):
         """
         Initialize serial transport.
         
@@ -25,7 +18,7 @@ class SerialTransport(Transport):
             port: Device path (e.g., '/dev/ttyUSB0')
             baudrate: Communication speed in bits per second
         """
-        super().__init__(receive_callback, status_callback, notifier)
+        super().__init__()
         self.port = port
         self.baudrate = baudrate
         self._reader: Optional[asyncio.StreamReader] = None
@@ -36,25 +29,25 @@ class SerialTransport(Transport):
         """
         Open serial connection and start reading.
         """
-        self._notify_status(Status.CONNECTING)
+        self.status_changed.send(self, status=Status.CONNECTING)
         self._reader, self._writer = await serial_asyncio.open_serial_connection(
             url=self.port, baudrate=self.baudrate
         )
         self._running = True
-        self._notify_status(Status.CONNECTED)
+        self.status_changed.send(self, status=Status.CONNECTED)
         asyncio.create_task(self._receive_loop())
-        self._notify_status(Status.IDLE)
+        self.status_changed.send(self, status=Status.IDLE)
 
     async def disconnect(self) -> None:
         """
         Close serial connection.
         """
-        self._notify_status(Status.CLOSING)
+        self.status_changed.send(self, status=Status.CLOSING)
         self._running = False
         if self._writer:
             self._writer.close()
             await self._writer.wait_closed()
-        self._notify_status(Status.DISCONNECTED)
+        self.status_changed.send(self, status=Status.DISCONNECTED)
 
     async def send(self, data: bytes) -> None:
         """
@@ -73,7 +66,9 @@ class SerialTransport(Transport):
             try:
                 data = await self._reader.read(100)
                 if data:
-                    self._notify_receive(data)
+                    self.received.send(self, data=data)
             except Exception as e:
-                self._notify_status(Status.ERROR, str(e))
+                self.status_changed.send(self,
+                                         status=Status.ERROR,
+                                         message=str(e))
                 break

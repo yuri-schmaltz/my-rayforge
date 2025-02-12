@@ -2,6 +2,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Callable, Optional, Any
+from blinker import Signal
 
 
 class Status(Enum):
@@ -19,33 +20,16 @@ class Transport(ABC):
     Abstract base class for asynchronous data transports.
     """
 
-    def __init__(
-        self,
-        receive_callback: Optional[Callable[[bytes], None]] = None,
-        status_callback: Optional[Callable[[Status, str|None], None]] = None,
-        notifier: Optional[Callable[[Callable, ...], None]] = None,
-    ):
+    def __init__(self):
         """
         Initialize transport with callbacks and notification handler.
         
-        Args:
-            receive_callback: Function to handle received data
-            status_callback: Function to handle connection status changes
-            notifier: Thread-safe callback executor (cb, *args) -> None
+        Signals:
+            received: Function to handle received data
+            status_changed: Function to handle connection status changes
         """
-        self.receive_callback = receive_callback
-        self.status_callback = status_callback
-        self._notifier = notifier or (
-            lambda cb, *args: cb(*args) if cb else None
-        )
-
-    def _notify_receive(self, *args) -> None:
-        if self.receive_callback:
-            self._notifier(self.receive_callback, *args)
-
-    def _notify_status(self, status, msg=None) -> None:
-        if self.status_callback:
-            self._notifier(self.status_callback, status, msg)
+        self.received = Signal()
+        self.status_changed = Signal()
 
     @abstractmethod
     async def connect(self) -> None:
