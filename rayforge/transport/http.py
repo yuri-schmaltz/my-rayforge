@@ -1,0 +1,119 @@
+import asyncio
+from typing import Callable, Optional
+import aiohttp
+from .transport import Transport
+
+
+class HttpTransport(Transport):
+    """
+    HTTP transport using persistent connection with auto-reconnect.
+    """
+
+    def __init__(
+        self,
+        base_url: str,
+        receive_callback: Optional[Callable[[bytes], None]] = None,
+        status_callback: Optional[Callable[[bool], None]] = None,
+        notifier: Optional[Callable[[Callable, ...], None]] = None,
+    ):
+        """
+        Initialize HTTP transport.
+        
+        Args:
+            base_url: Server endpoint URL (schema://host:port)
+        """
+        super().__init__(receive_callback, status_callback, notifier)
+        self.base_url = base_url
+        self.session: Optional[aiohttp.ClientSession] = None
+        self._running = False
+        self._reconnect_interval = 5
+        self._connection_task: Optional[asyncio.Task] = None
+
+    async def connect(self) -> None:
+        """
+        Start connection/reconnection loop.
+        """
+        self._running = True
+        self._connection_task = asyncio.create_task(self._connection_loop())
+
+    async def disconnect(self) -> None:
+        """
+        Terminate connection and cancel background tasks.
+        """
+        self._running = False
+        if self._connection_task:
+            self._connection_task.cancel()
+        if self.session:
+            await self.session.close()
+
+    async def send(self, data: bytes) -> None:
+        """
+        Send data to HTTP endpoint via POST request.
+        """
+        if not self.session:
+            raise ConnectionError("Not connected to server")
+
+        try:
+            async with self.session.post(
+                f"{self.base_url}",
+                data=data,
+                timeout=aiohttp.ClientTimeout(total=5),
+            ) as response:
+                if response.status != 200:
+                    raise IOError(f"Send failed: {await response.text()}")
+        except aiohttp.ClientError as e:
+            await self._handle_error(e)
+
+    async def _connection_loop(self) -> None:
+        """
+        Maintain persistent connection with reconnect logic.
+        """
+        while self._running:
+            try:
+                self.session = aiohttp.ClientSession()
+                self._safe_notify(self.status_callback, True)
+                await self._receive_loop()
+            except aiohttp.ClientError as e:
+                await self._handle_error(e)
+            finally:
+                await self._safe_close_session()
+                self._safe_notify(self.status_callback, False)
+            
+            if self._running:
+                await asyncio.sleep(self._reconnect_interval)
+
+    async def _receive_loop(self) -> None:
+        """
+        Listen for server-sent events from streaming endpoint.
+        """
+        while self._running and self.session:
+            try:
+                async with self.session.get(
+                    f"{self.base_url}/stream",
+                    timeout=aiohttp.ClientTimeout(total=30),
+                ) as response:
+                    if response.status == 200:
+                        data = await response.read()
+                        if data:
+                            self._safe_notify(self.receive_callback, data)
+            except aiohttp.ClientError as e:
+                await self._handle_error(e)
+                break
+
+    async def _handle_error(self, error: Exception) -> None:
+        """
+        Log errors and update connection status.
+        """
+        if self._running:
+            print(f"HTTP transport error: {error}")
+            self._safe_notify(self.status_callback, False)
+
+    async def _safe_close_session(self) -> None:
+        """
+        Safely close aiohttp session ignoring errors.
+        """
+        try:
+            if self.session and not self.session.closed:
+                await self.session.close()
+        except Exception as e:
+            print(f"Error closing HTTP session: {e}")
