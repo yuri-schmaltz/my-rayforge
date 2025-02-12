@@ -1,9 +1,9 @@
 import gi
+from ..models.workplan import WorkPlan, WorkStep
 from .draglist import DragListBox
 from .workstepbox import WorkStepBox
 from .stepselector import WorkStepSelector
 from .roundbutton import RoundButton
-from .models.workplan import WorkPlan, WorkStep
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk, Gdk  # noqa: E402

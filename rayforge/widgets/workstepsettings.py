@@ -1,7 +1,7 @@
 import gi
 from blinker import Signal
-from .config import config
-from .util.adwfix import get_spinrow_int
+from ..config import config
+from ..util.adwfix import get_spinrow_int
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')

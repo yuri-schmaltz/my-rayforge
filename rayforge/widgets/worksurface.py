@@ -1,8 +1,8 @@
 import cairo
 from dataclasses import dataclass
+from ..pathencoder.cairoencoder import CairoEncoder
+from ..config import config
 from .canvas import Canvas, CanvasElement
-from .pathencoder.cairoencoder import CairoEncoder
-from .config import config
 import gi
 
 gi.require_version('Gtk', '4.0')

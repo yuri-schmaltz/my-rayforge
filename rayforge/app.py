@@ -1,9 +1,10 @@
 import mimetypes
 import gi
-from .mainwindow import MainWindow
+from .widgets.mainwindow import MainWindow
+from .asyncloop import shutdown
 
 gi.require_version('Adw', '1')
-from gi.repository import Adw  # noqa: E402
+from gi.repository import Adw, GLib  # noqa: E402
 
 
 class App(Adw.Application):
@@ -18,3 +19,7 @@ class App(Adw.Application):
             mime_type, _ = mimetypes.guess_type(self.args.filename)
             win.load_file(self.args.filename, mime_type)
         win.present()
+
+    def do_shutdown(self):
+        shutdown()
+        Adw.Application.do_shutdown(self)

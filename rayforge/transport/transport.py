@@ -1,18 +1,19 @@
 import asyncio
 from abc import ABC, abstractmethod
-from enum import Enum
+from enum import Enum, auto
 from typing import Callable, Optional, Any
 from blinker import Signal
 
 
 class Status(Enum):
-    IDLE = 1
-    CONNECTING = 2
-    CONNECTED = 3
-    ERROR = 4
-    CLOSING = 5
-    DISCONNECTED = 6
-    SLEEPING = 6
+    UNKNOWN = auto()
+    IDLE = auto()
+    CONNECTING = auto()
+    CONNECTED = auto()
+    ERROR = auto()
+    CLOSING = auto()
+    DISCONNECTED = auto()
+    SLEEPING = auto()
 
 
 class Transport(ABC):

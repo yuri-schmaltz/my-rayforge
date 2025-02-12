@@ -88,9 +88,11 @@ class Driver:
 class DriverManager:
     def __init__(self):
         self.driver = None
+        self.changed = Signal()
 
     def select(self, driver):
         self.driver = driver
+        self.changed.send(self, driver=driver)
 
 
 driver_mgr = DriverManager()

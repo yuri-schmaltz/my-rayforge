@@ -2,7 +2,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gdk
 
-# Module-level css string
+
 css = """
 .workstep-selector-label {
     font-family: 'Roboto', sans-serif;
@@ -10,6 +10,7 @@ css = """
     margin: 12px;
 }
 """
+
 
 class WorkStepSelector(Gtk.Popover):
     def __init__(self, workstep_classes, **kwargs):

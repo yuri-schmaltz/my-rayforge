@@ -2,8 +2,8 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw
-from .models.machine import Laser
-from .util.adwfix import get_spinrow_int, get_spinrow_float
+from ..models.machine import Laser
+from ..util.adwfix import get_spinrow_int, get_spinrow_float
 
 
 class MachineSettingsDialog(Adw.PreferencesDialog):

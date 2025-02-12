@@ -1,15 +1,20 @@
 import mimetypes
 import gi
-from .config import config
-from .util.resources import get_icon_path
-from .models.doc import Doc
-from .models.workpiece import WorkPiece
+from .. import __version__
+from ..asyncloop import run_async
+from ..config import config
+from ..driver.driver import driver_mgr
+from ..driver.dummy import NoDeviceDriver
+from ..util.resources import get_icon_path
+from ..models.doc import Doc
+from ..models.workpiece import WorkPiece
+from ..pathencoder.gcode import GcodeEncoder
+from ..render import renderers, renderer_by_mime_type
 from .workbench import WorkBench
 from .workplanview import WorkPlanView
+from .connectionstatus import ConnectionStatusMonitor
+from .machineview import MachineView
 from .machinesettings import MachineSettingsDialog
-from .pathencoder.gcode import GcodeEncoder
-from .render import renderers, renderer_by_mime_type
-from . import __version__
 
 gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
@@ -132,6 +137,21 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_state()
         config.changed.connect(self.on_config_changed)
 
+        # Create a status bar.
+        status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        status_bar.set_halign(Gtk.Align.END)
+        vbox.append(status_bar)
+
+        connection_status = ConnectionStatusMonitor()
+        status_bar.append(connection_status)
+
+        connection_status.connect('clicked', self.on_connection_status_clicked)
+
+        # Apply selected device driver.
+        driver = NoDeviceDriver()
+        driver_mgr.select(driver)
+        run_async(driver.connect())
+
     def on_doc_changed(self, sender, **kwargs):
         self.update_state()
 
@@ -146,6 +166,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Update button states.
         self.export_button.set_sensitive(self.doc.has_workpiece())
+
+    def on_connection_status_clicked(self, widget):
+        dialog = MachineView()
+        dialog.present(self)
 
     def on_quit_action(self, action, parameter):
         self.close()
