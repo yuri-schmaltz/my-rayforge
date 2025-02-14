@@ -21,6 +21,9 @@ class Driver(ABC):
     """
     Abstract base class for all drivers.
     All drivers must provide the following methods:
+
+       setup()
+       cleanup()
        connect()
        run()
        move_to()
