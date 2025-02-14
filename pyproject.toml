@@ -20,7 +20,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/barebaric/rayforge/issues"
 
 [project.scripts]
-rayforge = "scripts.rayforge:main"
+rayforge = "rayforge.app:main"
 
 [build-system]
 requires = [
