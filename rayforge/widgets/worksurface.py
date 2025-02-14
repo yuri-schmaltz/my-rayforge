@@ -138,6 +138,8 @@ class WorkSurface(Canvas):
 
     def on_workstep_changed(self, workstep, **kwargs):
         elem = self.find_by_data(workstep)
+        if not elem:
+            return
         elem.visible = workstep.visible
         self.queue_draw()
 
