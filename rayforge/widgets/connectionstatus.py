@@ -1,5 +1,6 @@
 from gi.repository import Gtk
 from typing import Optional
+from blinker import Signal
 from ..driver.driver import driver_mgr, Status
 
 
@@ -64,6 +65,8 @@ class ConnectionStatusWidget(Gtk.Button):
 
 class ConnectionStatusMonitor(ConnectionStatusWidget):
     def __init__(self):
+        self.changed = Signal()
+        self.status = Status.UNKNOWN
         super().__init__()
 
         driver_mgr.changed.connect(self.on_driver_changed)
@@ -81,3 +84,11 @@ class ConnectionStatusMonitor(ConnectionStatusWidget):
                                      status: Status,
                                      message: Optional[str] = None):
         self.set_status(status)
+
+    def set_status(self, status):
+        self.status = status
+        super().set_status(status)
+        self.changed.send(self)
+
+    def get_status(self):
+        return self.status

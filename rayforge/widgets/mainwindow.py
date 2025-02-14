@@ -12,7 +12,7 @@ from ..opsencoder.gcode import GcodeEncoder
 from ..render import renderers, renderer_by_mime_type
 from .workbench import WorkBench
 from .workplanview import WorkPlanView
-from .connectionstatus import ConnectionStatusMonitor
+from .connectionstatus import ConnectionStatusMonitor, Status
 from .machineview import MachineView
 from .machinesettings import MachineSettingsDialog
 
@@ -79,14 +79,14 @@ class MainWindow(Adw.ApplicationWindow):
         icon = Gtk.Image.new_from_file(get_icon_path('open'))
         open_button = Gtk.Button()
         open_button.set_child(icon)
-        open_button.set_tooltip_text("Import Image")
+        open_button.set_tooltip_text("Import image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
 
         icon = Gtk.Image.new_from_file(get_icon_path('clear-layers'))
         clear_button = Gtk.Button()
         clear_button.set_child(icon)
-        clear_button.set_tooltip_text("Remove All Workpieces")
+        clear_button.set_tooltip_text("Remove all workpieces")
         clear_button.connect("clicked", self.on_clear_clicked)
         toolbar.append(clear_button)
 
@@ -99,6 +99,7 @@ class MainWindow(Adw.ApplicationWindow):
         button = Gtk.ToggleButton()
         button.set_active(True)
         button.set_child(self.visibility_on_icon)
+        button.set_tooltip_text("Toggle workpiece visibility")
         toolbar.append(button)
         button.connect('clicked', self.on_button_visibility_clicked)
 
@@ -161,10 +162,16 @@ class MainWindow(Adw.ApplicationWindow):
         status_bar.set_halign(Gtk.Align.END)
         vbox.append(status_bar)
 
-        connection_status = ConnectionStatusMonitor()
-        status_bar.append(connection_status)
-
-        connection_status.connect('clicked', self.on_connection_status_clicked)
+        # Monitor connection status
+        self.connection_status = ConnectionStatusMonitor()
+        status_bar.append(self.connection_status)
+        self.connection_status.changed.connect(
+            self.on_connection_status_changed
+        )
+        self.connection_status.connect(
+            'clicked',
+            self.on_connection_status_clicked
+        )
 
         self._try_driver_setup()
         config.changed.connect(self.on_config_changed)
@@ -183,6 +190,9 @@ class MainWindow(Adw.ApplicationWindow):
         except Exception as e:
             print("Failed to set up driver:", e)
             return
+
+    def on_connection_status_changed(self, sender):
+        self.update_state()
 
     def on_doc_changed(self, sender, **kwargs):
         self.update_state()
@@ -203,10 +213,16 @@ class MainWindow(Adw.ApplicationWindow):
         # Update button states.
         self.export_button.set_sensitive(self.doc.has_workpiece())
 
-        has_driver = driver_mgr.driver.__class__ is not NoDeviceDriver
-        text = "Send to machine" if has_driver \
-               else "Send to machine (select driver to enable)"
-        self.send_button.set_sensitive(has_driver)
+        if driver_mgr.driver.__class__ is NoDeviceDriver:
+            text = "Send to machine (select driver to enable)"
+            sensitive = False
+        elif self.connection_status.get_status() != Status.CONNECTED:
+            text = "Send to machine (connect to enable)"
+            sensitive = False
+        else:
+            text = "Send to machine"
+            sensitive = True
+        self.send_button.set_sensitive(sensitive)
         self.send_button.set_tooltip_text(text)
 
     def on_connection_status_clicked(self, widget):
