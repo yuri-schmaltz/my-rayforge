@@ -250,19 +250,21 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         self.spot_size_y_row.connect("changed", self.on_spot_size_changed)
         self.laserhead_config_group.add(self.spot_size_y_row)
 
-        # Populate the list with existing Lasers
-        self.populate_laserhead_list()
-
         # Connect signals
         self.laserhead_list.connect("row-selected", self.on_laserhead_selected)
+
+        # Populate the list with existing Lasers
+        self.populate_laserhead_list()
 
     def populate_laserhead_list(self):
         """Populate the list of Lasers."""
         for head in self.machine.heads:
-            row = Adw.ActionRow(title=f"Laser (Max Power: {head.max_power} W)")
+            row = Adw.ActionRow(title=f"Laser (Max Power: {head.max_power})")
             row.set_margin_top(5)
             row.set_margin_bottom(5)
             self.laserhead_list.append(row)
+        row = self.laserhead_list.get_row_at_index(0)
+        self.laserhead_list.select_row(row)
 
     def on_driver_param_changed(self, sender):
         self.machine.set_driver_args(self.driver_group.get_values())
