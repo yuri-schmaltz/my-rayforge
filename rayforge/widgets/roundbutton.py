@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Gdk
+from gi.repository import Gtk
 
 
 css = """
@@ -14,7 +14,7 @@ button.round-button {
     border: none;
     box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16),
                 0 3px 6px rgba(0, 0, 0, 0.23); /* Shadow for depth */
-    transition: background-color 0.2s, box-shadow 0.2s; /* Smooth transitions */
+    transition: background-color 0.2s, box-shadow 0.2s;
 }
 
 button.round-button:hover {

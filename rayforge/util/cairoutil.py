@@ -14,8 +14,8 @@ def convert_surface_to_grayscale(surface):
 
     # Convert RGB to grayscale using luminosity method
     gray = (0.299*data[:, :, 2]
-            + 0.587*data[:, :, 1]
-            + 0.114*data[:, :, 0]).astype(np.uint8)
+          + 0.587*data[:, :, 1]
+          + 0.114*data[:, :, 0]).astype(np.uint8)
 
     # Set RGB channels to gray, keep alpha unchanged
     data[:, :, :3] = gray[:, :, None]

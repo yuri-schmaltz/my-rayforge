@@ -1,20 +1,23 @@
 import cairo
 import numpy as np
-from PIL import Image
 from ..models.path import Path
-from ..util.cairoutil import convert_surface_to_grayscale
 from .modifier import Modifier
 
 
-def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
+def rasterize_horizontally(surface,
+                           ymax,
+                           pixels_per_mm=10,
+                           raster_size_mm=0.1):
     """
-    Generate an engraving path for a Cairo surface, focusing on horizontal movement.
-    
+    Generate an engraving path for a Cairo surface, focusing on horizontal
+    movement.
+
     Args:
         surface: A Cairo surface containing a black and white image.
         pixels_per_mm: Resolution of the image in pixels per millimeter.
-        raster_size_mm: Distance between horizontal engraving lines in millimeters.
-    
+        raster_size_mm: Distance between horizontal engraving lines in
+        millimeters.
+
     Returns:
         A Path object containing the optimized engraving path.
     """
@@ -25,7 +28,8 @@ def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
     # Convert surface to a NumPy array
     width = surface.get_width()
     height = surface.get_height()
-    data = np.frombuffer(surface.get_data(), dtype=np.uint8).reshape((height, width, 4))
+    data = np.frombuffer(surface.get_data(), dtype=np.uint8)
+    data = data.reshape((height, width, 4))
 
     # Extract BGRA channels
     blue = data[:, :, 0]  # Blue channel
@@ -34,10 +38,13 @@ def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
     alpha = data[:, :, 3]  # Alpha channel
 
     # Convert to grayscale (weighted average of RGB channels)
-    bw_image = 0.2989 * red + 0.5870 * green + 0.1140 * blue  # Grayscale conversion formula
-    bw_image = (bw_image < 128).astype(np.uint8)  # Threshold to black and white
+    bw_image = 0.2989 * red + 0.5870 * green + 0.1140 * blue
 
-    # Optionally handle transparency (e.g., treat fully transparent pixels as white)
+    # Threshold to black and white
+    bw_image = (bw_image < 128).astype(np.uint8)
+
+    # Optionally handle transparency (e.g., treat fully transparent
+    # pixels as white)
     bw_image[alpha == 0] = 0  # Set fully transparent pixels to white (0)
 
     # Find the bounding box of the occupied area
@@ -52,12 +59,9 @@ def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
 
     # Calculate dimensions in millimeters
     pixels_per_mm_x, pixels_per_mm_y = pixels_per_mm
-    width_mm = width / pixels_per_mm_x
-    height_mm = height / pixels_per_mm_y
 
     # Convert bounding box to millimeters
     x_min_mm = x_min / pixels_per_mm_x
-    x_max_mm = x_max / pixels_per_mm_x
     y_min_mm = y_min / pixels_per_mm_y
     y_max_mm = y_max / pixels_per_mm_y
 
@@ -80,11 +84,14 @@ def rasterize_horizontally(surface, ymax, pixels_per_mm=10, raster_size_mm=0.1):
             row = bw_image[y1, x_min:x_max + 1]
         else:
             alpha_y = y_px - y1
-            row = (1 - alpha_y) * bw_image[y1, x_min:x_max + 1] + alpha_y * bw_image[y2, x_min:x_max + 1]
+            row = (1 - alpha_y) * bw_image[y1, x_min:x_max + 1] \
+                + alpha_y * bw_image[y2, x_min:x_max + 1]
             row = (row > 0.5).astype(np.uint8)  # Threshold the blended row
 
         # Find the start and end of black segments in the current row
-        black_segments = np.where(np.diff(np.hstack(([0], row, [0]))))[0].reshape(-1, 2)
+        black_segments = np.where(np.diff(
+            np.hstack(([0], row, [0]))
+        ))[0].reshape(-1, 2)
         for start, end in black_segments:
             if row[start] == 1:  # Only process black segments
                 # Convert segment start and end to millimeters

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Optional
+from typing import Optional
 import aiohttp
 from .transport import Transport, Status
 
@@ -9,10 +9,10 @@ class HttpTransport(Transport):
     HTTP transport using persistent connection with auto-reconnect.
     """
 
-    def __init__(self, base_url: str, receive_interval=None):
+    def __init__(self, base_url: str, receive_interval: int = None):
         """
         Initialize HTTP transport.
-        
+
         Args:
             base_url: Server endpoint URL (schema://host:port)
         """
@@ -74,7 +74,7 @@ class HttpTransport(Transport):
             finally:
                 await self._safe_close_session()
                 self.status_changed.send(self, status=Status.DISCONNECTED)
-            
+
             if self._running:
                 await asyncio.sleep(self._reconnect_interval)
 

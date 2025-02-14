@@ -75,7 +75,7 @@ def split_long_segments(operations):
     segments = [[operations[0]]]
     last_state = operations[0].state
     for op in operations:
-        if last_state.allow_rapid_change(state):
+        if last_state.allow_rapid_change(op.state):
             segments[-1].append(op)
         else:
             # If rapid state change is not allowed, add
@@ -229,7 +229,8 @@ def flip_segments(ordered):
             flipped = flip_segment(segment)
             flipped_cost = math.dist(prev_segment_end, flipped[0].args)
             if i < len(ordered)-1:
-                flipped_cost += math.dist(flipped[-1].args, ordered[i+1][0].args)
+                flipped_cost += math.dist(flipped[-1].args,
+                                          ordered[i+1][0].args)
 
             # Choose the shorter one.
             if flipped_cost < cost:
@@ -340,15 +341,22 @@ class Path:
         air assist toggles is multiplied, which could be detrimental
         to the health of the air pump.
 
-        To avoid these problems, we implement a three-step process:
-        1. Preprocess the segments sequentially, duplicating the intended
-           state (e.g. cutting, power, ...) and attaching it to the command.
-           Here we also drop all state commands.
-        2. Split the path into reorderable segments. Segment in this step means
-           a "as long as possible" sequence that may still include sub-segments,
-           as long as those sub-segments are reorderable.
-        2. Perform path optimization.
-        3. Re-assemble the path.
+        To avoid these problems, we implement the following process:
+
+        1. Preprocess the Path sequentially, duplicating the intended
+           state (e.g. cutting, power, ...) and attaching it to the each
+           command. Here we also drop all state commands.
+
+        2. Split the path into non-reorderable segments. Segment in this
+           step means an "as long as possible" sequence that may still
+           include sub-segments, as long as those sub-segments are
+           reorderable.
+
+        3. Split the long segments into short, re-orderable sub sequences.
+
+        4. Re-order the sub sequences to minimize travel distance.
+
+        5. Re-assemble the Path object.
         """
         # 1. Preprocess such that each operation has a state.
         # This also causes all state commands to be dropped - we
@@ -379,7 +387,6 @@ class Path:
 
             prev_state = State()
             segment_start_pos = segment[0].args
-            segment_end_pos = segment[-1].args
 
             for op in segment:
                 if op.state.air_assist != prev_state.air_assist:
@@ -420,7 +427,7 @@ class Path:
                 if last is not None:
                     total += math.dist(args, last)
                 last = args
-            elif cmd[0] == 'close_path':
+            elif op == 'close_path':
                 if start is not None:
                     total += math.dist(start, last)
                 last = start
@@ -432,10 +439,10 @@ class Path:
 
 if __name__ == '__main__':
     test_segment = [
-        Op('move_to', (1,1), State(power=1)),
-        Op('line_to', (2,2), State(power=2)),
-        Op('line_to', (3,3), State(power=3)),
-        Op('line_to', (4,4), State(power=4)),
+        Op('move_to', (1, 1), State(power=1)),
+        Op('line_to', (2, 2), State(power=2)),
+        Op('line_to', (3, 3), State(power=3)),
+        Op('line_to', (4, 4), State(power=4)),
     ]
     print(test_segment)
     print(flip_segment(test_segment))

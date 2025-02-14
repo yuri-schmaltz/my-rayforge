@@ -7,7 +7,6 @@ from ..modifier import Modifier, \
                        EdgeTracer, \
                        Rasterizer
 from .machine import Laser
-from .workpiece import WorkPiece
 from .path import Path
 from blinker import Signal
 

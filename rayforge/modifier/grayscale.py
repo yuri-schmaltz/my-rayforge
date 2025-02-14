@@ -1,5 +1,6 @@
-from .modifier import Modifier
 from ..util.cairoutil import convert_surface_to_grayscale
+from .modifier import Modifier
+
 
 class ToGrayscale(Modifier):
     """

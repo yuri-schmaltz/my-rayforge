@@ -15,7 +15,7 @@ class CanvasElement:
     selected: bool = False
     selectable: bool = True
     visible: bool = True
-    crop_region_mm: tuple[float, float, float, float|None] = 0, 0, None, None
+    crop_region_mm: tuple[float, float, float, float] = 0, 0, None, None
     surface: cairo.Surface = None
     canvas: object = None
     parent: object = None
@@ -115,11 +115,10 @@ class CanvasElement:
     def crop(self, x_mm, y_mm, width_mm, height_mm):
         x_mm = 0 if x_mm is None or x_mm <= 0 else x_mm
         y_mm = 0 if y_mm is None or y_mm <= 0 else y_mm
-        width_mm = None if width_mm is None or width_mm >= self.width_mm \
-                        else width_mm
-        height_mm = None if height_mm is None or height_mm >= self.height_mm \
-                        else height_mm
-
+        if width_mm is not None and width_mm >= self.width_mm:
+            width_mm = None
+        if height_mm is not None and height_mm >= self.height_mm:
+            height_mm = None
         self.crop_region_mm = x_mm, y_mm, width_mm, height_mm
         width_mm = self.width_mm if width_mm is None else width_mm
         height_mm = self.height_mm if height_mm is None else height_mm

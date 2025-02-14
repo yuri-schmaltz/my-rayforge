@@ -1,4 +1,4 @@
-from gi.repository import Gtk, Gio, Adw
+from gi.repository import Gtk, Adw
 from ..driver import drivers, get_driver_cls, get_params
 from ..models.machine import Laser
 from ..util.adwfix import get_spinrow_int, get_spinrow_float
@@ -177,7 +177,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         air_assist_group.add(self.air_assist_off_row)
 
         # Create the "Laser Heads" page
-        laserhead_page = Adw.PreferencesPage(title="Laser Heads", icon_name=None)
+        laserhead_page = Adw.PreferencesPage(
+            title="Laser Heads",
+            icon_name=None
+        )
         self.add(laserhead_page)
 
         # List of Lasers

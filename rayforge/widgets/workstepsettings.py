@@ -20,7 +20,7 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
         # Add a spin row for cut speed
         passes_row = Adw.SpinRow(
             title="Number of Passes",
-            subtitle=f"How often to repeat this workstep",
+            subtitle="How often to repeat this workstep",
             adjustment=Gtk.Adjustment(
                 value=workstep.passes,
                 lower=1,

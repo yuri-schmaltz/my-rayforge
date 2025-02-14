@@ -1,5 +1,4 @@
 from gi.repository import Gtk, Gio, GLib, Gdk, Adw
-import mimetypes
 from .. import __version__
 from ..asyncloop import run_async
 from ..config import config
@@ -65,7 +64,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.add_action(about_action)
 
         # Add the "quit" action
-        app = self.get_application()
         settings_action = Gio.SimpleAction.new("settings", None)
         settings_action.connect("activate", self.show_machine_settings)
         self.add_action(settings_action)

@@ -1,7 +1,7 @@
 import yaml
 import uuid
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from blinker import Signal
 
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class Laser:
     def __init__(self):
         self.max_power: int = 1000  # Max power (0-1000 for GRBL)
-        self.spot_size_mm: tuple[float, float] = 0.1, 0.1  # Point size in millimeters
+        self.spot_size_mm: tuple[float, float] = 0.1, 0.1  # millimeters
         self.changed = Signal()
 
     def set_max_power(self, power):
@@ -72,11 +72,11 @@ class Machine:
         self.postscript = postscript
         self.changed.send(self)
 
-    def set_air_assist_on(self, gcode: str|None):
+    def set_air_assist_on(self, gcode: Optional[str]):
         self.air_assist_on = gcode
         self.changed.send(self)
 
-    def set_air_assist_off(self, gcode: str|None):
+    def set_air_assist_off(self, gcode: Optional[str]):
         self.air_assist_off = gcode
         self.changed.send(self)
 

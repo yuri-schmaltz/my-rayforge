@@ -1,4 +1,5 @@
 import io
+import math
 import cairo
 import ezdxf
 from ezdxf import bbox
@@ -68,7 +69,7 @@ def draw_circle(ctx, entity):
     """Draw a CIRCLE entity."""
     center = entity.dxf.center
     radius = entity.dxf.radius
-    ctx.arc(center.x, center.y, radius, 0, 2 * math.pi)
+    ctx.arc(center.x, center.y, radius, 0, 2*math.pi)
     ctx.stroke()
 
 
@@ -177,7 +178,8 @@ def draw_insert(ctx, entity, doc):
             case 'CIRCLE':
                 draw_circle(ctx, block_entity)
             case 'LWPOLYLINE':
-                draw_lwpolyline(ctx, block_entity, 1.0)  # No scaling for nested entities
+                # No scaling for nested entities
+                draw_lwpolyline(ctx, block_entity, 1.0)
             case 'ARC':
                 draw_arc(ctx, block_entity)
             case 'TEXT':
@@ -189,7 +191,8 @@ def draw_insert(ctx, entity, doc):
             case 'INSERT':
                 draw_insert(ctx, block_entity, doc)  # Handle nested blocks
             case _:
-                print(f"Unsupported nested entity type: {block_entity.dxftype()}")
+                thetype = block_entity.dxftype()
+                print(f"Unsupported nested entity type: {thetype}")
 
     ctx.restore()
 

@@ -1,7 +1,6 @@
-import asyncio
 from datetime import datetime
-from locale import getdefaultlocale
-from gi.repository import Gtk, Adw, GLib, Pango
+from typing import Optional
+from gi.repository import Gtk, Adw
 from ..driver.driver import driver_mgr, Status
 
 
@@ -64,7 +63,7 @@ class MachineView(Adw.Dialog):
 
     def append_to_terminal(self, data):
         # Get the current timestamp in the user's locale
-        timestamp = datetime.now().strftime("%x %X")  # Locale-specific date and time
+        timestamp = datetime.now().strftime("%x %X")
         formatted_message = f"[{timestamp}] {data}\n"
 
         # Get the TextBuffer and insert the new message
@@ -72,7 +71,8 @@ class MachineView(Adw.Dialog):
         text_buffer.insert(text_buffer.get_end_iter(), formatted_message)
 
         # Scroll to the end of the buffer
-        self.terminal.scroll_to_iter(text_buffer.get_end_iter(), 0, False, 0, 0)
+        textiter = text_buffer.get_end_iter()
+        self.terminal.scroll_to_iter(textiter, 0, False, 0, 0)
 
     def on_log_received(self, sender, message=None):
         """
@@ -81,12 +81,19 @@ class MachineView(Adw.Dialog):
         driver_name = sender.__class__.__name__
         self.append_to_terminal(f"{driver_name}: {message}")
 
-    def on_command_status_changed(self, sender, status: Status, message: str|None=None):
+    def on_command_status_changed(self,
+                                  sender,
+                                  status: Status,
+                                  message: Optional[str] = None):
         self.append_to_terminal(
             f"Command status changed to {status} with message: {message}"
         )
 
-    def on_connection_status_changed(self, sender, status: Status, message: str|None=None):
+    def on_connection_status_changed(self,
+                                     sender,
+                                     status:
+                                     Status,
+                                     message: Optional[str] = None):
         self.append_to_terminal(
             f"Status changed to {status} with message: {message}"
         )

@@ -121,7 +121,7 @@ class SVGRenderer(Renderer):
         # Adjust viewBox by applying the margin percentages
         viewbox_str = root.get("viewBox")
         if not viewbox_str:
-            return data # not sure what to do in this case. bail out
+            return data  # not sure what to do in this case. bail out
 
         vb_x, vb_y, vb_w, vb_h = map(float, viewbox_str.split())
         new_x = vb_x + left_pct * vb_w

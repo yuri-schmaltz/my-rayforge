@@ -80,7 +80,11 @@ class EdgeTracer(Modifier):
     def run(self, workstep, surface, pixels_per_mm, ymax):
         binary = prepare_surface_for_tracing(surface)
         binary = cv2.GaussianBlur(binary, (5, 5), 0)
-        binary = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, np.ones((3,3), np.uint8))
+        binary = cv2.morphologyEx(
+            binary,
+            cv2.MORPH_CLOSE,
+            np.ones((3, 3), np.uint8)
+        )
 
         # Retrieve all contours (including holes)
         edges = cv2.Canny(binary, 10, 250)

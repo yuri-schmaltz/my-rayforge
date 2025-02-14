@@ -40,7 +40,7 @@ class WorkStepBox(GroupBox):
         button.connect('clicked', self.on_button_delete_clicked)
 
         self.on_workstep_changed(self.workstep)   # trigger label update
-        #TODO: self.add_child(thumbnail)
+        # TODO: self.add_child(thumbnail)
 
     def set_prefix(self, prefix):
         self.prefix = prefix

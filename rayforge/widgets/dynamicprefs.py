@@ -28,7 +28,8 @@ class DynamicPreferencesGroup(Adw.PreferencesGroup):
                 continue
 
             annotation = param.annotation
-            default = param.default if param.default != inspect.Parameter.empty else None
+            isempty = param.default == inspect.Parameter.empty
+            default = param.default if not isempty else None
 
             # Create appropriate row based on type
             if annotation == str:
@@ -76,7 +77,7 @@ class DynamicPreferencesGroup(Adw.PreferencesGroup):
         for name, row in self.widget_map.items():
             if isinstance(row, Adw.EntryRow) and hasattr(row, 'spin'):
                 # Integer input
-                values[name] = row.spin.get_value_as_int()
+                values[name] = get_spinrow_int(row)
             elif isinstance(row, Adw.ActionRow):
                 # Boolean switch
                 values[name] = row.switch.get_active()

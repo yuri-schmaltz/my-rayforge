@@ -3,6 +3,7 @@ from ..models.path import Path
 from ..models.machine import Machine
 from .encoder import PathEncoder
 
+
 class CairoEncoder(PathEncoder):
     """
     Encodes a Path onto a Cairo surface, respecting embedded state commands
@@ -16,7 +17,7 @@ class CairoEncoder(PathEncoder):
         # Set up Cairo context and scaling
         ctx = cairo.Context(surface)
         ctx.set_source_rgb(1, 0, 1)
-        
+
         # Calculate scaling factors from surface and machine dimensions
         # The path is in machine coordinates, i.e. zero point
         # at the bottom left, and units are mm.
@@ -25,11 +26,11 @@ class CairoEncoder(PathEncoder):
         scale_x, scale_y = scale
         machine_width, machine_height = machine.dimensions
         ymax = machine_height  # For Y-axis inversion
-        
+
         # Apply coordinate scaling and line width
         ctx.scale(scale_x, scale_y)
         ctx.set_line_width(1 / scale_x)  # 1-pixel line width post-scaling
-        
+
         # Track rendering state
         active_path = False
         prev_point = 0, ymax
@@ -67,7 +68,7 @@ class CairoEncoder(PathEncoder):
                         active_path = False
 
                 case _:
-                    pass # ignore unsupported operations
+                    pass  # ignore unsupported operations
 
         # Stroke any remaining open path
         if active_path:

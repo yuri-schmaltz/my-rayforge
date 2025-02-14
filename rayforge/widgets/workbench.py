@@ -1,7 +1,5 @@
 from gi.repository import Gtk, Graphene
 import cairo
-from ..models.workpiece import WorkPiece
-from ..models.workplan import WorkPlan, WorkStep
 from .worksurface import WorkSurface, WorkPieceElement, WorkStepElement
 
 
@@ -66,7 +64,8 @@ class Axis(Gtk.DrawingArea):
         ctx.stroke()
 
         # Draw axis labels
-        for pos in range(self.grid_size, int(self.length_mm)+1, self.grid_size):
+        interval = self.grid_size
+        for pos in range(interval, int(self.length_mm)+1, interval):
             pos_px = int(pos*length/self.length_mm)
             label = f"{pos}"
             extents = ctx.text_extents(label)

@@ -1,7 +1,5 @@
-import asyncio
 from abc import ABC, abstractmethod
 from enum import Enum, auto
-from typing import Callable, Optional, Any
 from blinker import Signal
 
 
@@ -24,7 +22,7 @@ class Transport(ABC):
     def __init__(self):
         """
         Initialize transport with callbacks and notification handler.
-        
+
         Signals:
             received: Function to handle received data
             status_changed: Function to handle connection status changes
@@ -50,7 +48,7 @@ class Transport(ABC):
     async def send(self, data: bytes) -> None:
         """
         Send binary data through the transport.
-        
+
         Raises:
             ConnectionError: If transport is not connected
         """

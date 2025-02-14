@@ -1,4 +1,5 @@
 from gi.repository import Gtk
+from typing import Optional
 from ..driver.driver import driver_mgr, Status
 
 
@@ -78,5 +79,5 @@ class ConnectionStatusMonitor(ConnectionStatusWidget):
     def on_connection_status_changed(self,
                                      sender,
                                      status: Status,
-                                     message: str|None=None):
+                                     message: Optional[str] = None):
         self.set_status(status)

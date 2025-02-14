@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Callable, Optional
-from functools import partial
+from typing import Optional
 from blinker import Signal
 from gi.repository import GLib
 from ..transport import Status
@@ -18,7 +17,7 @@ def _falsify(func, *args, **kwargs):
     return False
 
 
-class Driver:
+class Driver(ABC):
     """
     Abstract base class for all drivers.
     All drivers must provide the following methods:
@@ -38,7 +37,7 @@ class Driver:
     """
     label = None
     subtitle = None
-    
+
     def __init__(self):
         self.log_received = Signal()
         self.position_changed = Signal()
@@ -113,7 +112,7 @@ class Driver:
     def _on_command_status_changed(self,
                                   sender,
                                   status: Status,
-                                  message: str|None=None):
+                                  message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.command_status_changed_safe.send,
             self,
@@ -124,7 +123,7 @@ class Driver:
     def _on_connection_status_changed(self,
                                      sender,
                                      status: Status,
-                                     message: str|None=None):
+                                     message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.connection_status_changed_safe.send,
             self,

@@ -1,8 +1,7 @@
 import re
 import asyncio
 import aiohttp
-from time import sleep
-from typing import Callable, Optional
+from typing import Optional
 from ..transport import HttpTransport, WebSocketTransport, Status
 from ..pathencoder.gcode import GcodeEncoder
 from ..models.path import Path
@@ -105,7 +104,8 @@ class ICubeDriver(Driver):
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{self.http_base}{upload_url}",
-                data=form) as response:
+                data=form
+            ) as response:
                 data = await response.text()
         await session.close()
         return data
@@ -160,7 +160,10 @@ class ICubeDriver(Driver):
     def on_http_data_received(self, sender, data: bytes):
         pass
 
-    def on_http_status_changed(self, sender, status: Status, message: str|None=None):
+    def on_http_status_changed(self,
+                               sender,
+                               status: Status,
+                               message: Optional[str] = None):
         self.command_status_changed.send(self,
                                          status=status,
                                          message=message)
@@ -201,7 +204,6 @@ class ICubeDriver(Driver):
             return None
         return mpos, wpos, fs
 
-
     def on_websocket_data_received(self, sender, data: bytes):
         data = data.decode('utf-8')
         for line in data.splitlines():
@@ -212,7 +214,10 @@ class ICubeDriver(Driver):
                     self.position_changed.send(self, position=mpos[:2])
             self.log_received.send(self, message=line)
 
-    def on_websocket_status_changed(self, sender, status: Status, message: str|None=None):
+    def on_websocket_status_changed(self,
+                                    sender,
+                                    status: Status,
+                                    message: Optional[str] = None):
         self.connection_status_changed.send(self,
                                             status=status,
                                             message=message)

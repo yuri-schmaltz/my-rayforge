@@ -51,10 +51,12 @@ class GcodeEncoder(PathEncoder):
 
     def _set_air_assist(self, gcode: list, state: bool, machine: Machine):
         """Update air assist state with machine commands"""
-        if self.air_assist == state: return
+        if self.air_assist == state:
+            return
         self.air_assist = state
         cmd = machine.air_assist_on if state else machine.air_assist_off
-        if cmd: gcode.append(cmd)
+        if cmd:
+            gcode.append(cmd)
 
     def _handle_move(self, gcode: list, x: float, y: float):
         """Rapid movement with laser safety"""

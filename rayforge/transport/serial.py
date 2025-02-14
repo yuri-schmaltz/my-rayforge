@@ -1,7 +1,6 @@
 import asyncio
-import logging
 import serial_asyncio
-from typing import Callable, Optional
+from typing import Optional
 from .transport import Transport, Status
 
 
@@ -13,7 +12,7 @@ class SerialTransport(Transport):
     def __init__(self, port: str, baudrate: int):
         """
         Initialize serial transport.
-        
+
         Args:
             port: Device path (e.g., '/dev/ttyUSB0')
             baudrate: Communication speed in bits per second
@@ -30,9 +29,10 @@ class SerialTransport(Transport):
         Open serial connection and start reading.
         """
         self.status_changed.send(self, status=Status.CONNECTING)
-        self._reader, self._writer = await serial_asyncio.open_serial_connection(
+        result = await serial_asyncio.open_serial_connection(
             url=self.port, baudrate=self.baudrate
         )
+        self._reader, self._writer = result
         self._running = True
         self.status_changed.send(self, status=Status.CONNECTED)
         asyncio.create_task(self._receive_loop())

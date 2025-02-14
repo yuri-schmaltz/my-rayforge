@@ -70,7 +70,7 @@ class ConfigManager:
         with open(self.filepath, 'r') as f:
             data = yaml.safe_load(f)
             if not data:
-                return config
+                return Config()
             config = Config.from_dict(data, self.machine_mgr.get_machine_by_id)
             self.config = config
             return config

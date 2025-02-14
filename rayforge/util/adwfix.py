@@ -11,6 +11,7 @@ def get_spinrow_int(spinrow):
     upper = spinrow.get_adjustment().get_upper()
     return max(lower, min(value, upper))
 
+
 def get_spinrow_float(spinrow):
     # Workaround: Adw.SpinRow seems to have a bug that the value is not
     # always updated if it was edited using the keyboard in the edit

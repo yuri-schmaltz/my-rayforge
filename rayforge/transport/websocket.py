@@ -1,6 +1,6 @@
 import asyncio
 import websockets
-from typing import Callable, Optional
+from typing import Optional
 from websockets.exceptions import ConnectionClosed
 from .transport import Transport, Status
 
