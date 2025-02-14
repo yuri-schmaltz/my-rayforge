@@ -1,5 +1,4 @@
-import gi
-from gi.repository import Gtk, Gio, Adw  # noqa: E402
+from gi.repository import Gtk, Gio, Adw
 from ..driver import drivers, get_driver_cls, get_params
 from ..models.machine import Laser
 from ..util.adwfix import get_spinrow_int, get_spinrow_float

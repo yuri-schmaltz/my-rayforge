@@ -1,5 +1,5 @@
+from gi.repository import Gtk, Gio, GLib, Gdk, Adw
 import mimetypes
-import gi
 from .. import __version__
 from ..asyncloop import run_async
 from ..config import config
@@ -17,9 +17,6 @@ from .connectionstatus import ConnectionStatusMonitor
 from .machineview import MachineView
 from .machinesettings import MachineSettingsDialog
 
-gi.require_version('Adw', '1')
-gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gio, GLib, Gdk, Adw  # noqa: E402
 
 css = """
 .mainpaned > separator {
@@ -27,6 +24,7 @@ css = """
     box-shadow: none;
 }
 """
+
 
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):

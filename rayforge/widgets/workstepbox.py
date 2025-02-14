@@ -1,13 +1,10 @@
-import gi
+from gi.repository import Gtk
 from blinker import Signal
 from ..models.workpiece import WorkPiece
 from ..models.workplan import WorkStep
 from ..util.resources import get_icon_path
 from .groupbox import GroupBox
 from .workstepsettings import WorkStepSettingsDialog
-
-gi.require_version("Gtk", "4.0")
-from gi.repository import Gtk  # noqa: E402
 
 
 class WorkStepBox(GroupBox):

@@ -1,11 +1,7 @@
-import gi
+from gi.repository import Gtk, Adw
 from blinker import Signal
 from ..config import config
 from ..util.adwfix import get_spinrow_int
-
-gi.require_version('Adw', '1')
-gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Adw  # noqa: E402
 
 
 class WorkStepSettingsDialog(Adw.PreferencesDialog):

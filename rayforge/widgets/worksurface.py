@@ -1,12 +1,9 @@
+from gi.repository import Graphene
 import cairo
 from dataclasses import dataclass
 from ..pathencoder.cairoencoder import CairoEncoder
 from ..config import config
 from .canvas import Canvas, CanvasElement
-import gi
-
-gi.require_version('Gtk', '4.0')
-from gi.repository import Graphene  # noqa: E402
 
 
 def _copy_surface(source, target, width, height, clip, crop_region):

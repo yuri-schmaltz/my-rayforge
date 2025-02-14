@@ -1,12 +1,9 @@
 from __future__ import annotations
 import cairo
-import gi
+from gi.repository import Gtk, Gdk, Graphene
 from copy import deepcopy
 from dataclasses import dataclass, field
 from blinker import Signal
-
-gi.require_version('Gtk', '4.0')
-from gi.repository import Gtk, Gdk, Graphene  # noqa: E402
 
 
 @dataclass

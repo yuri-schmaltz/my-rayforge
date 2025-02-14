@@ -1,12 +1,8 @@
-import gi
 import asyncio
 from datetime import datetime
 from locale import getdefaultlocale
+from gi.repository import Gtk, Adw, GLib, Pango
 from ..driver.driver import driver_mgr, Status
-
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Pango  # noqa: E402
 
 
 css = """

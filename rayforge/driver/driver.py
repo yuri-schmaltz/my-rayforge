@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Callable, Optional
 from functools import partial
 from blinker import Signal
-from gi.repository import GLib  # noqa: E402
+from gi.repository import GLib
 from ..transport import Status
 from ..asyncloop import run_async
 from ..models.path import Path

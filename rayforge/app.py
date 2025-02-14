@@ -1,10 +1,11 @@
 import mimetypes
 import gi
-from .widgets.mainwindow import MainWindow
-from .asyncloop import shutdown
 
 gi.require_version('Adw', '1')
-from gi.repository import Adw, GLib  # noqa: E402
+gi.require_version('Gtk', '4.0')
+from gi.repository import Adw  # noqa: E402
+from .widgets.mainwindow import MainWindow  # noqa: E402
+from .asyncloop import shutdown  # noqa: E402
 
 
 class App(Adw.Application):
