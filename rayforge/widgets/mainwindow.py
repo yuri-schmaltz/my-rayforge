@@ -3,6 +3,7 @@ import gi
 from .. import __version__
 from ..asyncloop import run_async
 from ..config import config
+from ..driver import get_driver, get_driver_cls
 from ..driver.driver import driver_mgr
 from ..driver.dummy import NoDeviceDriver
 from ..util.resources import get_icon_path
@@ -20,6 +21,12 @@ gi.require_version('Adw', '1')
 gi.require_version('Gtk', '4.0')
 from gi.repository import Gtk, Gio, GLib, Gdk, Adw  # noqa: E402
 
+css = """
+.mainpaned > separator {
+    border: none;
+    box-shadow: none;
+}
+"""
 
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
@@ -99,16 +106,33 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar.append(button)
         button.connect('clicked', self.on_button_visibility_clicked)
 
-        icon = Gtk.Image.new_from_file(get_icon_path('send'))
+        icon = Gtk.Image.new_from_file(get_icon_path('publish'))
         self.export_button = Gtk.Button()
         self.export_button.set_child(icon)
         self.export_button.set_tooltip_text("Generate GCode")
         self.export_button.connect("clicked", self.on_export_clicked)
         toolbar.append(self.export_button)
 
+        icon = Gtk.Image.new_from_file(get_icon_path('send'))
+        self.send_button = Gtk.Button()
+        self.send_button.set_child(icon)
+        self.send_button.set_tooltip_text("Send to machine")
+        self.send_button.connect("clicked", self.on_send_clicked)
+        toolbar.append(self.send_button)
+
         # Create the Paned splitting the window into left and right sections.
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
         vbox.append(self.paned)
+
+        # Apply styles
+        self.paned.add_css_class("mainpaned")
+        provider = Gtk.CssProvider()
+        provider.load_from_data(css.encode())
+        Gtk.StyleContext.add_provider_for_display(
+            display,
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
         # Create a work area to display the image and paths
         width_mm, height_mm = config.machine.dimensions
@@ -130,12 +154,11 @@ class MainWindow(Adw.ApplicationWindow):
         # Show the work plan.
         self.workplanview = WorkPlanView(self.doc.workplan)
         self.workplanview.set_size_request(400, -1)
+        self.workplanview.set_margin_top(12)
+        self.workplanview.set_margin_bottom(12)
         self.paned.set_end_child(self.workplanview)
         self.paned.set_resize_end_child(False)
         self.paned.set_shrink_end_child(False)
-
-        self.update_state()
-        config.changed.connect(self.on_config_changed)
 
         # Create a status bar.
         status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
@@ -147,10 +170,23 @@ class MainWindow(Adw.ApplicationWindow):
 
         connection_status.connect('clicked', self.on_connection_status_clicked)
 
-        # Apply selected device driver.
-        driver = NoDeviceDriver()
-        driver_mgr.select(driver)
-        run_async(driver.connect())
+        self._try_driver_setup()
+        config.changed.connect(self.on_config_changed)
+
+    def _try_driver_setup(self):
+        # If the driver was changed, replace it.
+        driver_cls = get_driver_cls(config.machine.driver)
+        if driver_cls != driver_mgr.driver.__class__:
+            driver = get_driver(config.machine.driver)
+        else:
+            driver = driver_mgr.driver
+
+        # Reconfigure, because params may have changed.
+        try:
+            driver_mgr.select(driver, **config.machine.driver_args)
+        except Exception as e:
+            print("Failed to set up driver:", e)
+            return
 
     def on_doc_changed(self, sender, **kwargs):
         self.update_state()
@@ -161,11 +197,21 @@ class MainWindow(Adw.ApplicationWindow):
         ratio = width_mm/height_mm
         self.frame.set_ratio(ratio)
 
+        # Apply selected device driver.
+        self._try_driver_setup()
+        self.update_state()
+
     def update_state(self):
         self.workbench.update(self.doc)
 
         # Update button states.
         self.export_button.set_sensitive(self.doc.has_workpiece())
+
+        has_driver = driver_mgr.driver.__class__ is not NoDeviceDriver
+        text = "Send to machine" if has_driver \
+               else "Send to machine (select driver to enable)"
+        self.send_button.set_sensitive(has_driver)
+        self.send_button.set_tooltip_text(text)
 
     def on_connection_status_clicked(self, widget):
         dialog = MachineView()
@@ -208,6 +254,10 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_clear_clicked(self, button):
         self.workbench.clear()
+
+    def on_send_clicked(self, button):
+        path = self.doc.workplan.get_result()
+        run_async(driver_mgr.driver.run(path, config.machine))
 
     def on_export_clicked(self, button):
         # Create a file chooser dialog for saving the file

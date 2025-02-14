@@ -9,7 +9,7 @@ class HttpTransport(Transport):
     HTTP transport using persistent connection with auto-reconnect.
     """
 
-    def __init__(self, base_url: str):
+    def __init__(self, base_url: str, receive_interval=None):
         """
         Initialize HTTP transport.
         
@@ -21,6 +21,7 @@ class HttpTransport(Transport):
         self.session: Optional[aiohttp.ClientSession] = None
         self._running = False
         self._reconnect_interval = 5
+        self._receive_interval = receive_interval
         self._connection_task: Optional[asyncio.Task] = None
 
     async def connect(self) -> None:
@@ -84,7 +85,7 @@ class HttpTransport(Transport):
         while self._running and self.session:
             try:
                 async with self.session.get(
-                    f"{self.base_url}/stream",
+                    f"{self.base_url}",
                     timeout=aiohttp.ClientTimeout(total=30),
                 ) as response:
                     if response.status == 200:
@@ -94,6 +95,8 @@ class HttpTransport(Transport):
             except aiohttp.ClientError as e:
                 await self._handle_error(e)
                 break
+            if self._running and self._receive_interval:
+                await asyncio.sleep(self._receive_interval)
 
     async def _handle_error(self, error: Exception) -> None:
         """
@@ -102,7 +105,7 @@ class HttpTransport(Transport):
         if self._running:
             self.status_changed.send(self,
                                      status=Status.ERROR,
-                                     message=str(e))
+                                     message=str(error))
 
     async def _safe_close_session(self) -> None:
         """

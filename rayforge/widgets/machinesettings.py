@@ -1,9 +1,9 @@
 import gi
-gi.require_version('Gtk', '4.0')
-gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Gio, Adw  # noqa: E402
+from ..driver import drivers, get_driver_cls, get_params
 from ..models.machine import Laser
 from ..util.adwfix import get_spinrow_int, get_spinrow_float
+from .dynamicprefs import DynamicPreferencesGroup
 
 
 class MachineSettingsDialog(Adw.PreferencesDialog):
@@ -17,6 +17,37 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         # Create the "General" page (first page)
         general_page = Adw.PreferencesPage(title="General", icon_name=None)
         self.add(general_page)
+
+        self.driver_group = DynamicPreferencesGroup(title="Driver Settings")
+        self.driver_group.data_changed.connect(self.on_driver_param_changed)
+        general_page.add(self.driver_group)
+
+        # Driver selector
+        self.driver_store = Gtk.StringList()
+        for d in drivers:
+            self.driver_store.append(d.label)
+        driver_cls = get_driver_cls(machine.driver)
+        self.combo_row = Adw.ComboRow(
+            title=driver_cls.label if driver_cls else 'Select driver',
+            model=self.driver_store
+        )
+        self.combo_row.set_use_subtitle(True)
+        self.driver_group.add(self.combo_row)
+        self.driver_group.create_params(get_params(driver_cls))
+        self.driver_group.set_values(machine.driver_args)
+
+        # Set up a custom factory to display both title and subtitle
+        factory = Gtk.SignalListItemFactory()
+        factory.connect("setup", self.on_factory_setup)
+        factory.connect("bind", self.on_factory_bind)
+        self.combo_row.set_factory(factory)
+
+        if driver_cls:
+            selected_index = drivers.index(driver_cls)
+            self.combo_row.set_selected(selected_index)
+
+        # Connect to the "notify::selected" signal to handle selection changes
+        self.combo_row.connect("notify::selected", self.on_combo_row_changed)
 
         # Group for Machine Settings
         machine_group = Adw.PreferencesGroup(title="Machine Settings")
@@ -230,6 +261,32 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             row.set_margin_top(5)
             row.set_margin_bottom(5)
             self.laserhead_list.append(row)
+
+    def on_driver_param_changed(self, sender):
+        self.machine.set_driver_args(self.driver_group.get_values())
+
+    def on_factory_setup(self, factory, list_item):
+        row = Adw.ActionRow()
+        list_item.set_child(row)
+
+    def on_factory_bind(self, factory, list_item):
+        index = list_item.get_position()
+        driver_cls = drivers[index]
+        row = list_item.get_child()
+        row.set_title(driver_cls.label)
+        row.set_subtitle(driver_cls.subtitle)
+
+    def on_combo_row_changed(self, combo_row, _):
+        selected_index = combo_row.get_selected()
+        driver_cls = drivers[selected_index]
+
+        # This is a workaround due to an Adw.ComboRow bug.
+        # Update the ComboRow title to reflect the selected item.
+        self.combo_row.set_title(driver_cls.label)
+        self.combo_row.set_subtitle(driver_cls.subtitle)
+
+        self.machine.set_driver(driver_cls)
+        self.driver_group.create_params(get_params(driver_cls))
 
     def on_add_laserhead(self, button):
         """Add a new Laser to the machine."""

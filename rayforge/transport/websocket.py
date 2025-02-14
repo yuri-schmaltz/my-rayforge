@@ -10,10 +10,11 @@ class WebSocketTransport(Transport):
     WebSocket transport with robust state management.
     """
 
-    def __init__(self, uri: str):
+    def __init__(self, uri: str, origin=None):
         super().__init__()
         self.uri = uri
         self._websocket: Optional[websockets.WebSocketClientProtocol] = None
+        self._origin = origin
         self._running = False
         self._reconnect_interval = 5
         self._lock = asyncio.Lock()
@@ -30,9 +31,15 @@ class WebSocketTransport(Transport):
 
         while self._running:
             try:
-                # Validate connection object type
                 self.status_changed.send(self, status=Status.CONNECTING)
-                self._websocket = await websockets.connect(self.uri)
+                self._websocket = await websockets.connect(
+                    self.uri,
+                    origin=self._origin,
+                    additional_headers=(
+                        ('Connection', 'Upgrade'),
+                        ('Upgrade', 'websocket'),
+                    )
+                )
                 self.status_changed.send(self, status=Status.CONNECTED)
                 self._receive_task = asyncio.create_task(self._receive_loop())
                 await self._receive_task

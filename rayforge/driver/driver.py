@@ -4,6 +4,9 @@ from functools import partial
 from blinker import Signal
 from gi.repository import GLib  # noqa: E402
 from ..transport import Status
+from ..asyncloop import run_async
+from ..models.path import Path
+from ..models.machine import Machine
 
 
 def _falsify(func, *args, **kwargs):
@@ -20,10 +23,12 @@ class Driver:
     Abstract base class for all drivers.
     All drivers must provide the following methods:
        connect()
-       send()
+       run()
+       move_to()
 
     All drivers provide the following signals:
-       received: whenever data was received
+       log_received: for log messages
+       position_changed: to monitor the position (in mm)
        command_status_changed: to monitor a command that was sent
        connection_status_changed: signals connectivity changes
 
@@ -31,38 +36,81 @@ class Driver:
     these arte guaranteed to be triggered in the main GLib event loop
     for convenient usage in UI functions.
     """
+    label = None
+    subtitle = None
     
     def __init__(self):
-        self.received = Signal()
+        self.log_received = Signal()
+        self.position_changed = Signal()
         self.command_status_changed = Signal()
         self.connection_status_changed = Signal()
 
-        self.received_safe = Signal()
+        self.log_received_safe = Signal()
+        self.position_changed_safe = Signal()
         self.command_status_changed_safe = Signal()
         self.connection_status_changed_safe = Signal()
 
-        self.received.connect(self.on_received)
-        self.command_status_changed.connect(self.on_command_status_changed)
+        self.log_received.connect(self._on_log_received)
+        self.position_changed.connect(self._on_position_changed)
+        self.command_status_changed.connect(self._on_command_status_changed)
         self.connection_status_changed.connect(
-            self.on_connection_status_changed
+            self._on_connection_status_changed
         )
+        self.did_setup = False
+
+    def setup(self):
+        """
+        The type annotations of this method are used to generate a UI
+        for the user! So if your driver requires any UI parameters,
+        you should overload this function to ensure that a UI for the
+        parameters is generated.
+
+        The method will be invoked once the user has provided the arguments
+        in the UI.
+        """
+        self.did_setup = True
+
+    async def cleanup(self):
+        pass
 
     @abstractmethod
     async def connect(self) -> None:
+        """
+        Establishes the connection. Should never finish; on lost connection
+        it should continue trying.
+        """
         pass
 
     @abstractmethod
-    async def send(self, data: bytes) -> None:
+    async def run(self, path: Path, machine: Machine) -> None:
+        """
+        Converts the given path into commands for the machine, and executes
+        them.
+        """
         pass
 
-    def on_received(self, sender, data: bytes):
+    @abstractmethod
+    async def move_to(self, pos_x: float, pos_y: float) -> None:
+        """
+        Moves to the given position. Values are given mm.
+        """
+        pass
+
+    def _on_log_received(self, sender, message: str):
         GLib.idle_add(lambda: _falsify(
-            self.received_safe.send,
+            self.log_received_safe.send,
             sender,
-            data=data
+            message=message
         ))
 
-    def on_command_status_changed(self,
+    def _on_position_changed(self, sender, position: tuple[float, float]):
+        GLib.idle_add(lambda: _falsify(
+            self.position_changed_safe.send,
+            sender,
+            position=position
+        ))
+
+    def _on_command_status_changed(self,
                                   sender,
                                   status: Status,
                                   message: str|None=None):
@@ -73,7 +121,7 @@ class Driver:
             message=message
         ))
 
-    def on_connection_status_changed(self,
+    def _on_connection_status_changed(self,
                                      sender,
                                      status: Status,
                                      message: str|None=None):
@@ -90,9 +138,15 @@ class DriverManager:
         self.driver = None
         self.changed = Signal()
 
-    def select(self, driver):
+    def select(self, driver, **args):
+        if self.driver:
+            run_async(self.driver.cleanup())
+        if self.driver != driver:
+            del self.driver
         self.driver = driver
         self.changed.send(self, driver=driver)
+        self.driver.setup(**args)
+        run_async(self.driver.connect())
 
 
 driver_mgr = DriverManager()

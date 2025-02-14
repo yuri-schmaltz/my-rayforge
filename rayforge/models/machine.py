@@ -37,22 +37,32 @@ class Laser:
 
 
 class Machine:
-    name: str = 'Default Machine'
-    preamble: List[str] = ["G21 ; Set units to mm",
-                           "G90 ; Absolute positioning"]
-    postscript: List[str] = ["G0 X0 Y0 ; Return to origin"]
-    air_assist_on = "M8 ; Enable air assist"
-    air_assist_off = "M9 ; Disable air assist"
-    heads: List[Laser] = []
-    max_travel_speed: int = 3000   # in mm/min
-    max_cut_speed: int = 1000   # in mm/min
-    dimensions: tuple[int, int] = 200, 200
-
     def __init__(self):
         self.id = str(uuid.uuid4())
+        self.name: str = 'Default Machine'
+        self.driver: str = None
+        self.driver_args: Dict[str, Any] = {}
+        self.preamble: List[str] = ["G21 ; Set units to mm",
+                                    "G90 ; Absolute positioning"]
+        self.postscript: List[str] = ["G0 X0 Y0 ; Return to origin"]
+        self.air_assist_on = "M8 ; Enable air assist"
+        self.air_assist_off = "M9 ; Disable air assist"
+        self.heads: List[Laser] = []
+        self.max_travel_speed: int = 3000   # in mm/min
+        self.max_cut_speed: int = 1000   # in mm/min
+        self.dimensions: tuple[int, int] = 200, 200
         self.heads = []
         self.changed = Signal()
         self.add_head(Laser())
+
+    def set_driver(self, driver_cls: type, args=None):
+        self.driver = driver_cls.__name__
+        self.driver_args = args or {}
+        self.changed.send(self)
+
+    def set_driver_args(self, args=None):
+        self.driver_args = args or {}
+        self.changed.send(self)
 
     def set_preamble(self, preamble: List[str]):
         self.preamble = preamble
@@ -84,13 +94,15 @@ class Machine:
 
     def add_head(self, head: Laser):
         self.heads.append(head)
-        head.changed.connect(self.changed.send)
+        head.changed.connect(lambda s: self.changed.send(self))
         self.changed.send(self)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "machine": {
                 "name": self.name,
+                "driver": self.driver,
+                "driver_args": self.driver_args,
                 "dimensions": list(self.dimensions),
                 "heads": [head.to_dict() for head in self.heads],
                 "speeds": {
@@ -111,6 +123,8 @@ class Machine:
         ma = cls()
         ma_data = data.get("machine", {})
         ma.name = ma_data.get("name", ma.name)
+        ma.driver = ma_data.get("driver")
+        ma.driver_args = ma_data.get("driver_args", {})
         ma.dimensions = tuple(ma_data.get("dimensions", ma.dimensions))
         ma.heads = [Laser.from_dict(o) for o in ma_data.get("heads", {})]
         speeds = ma_data.get("speeds", {})
@@ -174,9 +188,7 @@ class MachineManager:
         self.save_machine(machine)
 
     def load(self):
-        machines = dict()
         for file in self.base_dir.glob("*.yaml"):
             machine = self.load_machine(file.stem)
             if machine:
                 self.add_machine(machine)
-        return machines

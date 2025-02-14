@@ -45,13 +45,13 @@ class MachineView(Adw.Dialog):
 
         # Wrap the TextView in a ScrolledWindow
         scrolled_window = Gtk.ScrolledWindow()
-        scrolled_window.set_min_content_height(400)  # Set a minimum height
+        scrolled_window.set_min_content_height(400)
         scrolled_window.set_child(self.terminal)
         box.append(scrolled_window)
 
         # Listen to driver
         driver = driver_mgr.driver
-        driver.received_safe.connect(self.on_data_received)
+        driver.log_received_safe.connect(self.on_log_received)
         driver.command_status_changed_safe.connect(
             self.on_command_status_changed
         )
@@ -59,14 +59,14 @@ class MachineView(Adw.Dialog):
             self.on_connection_status_changed
         )
 
-        # Make the dialog expand to the full width of the parent window
-        self.set_size_request(12000, 200)  # Allow the dialog to expand
+        # The dialog does not support expansion. Adw 1.6 will support
+        # BottomSheet, at which time this widget should probably use that
+        # instead. But for now, it is not available in Ubuntu 24.04,
+        # so we need to define a fixed size.
+        self.set_size_request(900, -1)  # Allow the dialog to expand
         self.set_follows_content_size(True)
 
-    def on_data_received(self, sender, data=None):
-        """
-        Update terminal display.
-        """
+    def append_to_terminal(self, data):
         # Get the current timestamp in the user's locale
         timestamp = datetime.now().strftime("%x %X")  # Locale-specific date and time
         formatted_message = f"[{timestamp}] {data}\n"
@@ -77,14 +77,20 @@ class MachineView(Adw.Dialog):
 
         # Scroll to the end of the buffer
         self.terminal.scroll_to_iter(text_buffer.get_end_iter(), 0, False, 0, 0)
-        return False
+
+    def on_log_received(self, sender, message=None):
+        """
+        Update terminal display.
+        """
+        driver_name = sender.__class__.__name__
+        self.append_to_terminal(f"{driver_name}: {message}")
 
     def on_command_status_changed(self, sender, status: Status, message: str|None=None):
-        self.send_button.set_sensitive(status)
+        self.append_to_terminal(
+            f"Command status changed to {status} with message: {message}"
+        )
 
     def on_connection_status_changed(self, sender, status: Status, message: str|None=None):
-        icon = "network-idle-symbolic" \
-                if status.CONNECTED \
-                else "network-offline-symbolic"
-        self.connection_status_icon.set_from_icon_name(icon)
-        self.connection_status_label.set_label(status.name)
+        self.append_to_terminal(
+            f"Status changed to {status} with message: {message}"
+        )

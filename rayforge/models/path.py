@@ -69,7 +69,7 @@ def split_long_segments(operations):
 
     The result is a list of Op lists.
     """
-    if not len(operations) <= 1:
+    if len(operations) <= 1:
         return [operations]
 
     segments = [[operations[0]]]
