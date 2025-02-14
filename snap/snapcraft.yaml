@@ -1,0 +1,49 @@
+name: rayforge
+version: git
+summary: A desktop application for laser cutting and engraving
+description: |
+  Rayforge is a desktop application designed for laser cutting
+  and engraving. It provides an intuitive interface for users
+  to create and manage their laser cutting projects.
+confinement: strict
+base: core22
+
+apps:
+  rayforge:
+    command: bin/rayforge
+    plugs:
+      - home
+      - network
+      - network-bind
+      - removable-media
+      - x11
+      - wayland
+      - opengl
+    environment:
+      GI_TYPELIB_PATH: $SNAP/usr/lib/x86_64-linux-gnu/girepository-1.0
+
+parts:
+  rayforge:
+    plugin: python
+    source: .
+    build-packages:
+      - python3-dev
+      - python3-pip
+      - python3-setuptools
+      - libopencv-dev
+      - libatlas-base-dev
+      - libblas-dev
+      - liblapack-dev
+      - gfortran
+      - git  # Required for git describe
+    stage-packages:
+      - python3
+      - python3-gi
+      - gir1.2-gtk-3.0
+      - gir1.2-adw-1
+      - libgtk-3-0
+      - libgirepository-1.0-1
+    organize:
+      data/com.barebaric.rayforge.desktop: share/applications/com.barebaric.rayforge.desktop
+      data/com.barebaric.rayforge.metainfo.xml: share/metainfo/com.barebaric.rayforge.metainfo.xml
+      data/com.barebaric.rayforge.svg: share/icons/hicolor/scalable/apps/com.barebaric.rayforge.svg
