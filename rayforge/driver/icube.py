@@ -31,6 +31,7 @@ class ICubeDriver(Driver):
         self.encoder = GcodeEncoder()
         self.http = None
         self.websocket = None
+        self.keep_running = False
 
     def setup(self, host: str):
         super().setup()
@@ -58,6 +59,7 @@ class ICubeDriver(Driver):
         if self.websocket:
             await self.websocket.disconnect()
             del self.websocket
+        self.keep_running = False
 
     async def _get_hardware_info(self):
         async with aiohttp.ClientSession() as session:
@@ -119,7 +121,8 @@ class ICubeDriver(Driver):
         return data
 
     async def connect(self):
-        while True:
+        self.keep_running = True
+        while self.keep_running:
             self.connection_status_changed.send(self, status=Status.CONNECTING)
             try:
                 hw_info = await self._get_hardware_info()
