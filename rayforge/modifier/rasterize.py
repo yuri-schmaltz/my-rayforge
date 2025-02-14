@@ -1,6 +1,6 @@
 import cairo
 import numpy as np
-from ..models.path import Path
+from ..models.ops import Ops
 from .modifier import Modifier
 
 
@@ -19,7 +19,7 @@ def rasterize_horizontally(surface,
         millimeters.
 
     Returns:
-        A Path object containing the optimized engraving path.
+        A Ops object containing the optimized engraving path.
     """
     surface_format = surface.get_format()
     if surface_format != cairo.FORMAT_ARGB32:
@@ -52,7 +52,7 @@ def rasterize_horizontally(surface,
     occupied_cols = np.any(bw_image, axis=0)
 
     if not np.any(occupied_rows) or not np.any(occupied_cols):
-        return Path()  # No occupied area, return an empty path
+        return Ops()  # No occupied area, return an empty path
 
     y_min, y_max = np.where(occupied_rows)[0][[0, -1]]
     x_min, x_max = np.where(occupied_cols)[0][[0, -1]]
@@ -65,7 +65,7 @@ def rasterize_horizontally(surface,
     y_min_mm = y_min / pixels_per_mm_y
     y_max_mm = y_max / pixels_per_mm_y
 
-    path = Path()
+    ops = Ops()
 
     # Iterate over rows in millimeters (floating-point) within the bounding box
     y_mm = y_min_mm
@@ -99,14 +99,14 @@ def rasterize_horizontally(surface,
                 end_mm = x_min_mm + ((end - 1) / pixels_per_mm_x)
 
                 # Move to the start of the black segment
-                path.move_to(start_mm, ymax-y_mm)
+                ops.move_to(start_mm, ymax-y_mm)
                 # Draw a line to the end of the black segment
-                path.line_to(end_mm, ymax-y_mm)
+                ops.line_to(end_mm, ymax-y_mm)
 
         # Move to the next raster line
         y_mm += raster_size_mm
 
-    return path
+    return ops
 
 
 class Rasterizer(Modifier):
@@ -115,7 +115,7 @@ class Rasterizer(Modifier):
     across filled pixels in the surface.
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):
-        workstep.path = rasterize_horizontally(
+        workstep.ops = rasterize_horizontally(
             surface,
             ymax,
             pixels_per_mm,

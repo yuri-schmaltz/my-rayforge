@@ -7,14 +7,14 @@ from ..modifier import Modifier, \
                        EdgeTracer, \
                        Rasterizer
 from .machine import Laser
-from .path import Path
+from .ops import Ops
 from blinker import Signal
 
 
 class WorkStep:
     """
     A WorkStep is a set of Modifiers that operate on a set of
-    WorkPieces. It normally generates a Path in the end, but
+    WorkPieces. It normally generates a Ops in the end, but
     may also include modifiers that manipulate the input image.
     """
     typelabel = None
@@ -24,7 +24,7 @@ class WorkStep:
         self.visible: bool = True
         self.modifiers: List[Modifier] = []
         self.passes: int = 1
-        self.path: Path = Path()
+        self.ops: Ops = Ops()
         self.laser: Laser = None
 
         self.changed = Signal()
@@ -55,18 +55,18 @@ class WorkStep:
     def run(self, surface, pixels_per_mm, ymax):
         """
         surface: the input surface containing an image that the
-        modifiers should modify (or convert to a path).
+        modifiers should modify (or convert to Ops).
         pixels_per_mm: tuple containing pixels_per_mm_x and pixels_per_mm_y
         ymax: machine max y size (for Z axis inversion)
         """
-        self.path.clear()
-        self.path.set_power(self.power)
-        self.path.set_cut_speed(self.cut_speed)
-        self.path.set_travel_speed(self.travel_speed)
-        self.path.enable_air_assist(self.air_assist)
+        self.ops.clear()
+        self.ops.set_power(self.power)
+        self.ops.set_cut_speed(self.cut_speed)
+        self.ops.set_travel_speed(self.travel_speed)
+        self.ops.enable_air_assist(self.air_assist)
         for modifier in self.modifiers:
             modifier.run(self, surface, pixels_per_mm, ymax)
-        self.path.disable_air_assist()
+        self.ops.disable_air_assist()
 
     def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
@@ -148,9 +148,9 @@ class WorkPlan:
         self.changed.send(self)
 
     def get_result(self, optimize=True):
-        path = Path()
+        ops = Ops()
         for step in self.worksteps:
             if optimize:
-                step.path.optimize()
-            path += step.path*step.passes
-        return path
+                step.ops.optimize()
+            ops += step.ops*step.passes
+        return ops

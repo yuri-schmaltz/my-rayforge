@@ -1,5 +1,5 @@
 from .driver import Driver
-from ..models.path import Path
+from ..models.ops import Ops
 
 
 class NoDeviceDriver(Driver):
@@ -12,7 +12,7 @@ class NoDeviceDriver(Driver):
     async def connect(self) -> None:
         pass
 
-    async def run(self, path: Path) -> None:
+    async def run(self, ops: Ops) -> None:
         pass
 
     async def move_to(self, pos_x, pos_y) -> None:

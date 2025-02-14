@@ -1,10 +1,10 @@
-from ..models.path import Path
+from ..models.ops import Ops
 from ..models.machine import Machine
-from .encoder import PathEncoder
+from .encoder import OpsEncoder
 
 
-class GcodeEncoder(PathEncoder):
-    """Converts Path commands to G-code using instance state tracking"""
+class GcodeEncoder(OpsEncoder):
+    """Converts Ops commands to G-code using instance state tracking"""
     def __init__(self):
         self.power = None             # Current laser power (None = off)
         self.cut_speed = None         # Current cutting speed (mm/min)
@@ -13,10 +13,10 @@ class GcodeEncoder(PathEncoder):
         self.laser_active = False     # Laser on/off state
         self.position = (None, None)  # Last known coordinates
 
-    def encode(self, path: Path, machine: Machine) -> str:
+    def encode(self, ops: Ops, machine: Machine) -> str:
         """Main encoding workflow"""
         gcode = []+machine.preamble
-        for cmd in path.commands:
+        for cmd in ops.commands:
             self._handle_command(gcode, cmd, machine)
         self._finalize(gcode, machine)
         return '\n'.join(gcode)

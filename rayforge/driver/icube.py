@@ -3,8 +3,8 @@ import asyncio
 import aiohttp
 from typing import Optional
 from ..transport import HttpTransport, WebSocketTransport, Status
-from ..pathencoder.gcode import GcodeEncoder
-from ..models.path import Path
+from ..opsencoder.gcode import GcodeEncoder
+from ..models.ops import Ops
 from ..models.machine import Machine
 from .driver import Driver
 
@@ -139,8 +139,8 @@ class ICubeDriver(Driver):
             await self.websocket.connect()
             await asyncio.sleep(5)
 
-    async def run(self, path: Path, machine: Machine) -> None:
-        gcode = self.encoder.encode(path, machine)
+    async def run(self, ops: Ops, machine: Machine) -> None:
+        gcode = self.encoder.encode(ops, machine)
 
         try:
             await self._upload(gcode, 'rayforge.gcode')

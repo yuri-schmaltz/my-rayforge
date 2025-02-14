@@ -8,7 +8,7 @@ from ..driver.dummy import NoDeviceDriver
 from ..util.resources import get_icon_path
 from ..models.doc import Doc
 from ..models.workpiece import WorkPiece
-from ..pathencoder.gcode import GcodeEncoder
+from ..opsencoder.gcode import GcodeEncoder
 from ..render import renderers, renderer_by_mime_type
 from .workbench import WorkBench
 from .workplanview import WorkPlanView

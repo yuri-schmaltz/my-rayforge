@@ -276,7 +276,7 @@ def two_opt(ordered, max_iter=1000):
     return ordered
 
 
-class Path:
+class Ops:
     """
     Represents a set of generated path segments and instructions that
     are used for making gcode, but also to generate vector graphics
@@ -285,13 +285,13 @@ class Path:
     def __init__(self):
         self.commands = []
 
-    def __add__(self, path):
-        result = Path()
-        result.commands = self.commands + path.commands
+    def __add__(self, ops):
+        result = Ops()
+        result.commands = self.commands + ops.commands
         return result
 
     def __mul__(self, count):
-        result = Path()
+        result = Ops()
         result.commands = count*self.commands
         return result
 
@@ -334,20 +334,20 @@ class Path:
         to minimize travel moves in the GCode.
 
         This is made harder by the fact that some commands cannot be
-        reordered. For example, if the path contains multiple commands
-        to toggle air-assist, we cannot reorder the path without ensuring
-        that air-assist remains on for the sections that need it.
-        Path optimization may lead to a situation where the number of
+        reordered. For example, if the ops contains multiple commands
+        to toggle air-assist, we cannot reorder the operations without
+        ensuring that air-assist remains on for the sections that need it.
+        Ops optimization may lead to a situation where the number of
         air assist toggles is multiplied, which could be detrimental
         to the health of the air pump.
 
         To avoid these problems, we implement the following process:
 
-        1. Preprocess the Path sequentially, duplicating the intended
+        1. Preprocess the Ops sequentially, duplicating the intended
            state (e.g. cutting, power, ...) and attaching it to the each
            command. Here we also drop all state commands.
 
-        2. Split the path into non-reorderable segments. Segment in this
+        2. Split the ops into non-reorderable segments. Segment in this
            step means an "as long as possible" sequence that may still
            include sub-segments, as long as those sub-segments are
            reorderable.
@@ -356,7 +356,7 @@ class Path:
 
         4. Re-order the sub sequences to minimize travel distance.
 
-        5. Re-assemble the Path object.
+        5. Re-assemble the Ops object.
         """
         # 1. Preprocess such that each operation has a state.
         # This also causes all state commands to be dropped - we
@@ -379,7 +379,7 @@ class Path:
             segments = flip_segments(segments)
             result += two_opt(segments, max_iter=max_iter)
 
-        # 5. Reassemble the path, reintroducing state change commands.
+        # 5. Reassemble the ops, reintroducing state change commands.
         self.commands = []
         for segment in result:
             if not segment:

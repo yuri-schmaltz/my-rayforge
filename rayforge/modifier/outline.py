@@ -36,9 +36,9 @@ def prepare_surface_for_tracing(surface):
     return cv2.cvtColor(img, target_fmt)
 
 
-def contours2path(contours, path, pixels_per_mm, ymax):
+def contours2ops(contours, ops, pixels_per_mm, ymax):
     """
-    The resulting path needs to be in machine coordinates, i.e. zero
+    The resulting Ops needs to be in machine coordinates, i.e. zero
     point must be at the bottom left, and units need to be mm.
     Since Cairo coordinates put the zero point at the top left, we must
     subtract Y from the machine's Y axis maximum.
@@ -51,12 +51,12 @@ def contours2path(contours, path, pixels_per_mm, ymax):
 
         # Append (scaled to mm)
         if len(contour) > 0:
-            path.move_to(contour[0][0][0]/scale_x,
-                         ymax-contour[0][0][1]/scale_y)
+            ops.move_to(contour[0][0][0]/scale_x,
+                        ymax-contour[0][0][1]/scale_y)
             for point in contour:
                 x, y = point[0]
-                path.line_to(x/scale_x, ymax-y/scale_y)
-            path.close_path()
+                ops.line_to(x/scale_x, ymax-y/scale_y)
+            ops.close_path()
 
 
 class OutlineTracer(Modifier):
@@ -70,7 +70,7 @@ class OutlineTracer(Modifier):
         contours, _ = cv2.findContours(binary,
                                        cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_NONE)
-        contours2path(contours, workstep.path, pixels_per_mm, ymax)
+        contours2ops(contours, workstep.ops, pixels_per_mm, ymax)
 
 
 class EdgeTracer(Modifier):
@@ -91,13 +91,13 @@ class EdgeTracer(Modifier):
         contours, _ = cv2.findContours(edges,
                                        cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_NONE)
-        contours2path(contours, workstep.path, pixels_per_mm, ymax)
+        contours2ops(contours, workstep.ops, pixels_per_mm, ymax)
 
 
 class SVGOutline(Modifier):
     """
     DYSFUNCT FOR NOW! THIS IS A TODO
-    Transforms SVG paths to our internal Path objects, as
+    Transforms SVG paths to our internal Ops objects, as
     outlines for laser cutting.
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):

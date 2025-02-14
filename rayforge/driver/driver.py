@@ -4,7 +4,7 @@ from blinker import Signal
 from gi.repository import GLib
 from ..transport import Status
 from ..asyncloop import run_async
-from ..models.path import Path
+from ..models.ops import Ops
 from ..models.machine import Machine
 
 
@@ -81,9 +81,9 @@ class Driver(ABC):
         pass
 
     @abstractmethod
-    async def run(self, path: Path, machine: Machine) -> None:
+    async def run(self, ops: Ops, machine: Machine) -> None:
         """
-        Converts the given path into commands for the machine, and executes
+        Converts the given Ops into commands for the machine, and executes
         them.
         """
         pass

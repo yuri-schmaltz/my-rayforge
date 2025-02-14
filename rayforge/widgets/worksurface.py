@@ -1,7 +1,7 @@
 from gi.repository import Graphene
 import cairo
 from dataclasses import dataclass
-from ..pathencoder.cairoencoder import CairoEncoder
+from ..opsencoder.cairoencoder import CairoEncoder
 from ..config import config
 from .canvas import Canvas, CanvasElement
 
@@ -78,12 +78,12 @@ class WorkStepElement(CanvasElement):
         workstep = self.data
         workstep.run(self.surface, pixels_per_mm, ymax)
 
-        # If a path was generated, render only it. i.e. clear the current
+        # If Ops were generated, render only it. i.e. clear the current
         # bitmap.
-        if workstep.path:
+        if workstep.ops:
             self.allocate(True)
             encoder = CairoEncoder()
-            encoder.encode(workstep.path,
+            encoder.encode(workstep.ops,
                            config.machine,
                            self.surface,
                            self.get_pixels_per_mm())

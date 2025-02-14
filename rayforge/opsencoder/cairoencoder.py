@@ -1,16 +1,16 @@
 import cairo
-from ..models.path import Path
+from ..models.ops import Ops
 from ..models.machine import Machine
-from .encoder import PathEncoder
+from .encoder import OpsEncoder
 
 
-class CairoEncoder(PathEncoder):
+class CairoEncoder(OpsEncoder):
     """
-    Encodes a Path onto a Cairo surface, respecting embedded state commands
+    Encodes a Ops onto a Cairo surface, respecting embedded state commands
     (color, geometry) and machine dimensions for coordinate adjustments.
     """
     def encode(self,
-               path: Path,
+               ops: Ops,
                machine: Machine,
                surface: cairo.Surface,
                scale: tuple[float, float]) -> None:
@@ -19,7 +19,7 @@ class CairoEncoder(PathEncoder):
         ctx.set_source_rgb(1, 0, 1)
 
         # Calculate scaling factors from surface and machine dimensions
-        # The path is in machine coordinates, i.e. zero point
+        # The Ops are in machine coordinates, i.e. zero point
         # at the bottom left, and units are mm.
         # Since Cairo coordinates put the zero point at the top left, we must
         # subtract Y from the machine's Y axis maximum.
@@ -35,7 +35,7 @@ class CairoEncoder(PathEncoder):
         active_path = False
         prev_point = 0, ymax
 
-        for cmd in path.commands:
+        for cmd in ops.commands:
             match cmd:
                 case ('move_to', x, y):
                     if active_path:
