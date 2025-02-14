@@ -273,6 +273,10 @@ class Canvas(Gtk.DrawingArea):
         self.click_gesture.connect("pressed", self.on_button_press)
         self.add_controller(self.click_gesture)
 
+        self.motion_controller = Gtk.EventControllerMotion()
+        self.motion_controller.connect("motion", self.on_motion)
+        self.add_controller(self.motion_controller)
+
         self.drag_gesture = Gtk.GestureDrag()
         self.drag_gesture.connect("drag-update", self.on_mouse_drag)
         self.drag_gesture.connect("drag-end", self.on_button_release)
@@ -393,6 +397,18 @@ class Canvas(Gtk.DrawingArea):
 
         self.active_elem = None
         self.queue_draw()
+
+    def on_motion(self, gesture, x, y):
+        x_mm = x/self.pixels_per_mm_x
+        y_mm = y/self.pixels_per_mm_y
+
+        hit = self.get_elem_handle_hit(self.root, x_mm, y_mm, selectable=True)
+        if hit:
+            cursor_name = "se-resize"
+        else:
+            cursor_name = "default"
+        cursor = Gdk.Cursor.new_from_name(cursor_name)
+        self.set_cursor(cursor)
 
     def on_mouse_drag(self, gesture, x, y):
         if not self.active_elem:
