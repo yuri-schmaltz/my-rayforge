@@ -21,9 +21,9 @@ status_url = command_url.format(command='')
 
 class ICubeDriver(Driver):
     """
-    Handles Sparkfun iCube via HTTP+WebSocket
+    Handles Sculpfun iCube via HTTP+WebSocket
     """
-    label = "Sparkfun iCube"
+    label = "Sculpfun iCube"
     subtitle = 'Send Gcode via network connection'
 
     def __init__(self):
