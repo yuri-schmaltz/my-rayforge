@@ -14,7 +14,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         self.set_size_request(-1, -1)
 
         # Create the "General" page (first page)
-        general_page = Adw.PreferencesPage(title="General", icon_name=None)
+        general_page = Adw.PreferencesPage(
+            title="General",
+            icon_name='preferences-system-symbolic'
+        )
         self.add(general_page)
 
         self.driver_group = DynamicPreferencesGroup(title="Driver Settings")
@@ -28,9 +31,11 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         driver_cls = get_driver_cls(machine.driver)
         self.combo_row = Adw.ComboRow(
             title=driver_cls.label if driver_cls else 'Select driver',
+            subtitle=driver_cls.subtitle if driver_cls else None,
             model=self.driver_store
         )
         self.combo_row.set_use_subtitle(True)
+        self.combo_row.set_subtitle(driver_cls.subtitle)
         self.driver_group.add(self.combo_row)
         self.driver_group.create_params(get_params(driver_cls))
         self.driver_group.set_values(machine.driver_args)
@@ -119,7 +124,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         dimensions_group.add(self.height_row)
 
         # Create the "GCode" page
-        gcode_page = Adw.PreferencesPage(title="GCode", icon_name=None)
+        gcode_page = Adw.PreferencesPage(
+            title="GCode",
+            icon_name='applications-engineering-symbolic'
+        )
         self.add(gcode_page)
 
         # Preamble
@@ -179,7 +187,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         # Create the "Laser Heads" page
         laserhead_page = Adw.PreferencesPage(
             title="Laser Heads",
-            icon_name=None
+            icon_name="preferences-other-symbolic"
         )
         self.add(laserhead_page)
 
