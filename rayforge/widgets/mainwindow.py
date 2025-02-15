@@ -76,12 +76,24 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar.set_margin_end(12)
         vbox.append(toolbar)
 
+        # Import and export icons
         icon = Gtk.Image.new_from_file(get_icon_path('open'))
         open_button = Gtk.Button()
         open_button.set_child(icon)
         open_button.set_tooltip_text("Import image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
+
+        icon = Gtk.Image.new_from_file(get_icon_path('publish'))
+        self.export_button = Gtk.Button()
+        self.export_button.set_child(icon)
+        self.export_button.set_tooltip_text("Generate GCode")
+        self.export_button.connect("clicked", self.on_export_clicked)
+        toolbar.append(self.export_button)
+
+        # Clear and visibility
+        sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        toolbar.append(sep)
 
         icon = Gtk.Image.new_from_file(get_icon_path('clear-layers'))
         clear_button = Gtk.Button()
@@ -103,12 +115,9 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar.append(button)
         button.connect('clicked', self.on_button_visibility_clicked)
 
-        icon = Gtk.Image.new_from_file(get_icon_path('publish'))
-        self.export_button = Gtk.Button()
-        self.export_button.set_child(icon)
-        self.export_button.set_tooltip_text("Generate GCode")
-        self.export_button.connect("clicked", self.on_export_clicked)
-        toolbar.append(self.export_button)
+        # Control buttons: home, send, pause, stop
+        sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        toolbar.append(sep)
 
         icon = Gtk.Image.new_from_file(get_icon_path('send'))
         self.send_button = Gtk.Button()
