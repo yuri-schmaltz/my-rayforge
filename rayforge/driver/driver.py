@@ -73,7 +73,7 @@ class Driver(ABC):
         self.did_setup = True
 
     async def cleanup(self):
-        pass
+        self.did_setup = False
 
     @abstractmethod
     async def connect(self) -> None:
@@ -113,9 +113,9 @@ class Driver(ABC):
         ))
 
     def _on_command_status_changed(self,
-                                  sender,
-                                  status: Status,
-                                  message: Optional[str] = None):
+                                   sender,
+                                   status: Status,
+                                   message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.command_status_changed_safe.send,
             self,
@@ -124,9 +124,9 @@ class Driver(ABC):
         ))
 
     def _on_connection_status_changed(self,
-                                     sender,
-                                     status: Status,
-                                     message: Optional[str] = None):
+                                      sender,
+                                      status: Status,
+                                      message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.connection_status_changed_safe.send,
             self,
@@ -140,15 +140,30 @@ class DriverManager:
         self.driver = None
         self.changed = Signal()
 
-    def select(self, driver, **args):
-        if self.driver:
-            run_async(self.driver.cleanup())
-        if self.driver != driver:
-            del self.driver
+    async def _assign_driver(self, driver, **args):
         self.driver = driver
-        self.changed.send(self, driver=driver)
+        self.changed.send(self, driver=self.driver)
         self.driver.setup(**args)
-        run_async(self.driver.connect())
+        await self.driver.connect()
+
+    async def _reconfigure_driver(self, **args):
+        await self.driver.cleanup()
+        self.changed.send(self, driver=self.driver)
+        self.driver.setup(**args)
+        await self.driver.connect()
+
+    async def _switch_driver(self, driver, **args):
+        await self.driver.cleanup()
+        del self.driver
+        await self._assign_driver(driver, **args)
+
+    async def select_by_cls(self, driver_cls, **args):
+        if self.driver and self.driver.__class__ == driver_cls:
+            await self._reconfigure_driver(**args)
+        elif self.driver:
+            await self._switch_driver(driver_cls(), **args)
+        else:
+            await self._assign_driver(driver_cls(), **args)
 
 
 driver_mgr = DriverManager()

@@ -75,6 +75,12 @@ class ConnectionStatusMonitor(ConnectionStatusWidget):
     def on_driver_changed(self, manager, driver):
         if driver is None:
             return
+
+        # The driver may be new, or it may just have been reconfigured.
+        # So we disconnect the signal in case it was already connected.
+        driver.connection_status_changed_safe.disconnect(
+            self.on_connection_status_changed
+        )
         driver.connection_status_changed_safe.connect(
             self.on_connection_status_changed
         )

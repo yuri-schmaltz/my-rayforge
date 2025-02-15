@@ -34,6 +34,7 @@ class ICubeDriver(Driver):
         self.keep_running = False
 
     def setup(self, host: str):
+        assert not self.did_setup
         super().setup()
 
         # Initialize transports
@@ -55,11 +56,16 @@ class ICubeDriver(Driver):
     async def cleanup(self):
         if self.http:
             await self.http.disconnect()
+            self.http.received.disconnect(self.on_http_data_recei)
+            self.http.status_changed.disconnect(self.on_http_status_changed)
             del self.http
         if self.websocket:
             await self.websocket.disconnect()
+            self.websocket.received.disconnect(self.on_websocket_data_received)
+            self.websocket.status_changed.disconnect(self.on_websocket_status_changed)
             del self.websocket
         self.keep_running = False
+        await super().cleanup()
 
     async def _get_hardware_info(self):
         async with aiohttp.ClientSession() as session:

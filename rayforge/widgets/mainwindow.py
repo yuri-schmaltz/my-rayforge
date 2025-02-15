@@ -175,21 +175,22 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._try_driver_setup()
         config.changed.connect(self.on_config_changed)
+        driver_mgr.changed.connect(self.on_driver_changed)
 
     def _try_driver_setup(self):
-        # If the driver was changed, replace it.
-        driver_cls = get_driver_cls(config.machine.driver)
-        if driver_cls != driver_mgr.driver.__class__:
-            driver = get_driver(config.machine.driver)
-        else:
-            driver = driver_mgr.driver
-
         # Reconfigure, because params may have changed.
+        driver_cls = get_driver_cls(config.machine.driver)
         try:
-            driver_mgr.select(driver, **config.machine.driver_args)
+            run_async(driver_mgr.select_by_cls(
+                driver_cls,
+                **config.machine.driver_args
+            ))
         except Exception as e:
             print("Failed to set up driver:", e)
             return
+
+    def on_driver_changed(self, sender, driver):
+        self.update_state()
 
     def on_connection_status_changed(self, sender):
         self.update_state()
