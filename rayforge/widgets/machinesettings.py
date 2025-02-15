@@ -304,7 +304,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         """Add a new Laser to the machine."""
         new_head = Laser()
         self.machine.add_head(new_head)
-        row = Adw.ActionRow(title=f"Laser (Max Power: {new_head.max_power} W)")
+        row = Adw.ActionRow(title=f"Laser (Max Power: {new_head.max_power})")
         row.set_margin_top(5)
         row.set_margin_bottom(5)
         self.laserhead_list.append(row)
