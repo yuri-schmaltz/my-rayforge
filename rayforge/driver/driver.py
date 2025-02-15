@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from blinker import Signal
 from gi.repository import GLib
-from ..transport import Status
+from ..transport import TransportStatus
 from ..asyncloop import run_async
 from ..models.ops import Ops
 from ..models.machine import Machine
@@ -114,7 +114,7 @@ class Driver(ABC):
 
     def _on_command_status_changed(self,
                                    sender,
-                                   status: Status,
+                                   status: TransportStatus,
                                    message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.command_status_changed_safe.send,
@@ -125,7 +125,7 @@ class Driver(ABC):
 
     def _on_connection_status_changed(self,
                                       sender,
-                                      status: Status,
+                                      status: TransportStatus,
                                       message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
             self.connection_status_changed_safe.send,

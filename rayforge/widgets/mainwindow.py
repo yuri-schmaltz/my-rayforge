@@ -12,7 +12,7 @@ from ..opsencoder.gcode import GcodeEncoder
 from ..render import renderers, renderer_by_mime_type
 from .workbench import WorkBench
 from .workplanview import WorkPlanView
-from .connectionstatus import ConnectionStatusMonitor, Status
+from .connectionstatus import ConnectionStatusMonitor, TransportStatus
 from .machineview import MachineView
 from .machinesettings import MachineSettingsDialog
 
@@ -226,7 +226,7 @@ class MainWindow(Adw.ApplicationWindow):
         if driver_mgr.driver.__class__ is NoDeviceDriver:
             text = "Send to machine (select driver to enable)"
             sensitive = False
-        elif self.connection_status.get_status() != Status.CONNECTED:
+        elif self.connection_status.get_status() != TransportStatus.CONNECTED:
             text = "Send to machine (connect to enable)"
             sensitive = False
         else:

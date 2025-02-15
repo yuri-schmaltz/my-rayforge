@@ -1,7 +1,7 @@
 import asyncio
 import serial_asyncio
 from typing import Optional
-from .transport import Transport, Status
+from .transport import Transport, TransportStatus
 
 
 class SerialTransport(Transport):
@@ -28,26 +28,26 @@ class SerialTransport(Transport):
         """
         Open serial connection and start reading.
         """
-        self.status_changed.send(self, status=Status.CONNECTING)
+        self.status_changed.send(self, status=TransportStatus.CONNECTING)
         result = await serial_asyncio.open_serial_connection(
             url=self.port, baudrate=self.baudrate
         )
         self._reader, self._writer = result
         self._running = True
-        self.status_changed.send(self, status=Status.CONNECTED)
+        self.status_changed.send(self, status=TransportStatus.CONNECTED)
         asyncio.create_task(self._receive_loop())
-        self.status_changed.send(self, status=Status.IDLE)
+        self.status_changed.send(self, status=TransportStatus.IDLE)
 
     async def disconnect(self) -> None:
         """
         Close serial connection.
         """
-        self.status_changed.send(self, status=Status.CLOSING)
+        self.status_changed.send(self, status=TransportStatus.CLOSING)
         self._running = False
         if self._writer:
             self._writer.close()
             await self._writer.wait_closed()
-        self.status_changed.send(self, status=Status.DISCONNECTED)
+        self.status_changed.send(self, status=TransportStatus.DISCONNECTED)
 
     async def send(self, data: bytes) -> None:
         """
@@ -69,6 +69,6 @@ class SerialTransport(Transport):
                     self.received.send(self, data=data)
             except Exception as e:
                 self.status_changed.send(self,
-                                         status=Status.ERROR,
+                                         status=TransportStatus.ERROR,
                                          message=str(e))
                 break

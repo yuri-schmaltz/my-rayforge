@@ -2,7 +2,7 @@ import re
 import asyncio
 import aiohttp
 from typing import Optional
-from ..transport import HttpTransport, WebSocketTransport, Status
+from ..transport import HttpTransport, WebSocketTransport, TransportStatus
 from ..opsencoder.gcode import GcodeEncoder
 from ..models.ops import Ops
 from ..models.machine import Machine
@@ -129,7 +129,7 @@ class ICubeDriver(Driver):
     async def connect(self):
         self.keep_running = True
         while self.keep_running:
-            self.connection_status_changed.send(self, status=Status.CONNECTING)
+            self.connection_status_changed.send(self, status=TransportStatus.CONNECTING)
             try:
                 hw_info = await self._get_hardware_info()
                 self.log_received.send(self, message=hw_info)
@@ -140,7 +140,7 @@ class ICubeDriver(Driver):
             except Exception as e:
                 self.connection_status_changed.send(
                     self,
-                    status=Status.ERROR,
+                    status=TransportStatus.ERROR,
                     message=str(e)
                 )
 
@@ -157,7 +157,7 @@ class ICubeDriver(Driver):
         except Exception as e:
             self.connection_status_changed.send(
                 self,
-                status=Status.ERROR,
+                status=TransportStatus.ERROR,
                 message=str(e)
             )
             raise
@@ -171,7 +171,7 @@ class ICubeDriver(Driver):
 
     def on_http_status_changed(self,
                                sender,
-                               status: Status,
+                               status: TransportStatus,
                                message: Optional[str] = None):
         self.command_status_changed.send(self,
                                          status=status,
@@ -225,7 +225,7 @@ class ICubeDriver(Driver):
 
     def on_websocket_status_changed(self,
                                     sender,
-                                    status: Status,
+                                    status: TransportStatus,
                                     message: Optional[str] = None):
         self.connection_status_changed.send(self,
                                             status=status,

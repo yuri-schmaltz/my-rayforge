@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 from gi.repository import Gtk, Adw
-from ..driver.driver import driver_mgr, Status
+from ..driver.driver import driver_mgr, TransportStatus
 
 
 css = """
@@ -83,7 +83,7 @@ class MachineView(Adw.Dialog):
 
     def on_command_status_changed(self,
                                   sender,
-                                  status: Status,
+                                  status: TransportStatus,
                                   message: Optional[str] = None):
         self.append_to_terminal(
             f"Command status changed to {status} with message: {message}"
@@ -92,8 +92,8 @@ class MachineView(Adw.Dialog):
     def on_connection_status_changed(self,
                                      sender,
                                      status:
-                                     Status,
+                                     TransportStatus,
                                      message: Optional[str] = None):
         self.append_to_terminal(
-            f"Status changed to {status} with message: {message}"
+            f"Connection status changed to {status} with message: {message}"
         )

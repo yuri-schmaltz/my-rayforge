@@ -1,7 +1,7 @@
 import asyncio
 from typing import Optional
 import aiohttp
-from .transport import Transport, Status
+from .transport import Transport, TransportStatus
 
 
 class HttpTransport(Transport):
@@ -65,15 +65,24 @@ class HttpTransport(Transport):
         """
         while self._running:
             try:
-                self.status_changed.send(self, status=Status.CONNECTING)
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.CONNECTING
+                )
                 self.session = aiohttp.ClientSession()
-                self.status_changed.send(self, status=Status.CONNECTED)
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.CONNECTED
+                )
                 await self._receive_loop()
             except aiohttp.ClientError as e:
                 await self._handle_error(e)
             finally:
                 await self._safe_close_session()
-                self.status_changed.send(self, status=Status.DISCONNECTED)
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.DISCONNECTED
+                )
 
             if self._running:
                 await asyncio.sleep(self._reconnect_interval)
@@ -103,9 +112,11 @@ class HttpTransport(Transport):
         Log errors and update connection status.
         """
         if self._running:
-            self.status_changed.send(self,
-                                     status=Status.ERROR,
-                                     message=str(error))
+            self.status_changed.send(
+                self,
+                status=TransportStatus.ERROR,
+                message=str(error)
+            )
 
     async def _safe_close_session(self) -> None:
         """
@@ -115,6 +126,8 @@ class HttpTransport(Transport):
             if self.session and not self.session.closed:
                 await self.session.close()
         except Exception as e:
-            self.status_changed.send(self,
-                                     status=Status.ERROR,
-                                     message=str(e))
+            self.status_changed.send(
+                self,
+                status=TransportStatus.ERROR,
+                message=str(e)
+            )

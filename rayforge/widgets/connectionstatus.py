@@ -1,7 +1,7 @@
 from gi.repository import Gtk
 from typing import Optional
 from blinker import Signal
-from ..driver.driver import driver_mgr, Status
+from ..driver.driver import driver_mgr, TransportStatus
 
 
 class ConnectionStatusIconWidget(Gtk.Box):
@@ -13,7 +13,7 @@ class ConnectionStatusIconWidget(Gtk.Box):
         self.append(self.status_image)
 
         # Set the initial status
-        self.set_status(Status.DISCONNECTED)
+        self.set_status(TransportStatus.DISCONNECTED)
 
     def set_status(self, status):
         """Update the status icon based on the given status."""
@@ -22,28 +22,28 @@ class ConnectionStatusIconWidget(Gtk.Box):
 
     def _get_icon_name_for_status(self, status):
         """Map the status to an appropriate icon name."""
-        if status == Status.UNKNOWN:
+        if status == TransportStatus.UNKNOWN:
             return "network-error-symbolic"
-        elif status == Status.IDLE:
+        elif status == TransportStatus.IDLE:
             return "network-idle-symbolic"
-        elif status == Status.CONNECTING:
+        elif status == TransportStatus.CONNECTING:
             return "network-transmit-receive-symbolic"
-        elif status == Status.CONNECTED:
+        elif status == TransportStatus.CONNECTED:
             return "network-wired-symbolic"
-        elif status == Status.ERROR:
+        elif status == TransportStatus.ERROR:
             return "network-error-symbolic"
-        elif status == Status.CLOSING:
+        elif status == TransportStatus.CLOSING:
             return "network-offline-symbolic"
-        elif status == Status.DISCONNECTED:
+        elif status == TransportStatus.DISCONNECTED:
             return "network-offline-symbolic"
-        elif status == Status.SLEEPING:
+        elif status == TransportStatus.SLEEPING:
             return "network-offline-symbolic"
         else:
             return "network-offline-symbolic"  # Default icon
 
 
 class ConnectionStatusWidget(Gtk.Button):
-    def __init__(self, status=Status.UNKNOWN):
+    def __init__(self, status=TransportStatus.UNKNOWN):
         super().__init__()
         self.set_has_frame(False)
 
@@ -66,7 +66,7 @@ class ConnectionStatusWidget(Gtk.Button):
 class ConnectionStatusMonitor(ConnectionStatusWidget):
     def __init__(self):
         self.changed = Signal()
-        self.status = Status.UNKNOWN
+        self.status = TransportStatus.UNKNOWN
         super().__init__()
 
         driver_mgr.changed.connect(self.on_driver_changed)
@@ -87,7 +87,7 @@ class ConnectionStatusMonitor(ConnectionStatusWidget):
 
     def on_connection_status_changed(self,
                                      sender,
-                                     status: Status,
+                                     status: TransportStatus,
                                      message: Optional[str] = None):
         self.set_status(status)
 

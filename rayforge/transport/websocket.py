@@ -2,7 +2,7 @@ import asyncio
 import websockets
 from typing import Optional
 from websockets.exceptions import ConnectionClosed
-from .transport import Transport, Status
+from .transport import Transport, TransportStatus
 
 
 class WebSocketTransport(Transport):
@@ -31,7 +31,10 @@ class WebSocketTransport(Transport):
 
         while self._running:
             try:
-                self.status_changed.send(self, status=Status.CONNECTING)
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.CONNECTING
+                )
                 self._websocket = await websockets.connect(
                     self.uri,
                     origin=self._origin,
@@ -40,27 +43,38 @@ class WebSocketTransport(Transport):
                         ('Upgrade', 'websocket'),
                     )
                 )
-                self.status_changed.send(self, status=Status.CONNECTED)
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.CONNECTED
+                )
                 self._receive_task = asyncio.create_task(self._receive_loop())
                 await self._receive_task
-                self.status_changed.send(self, status=Status.IDLE)
+                self.status_changed.send(self, status=TransportStatus.IDLE)
             except (asyncio.CancelledError, ConnectionClosed):
                 pass
             except Exception as e:
-                self.status_changed.send(self,
-                                         status=Status.ERROR,
-                                         message=str(e))
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.ERROR,
+                    message=str(e)
+                )
             finally:
                 await self._safe_close()
                 if self._running:
-                    self.status_changed.send(self, status=Status.SLEEPING)
+                    self.status_changed.send(
+                        self,
+                        status=TransportStatus.SLEEPING
+                    )
                     await asyncio.sleep(self._reconnect_interval)
 
     async def disconnect(self) -> None:
         """
         Terminate connection immediately.
         """
-        self.status_changed.send(self, status=Status.CLOSING)
+        self.status_changed.send(
+            self,
+            status=TransportStatus.CLOSING
+        )
         async with self._lock:
             if not self._running:
                 return
@@ -68,7 +82,10 @@ class WebSocketTransport(Transport):
             if self._receive_task:
                 self._receive_task.cancel()
             await self._safe_close()
-        self.status_changed.send(self, status=Status.DISCONNECTED)
+        self.status_changed.send(
+            self,
+            status=TransportStatus.DISCONNECTED
+        )
 
     async def send(self, data: bytes) -> None:
         """
@@ -92,9 +109,11 @@ class WebSocketTransport(Transport):
         except ConnectionClosed:
             pass
         except Exception as e:
-            self.status_changed.send(self,
-                                     status=Status.ERROR,
-                                     message=str(e))
+            self.status_changed.send(
+                self,
+                status=TransportStatus.ERROR,
+                message=str(e)
+            )
 
     async def _safe_close(self) -> None:
         """
@@ -104,9 +123,11 @@ class WebSocketTransport(Transport):
             try:
                 await self._websocket.close()
             except Exception as e:
-                self.status_changed.send(self,
-                                         status=Status.ERROR,
-                                         message=str(e))
+                self.status_changed.send(
+                    self,
+                    status=TransportStatus.ERROR,
+                    message=str(e)
+                )
             finally:
                 self._websocket = None
 
@@ -114,8 +135,14 @@ class WebSocketTransport(Transport):
         """
         Handle unexpected disconnection.
         """
-        self.status_changed.send(self, status=Status.CLOSING)
+        self.status_changed.send(
+            self,
+            status=TransportStatus.CLOSING
+        )
         async with self._lock:
             if self._running:
                 await self._safe_close()
-        self.status_changed.send(self, status=Status.DISCONNECTED)
+        self.status_changed.send(
+            self,
+            status=TransportStatus.DISCONNECTED
+        )

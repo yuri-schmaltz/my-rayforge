@@ -32,7 +32,7 @@ build-backend = "setuptools.build_meta"
 include-package-data = true
 
 [tool.setuptools.packages.find]
-include = ["rayforge"]
+include = ["rayforge*"]
 
 [tool.setuptools-git-versioning]
 enabled = true

@@ -3,7 +3,7 @@ from enum import Enum, auto
 from blinker import Signal
 
 
-class Status(Enum):
+class TransportStatus(Enum):
     UNKNOWN = auto()
     IDLE = auto()
     CONNECTING = auto()
