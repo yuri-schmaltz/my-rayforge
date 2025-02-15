@@ -32,6 +32,7 @@ class ICubeDriver(Driver):
         self.http = None
         self.websocket = None
         self.keep_running = False
+        self._connection_task: Optional[asyncio.Task] = None
 
     def setup(self, host: str):
         assert not self.did_setup
@@ -54,17 +55,19 @@ class ICubeDriver(Driver):
         self.websocket.status_changed.connect(self.on_websocket_status_changed)
 
     async def cleanup(self):
-        if self.http:
-            await self.http.disconnect()
-            self.http.received.disconnect(self.on_http_data_recei)
-            self.http.status_changed.disconnect(self.on_http_status_changed)
-            del self.http
+        self.keep_running = False
+        if self._connection_task:
+            self._connection_task.cancel()
         if self.websocket:
             await self.websocket.disconnect()
             self.websocket.received.disconnect(self.on_websocket_data_received)
             self.websocket.status_changed.disconnect(self.on_websocket_status_changed)
             del self.websocket
-        self.keep_running = False
+        if self.http:
+            await self.http.disconnect()
+            self.http.received.disconnect(self.on_http_data_received)
+            self.http.status_changed.disconnect(self.on_http_status_changed)
+            del self.http
         await super().cleanup()
 
     async def _get_hardware_info(self):
@@ -73,7 +76,6 @@ class ICubeDriver(Driver):
                 f"{self.http_base}{hw_info_url}"
             ) as response:
                 data = await response.text()
-        await session.close()
         return data
 
     async def _get_firmware_info(self):
@@ -82,7 +84,6 @@ class ICubeDriver(Driver):
                 f"{self.http_base}{fw_info_url}"
             ) as response:
                 data = await response.text()
-        await session.close()
         return data
 
     async def _get_eeprom_info(self):
@@ -91,7 +92,6 @@ class ICubeDriver(Driver):
                 f"{self.http_base}{eeprom_info_url}"
             ) as response:
                 data = await response.text()
-        await session.close()
         return data
 
     async def _send_gcode_command(self, command):
@@ -101,7 +101,6 @@ class ICubeDriver(Driver):
                 f"{self.http_base}{url}"
             ) as response:
                 data = await response.text()
-        await session.close()
         return data
 
     async def _upload(self, gcode, filename):
@@ -115,7 +114,6 @@ class ICubeDriver(Driver):
                 data=form
             ) as response:
                 data = await response.text()
-        await session.close()
         return data
 
     async def _execute(self, filename):
@@ -128,24 +126,32 @@ class ICubeDriver(Driver):
 
     async def connect(self):
         self.keep_running = True
+        self._connection_task = asyncio.create_task(self._connection_loop())
+
+    async def _connection_loop(self) -> None:
         while self.keep_running:
-            self.connection_status_changed.send(self, status=TransportStatus.CONNECTING)
+            self._on_connection_status_changed(TransportStatus.CONNECTING)
             try:
                 hw_info = await self._get_hardware_info()
-                self.log_received.send(self, message=hw_info)
+                self._log(hw_info)
                 fw_info = await self._get_firmware_info()
-                self.log_received.send(self, message=fw_info)
+                self._log(fw_info)
                 eeprom_info = await self._get_eeprom_info()
-                self.log_received.send(self, message=eeprom_info)
-            except Exception as e:
-                self.connection_status_changed.send(
-                    self,
-                    status=TransportStatus.ERROR,
-                    message=str(e)
-                )
+                self._log(eeprom_info)
 
-            await self.http.connect()
-            await self.websocket.connect()
+                async with asyncio.TaskGroup() as tg:
+                    http = tg.create_task(self.http.connect())
+                    socket = tg.create_task(self.websocket.connect())
+            except Exception as e:
+                self._on_connection_status_changed(
+                    TransportStatus.ERROR,
+                    str(e)
+                )
+            finally:
+                await self.websocket.disconnect()
+                await self.http.disconnect()
+
+            self._on_connection_status_changed(TransportStatus.SLEEPING)
             await asyncio.sleep(5)
 
     async def run(self, ops: Ops, machine: Machine) -> None:
@@ -155,10 +161,9 @@ class ICubeDriver(Driver):
             await self._upload(gcode, 'rayforge.gcode')
             await self._execute('rayforge.gcode')
         except Exception as e:
-            self.connection_status_changed.send(
-                self,
-                status=TransportStatus.ERROR,
-                message=str(e)
+            self._on_connection_status_changed(
+                TransportStatus.ERROR,
+                str(e)
             )
             raise
 
@@ -173,9 +178,7 @@ class ICubeDriver(Driver):
                                sender,
                                status: TransportStatus,
                                message: Optional[str] = None):
-        self.command_status_changed.send(self,
-                                         status=status,
-                                         message=message)
+        self._on_command_status_changed(status, message)
 
     def _parse_status(self, line):
         """
@@ -220,13 +223,11 @@ class ICubeDriver(Driver):
                 status = self._parse_status(line)
                 if status:
                     mpos, wpos, fs = status
-                    self.position_changed.send(self, position=mpos[:2])
-            self.log_received.send(self, message=line)
+                    self._on_position_changed(mpos[:2])
+            self._log(line)
 
     def on_websocket_status_changed(self,
                                     sender,
                                     status: TransportStatus,
                                     message: Optional[str] = None):
-        self.connection_status_changed.send(self,
-                                            status=status,
-                                            message=message)
+        self._on_connection_status_changed(status, message)

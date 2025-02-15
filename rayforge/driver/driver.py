@@ -42,22 +42,10 @@ class Driver(ABC):
     subtitle = None
 
     def __init__(self):
-        self.log_received = Signal()
-        self.position_changed = Signal()
-        self.command_status_changed = Signal()
-        self.connection_status_changed = Signal()
-
         self.log_received_safe = Signal()
         self.position_changed_safe = Signal()
         self.command_status_changed_safe = Signal()
         self.connection_status_changed_safe = Signal()
-
-        self.log_received.connect(self._on_log_received)
-        self.position_changed.connect(self._on_position_changed)
-        self.command_status_changed.connect(self._on_command_status_changed)
-        self.connection_status_changed.connect(
-            self._on_connection_status_changed
-        )
         self.did_setup = False
 
     def setup(self):
@@ -78,8 +66,8 @@ class Driver(ABC):
     @abstractmethod
     async def connect(self) -> None:
         """
-        Establishes the connection. Should never finish; on lost connection
-        it should continue trying.
+        Establishes the connection and maintains it. i.e. auto reconnect.
+        On errors or lost connection it should continue trying.
         """
         pass
 
@@ -98,22 +86,21 @@ class Driver(ABC):
         """
         pass
 
-    def _on_log_received(self, sender, message: str):
+    def _log(self, message: str):
         GLib.idle_add(lambda: _falsify(
             self.log_received_safe.send,
-            sender,
+            self,
             message=message
         ))
 
-    def _on_position_changed(self, sender, position: tuple[float, float]):
+    def _on_position_changed(self, position: tuple[float, float]):
         GLib.idle_add(lambda: _falsify(
             self.position_changed_safe.send,
-            sender,
+            self,
             position=position
         ))
 
     def _on_command_status_changed(self,
-                                   sender,
                                    status: TransportStatus,
                                    message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
@@ -124,7 +111,6 @@ class Driver(ABC):
         ))
 
     def _on_connection_status_changed(self,
-                                      sender,
                                       status: TransportStatus,
                                       message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
