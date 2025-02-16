@@ -8,7 +8,7 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
     def __init__(self, workstep, **kwargs):
         super().__init__(**kwargs)
         self.workstep = workstep
-        self.set_title(f"{workstep.name} settings")
+        self.set_title(f"{workstep.name} Settings")
 
         # Create a preferences page
         page = Adw.PreferencesPage()
