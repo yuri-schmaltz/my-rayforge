@@ -246,8 +246,8 @@ class ICubeDriver(Driver):
     def on_websocket_data_received(self, sender, data: bytes):
         data = data.decode('utf-8')
         for line in data.splitlines():
+            self._log(line)
             if not line.startswith('<') or not line.endswith('>'):
-                self._log(line)
                 continue
             state = self._parse_state(line[1:-1])
             if state != self.state:

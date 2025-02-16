@@ -78,10 +78,10 @@ class ConnectionStatusMonitor(ConnectionStatusWidget):
 
         # The driver may be new, or it may just have been reconfigured.
         # So we disconnect the signal in case it was already connected.
-        driver.connection_status_changed_safe.disconnect(
+        driver.connection_status_changed.disconnect(
             self.on_connection_status_changed
         )
-        driver.connection_status_changed_safe.connect(
+        driver.connection_status_changed.connect(
             self.on_connection_status_changed
         )
 

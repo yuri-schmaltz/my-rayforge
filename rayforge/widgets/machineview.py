@@ -46,11 +46,11 @@ class MachineView(Adw.Dialog):
 
         # Listen to driver
         driver = driver_mgr.driver
-        driver.log_received_safe.connect(self.on_log_received)
-        driver.command_status_changed_safe.connect(
+        driver.log_received.connect(self.on_log_received)
+        driver.command_status_changed.connect(
             self.on_command_status_changed
         )
-        driver.connection_status_changed_safe.connect(
+        driver.connection_status_changed.connect(
             self.on_connection_status_changed
         )
 

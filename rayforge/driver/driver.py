@@ -70,10 +70,10 @@ class Driver(ABC):
     subtitle = None
 
     def __init__(self):
-        self.log_received_safe = Signal()
-        self.state_changed_safe = Signal()
-        self.command_status_changed_safe = Signal()
-        self.connection_status_changed_safe = Signal()
+        self.log_received = Signal()
+        self.state_changed = Signal()
+        self.command_status_changed = Signal()
+        self.connection_status_changed = Signal()
         self.did_setup = False
         self.state = DeviceState()
 
@@ -117,7 +117,7 @@ class Driver(ABC):
 
     def _log(self, message: str):
         GLib.idle_add(lambda: _falsify(
-            self.log_received_safe.send,
+            self.log_received.send,
             self,
             message=message
         ))
@@ -125,7 +125,7 @@ class Driver(ABC):
     def _on_state_changed(self):
         print("New state", self.state)
         GLib.idle_add(lambda: _falsify(
-            self.state_changed_safe.send,
+            self.state_changed.send,
             self,
             state=self.state
         ))
@@ -134,7 +134,7 @@ class Driver(ABC):
                                    status: TransportStatus,
                                    message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
-            self.command_status_changed_safe.send,
+            self.command_status_changed.send,
             self,
             status=status,
             message=message
@@ -144,7 +144,7 @@ class Driver(ABC):
                                       status: TransportStatus,
                                       message: Optional[str] = None):
         GLib.idle_add(lambda: _falsify(
-            self.connection_status_changed_safe.send,
+            self.connection_status_changed.send,
             self,
             status=status,
             message=message
