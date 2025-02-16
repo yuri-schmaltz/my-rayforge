@@ -2,6 +2,7 @@
 import inspect
 from .renderer import Renderer
 from .dxf import DXFRenderer
+from .pdf import PDFRenderer
 from .png import PNGRenderer
 from .svg import SVGRenderer
 
