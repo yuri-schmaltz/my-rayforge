@@ -49,6 +49,7 @@ class Machine:
         self.name: str = 'Default Machine'
         self.driver: str = None
         self.driver_args: Dict[str, Any] = {}
+        self.home_on_start: bool = False
         self.preamble: List[str] = ["G21 ; Set units to mm",
                                     "G90 ; Absolute positioning"]
         self.postscript: List[str] = ["G0 X0 Y0 ; Return to origin"]
@@ -69,6 +70,10 @@ class Machine:
 
     def set_driver_args(self, args=None):
         self.driver_args = args or {}
+        self.changed.send(self)
+
+    def set_home_on_start(self, home_on_start: bool = True):
+        self.home_on_start = home_on_start
         self.changed.send(self)
 
     def set_preamble(self, preamble: List[str]):
@@ -124,6 +129,7 @@ class Machine:
                 "name": self.name,
                 "driver": self.driver,
                 "driver_args": self.driver_args,
+                "home_on_start": self.home_on_start,
                 "dimensions": list(self.dimensions),
                 "heads": [head.to_dict() for head in self.heads],
                 "speeds": {
@@ -146,6 +152,7 @@ class Machine:
         ma.name = ma_data.get("name", ma.name)
         ma.driver = ma_data.get("driver")
         ma.driver_args = ma_data.get("driver_args", {})
+        ma.home_on_start = ma_data.get("home_on_start", ma.home_on_start)
         ma.dimensions = tuple(ma_data.get("dimensions", ma.dimensions))
         ma.heads = []
         for obj in ma_data.get("heads", {}):

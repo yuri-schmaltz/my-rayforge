@@ -57,6 +57,15 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         machine_group = Adw.PreferencesGroup(title="Machine Settings")
         general_page.add(machine_group)
 
+        home_on_start_row = Adw.SwitchRow()
+        home_on_start_row.set_title("Home On Start")
+        home_on_start_row.set_subtitle(
+            "Whether Rayforce will send a homing command when it is started"
+        )
+        home_on_start_row.set_active(machine.home_on_start)
+        home_on_start_row.connect('notify::active', self.on_home_on_start_changed)
+        machine_group.add(home_on_start_row)
+
         # Max Travel Speed
         travel_speed_adjustment = Gtk.Adjustment(
             value=self.machine.max_travel_speed,
@@ -419,6 +428,9 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         """Update the air assist disable GCode when the value changes."""
         text = entry.get_text().strip()
         self.machine.set_air_assist_off(text if text else None)
+
+    def on_home_on_start_changed(self, row, _):
+        self.machine.set_home_on_start(row.get_active())
 
     def on_travel_speed_changed(self, spinrow):
         """Update the max travel speed when the value changes."""

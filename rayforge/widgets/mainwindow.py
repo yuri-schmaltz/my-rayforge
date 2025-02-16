@@ -230,10 +230,11 @@ class MainWindow(Adw.ApplicationWindow):
         gesture.connect("pressed", self.on_status_bar_clicked, status_bar)
         status_bar.add_controller(gesture)
 
-        # Set of driver and config signals.
+        # Set up driver and config signals.
         self._try_driver_setup()
         config.changed.connect(self.on_config_changed)
         driver_mgr.changed.connect(self.on_driver_changed)
+        self.needs_homing = config.machine.home_on_start
 
     def _try_driver_setup(self):
         # Reconfigure, because params may have changed.
@@ -251,6 +252,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_state()
 
     def on_machine_status_changed(self, sender):
+        # If the machine is idle for the first time, perform auto-homing
+        # if requested.
+        if self.needs_homing:
+            device_status = self.machine_status.get_status()
+            if device_status == DeviceStatus.IDLE:
+                self.needs_homing = False
+                run_async(driver_mgr.driver.home())
+
         self.update_state()
 
     def on_connection_status_changed(self, sender):
