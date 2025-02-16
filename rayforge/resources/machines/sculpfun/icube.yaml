@@ -1,7 +1,0 @@
-brand: Sculpfun
-model: iCube
-driver: ICubeDriver
-width: 130
-height: 130
-travel_speed: 3000
-home_on_start: true
