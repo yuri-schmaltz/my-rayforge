@@ -123,6 +123,13 @@ class Driver(ABC):
         pass
 
     @abstractmethod
+    async def home(self) -> None:
+        """
+        Sends a command to home machine.
+        """
+        pass
+
+    @abstractmethod
     async def move_to(self, pos_x: float, pos_y: float) -> None:
         """
         Moves to the given position. Values are given mm.

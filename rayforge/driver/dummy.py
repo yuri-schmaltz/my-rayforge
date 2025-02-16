@@ -21,5 +21,8 @@ class NoDeviceDriver(Driver):
     async def cancel(self) -> None:
         pass
 
+    async def home(self) -> None:
+        pass
+
     async def move_to(self, pos_x, pos_y) -> None:
         pass

@@ -41,14 +41,6 @@ class MainWindow(Adw.ApplicationWindow):
         super().__init__(**kwargs)
         self.set_title("Rayforge")
 
-        css_provider = Gtk.CssProvider()
-        css_provider.load_from_data(css, -1)
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
-
         # Get the primary monitor size
         display = Gdk.Display.get_default()
         monitor = display.get_primary_monitor()
@@ -130,6 +122,12 @@ class MainWindow(Adw.ApplicationWindow):
         # Control buttons: home, send, pause, stop
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         toolbar.append(sep)
+
+        self.home_button = Gtk.Button()
+        self.home_button.set_child(get_icon('home'))
+        self.home_button.set_tooltip_text("Home the machine")
+        self.home_button.connect("clicked", self.on_home_clicked)
+        toolbar.append(self.home_button)
 
         self.send_button = Gtk.Button()
         self.send_button.set_child(get_icon('send'))
@@ -267,9 +265,11 @@ class MainWindow(Adw.ApplicationWindow):
 
     def update_state(self):
         self.workbench.update(self.doc)
+        device_status = self.machine_status.get_status()
 
         # Update button states
         self.export_button.set_sensitive(self.doc.has_workpiece())
+        self.home_button.set_sensitive(device_status == DeviceStatus.IDLE)
 
         # Send button
         if driver_mgr.driver.__class__ is NoDeviceDriver:
@@ -285,7 +285,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.send_button.set_tooltip_text(text)
 
         # Pause button
-        device_status = self.machine_status.get_status()
         sensitive = device_status in (DeviceStatus.RUN, DeviceStatus.HOLD)
         self.hold_button.set_sensitive(sensitive)
         self.hold_button.set_active(device_status == DeviceStatus.HOLD)
@@ -362,6 +361,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Show the dialog and handle the response
         dialog.save(self, None, self.on_save_dialog_response)
+
+    def on_home_clicked(self, button):
+        run_async(driver_mgr.driver.home())
 
     def on_send_clicked(self, button):
         path = self.doc.workplan.get_result()
