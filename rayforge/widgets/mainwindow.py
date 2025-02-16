@@ -63,6 +63,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Create a menu
         menu_button = Gtk.MenuButton()
+        menu_button.set_icon_name("open-menu-symbolic")
         menu_model = Gio.Menu()
         menu_model.append("About", "win.about")
         menu_model.append("Preferences", "win.settings")
