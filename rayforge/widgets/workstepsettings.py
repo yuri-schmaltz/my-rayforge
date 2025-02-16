@@ -8,13 +8,14 @@ class WorkStepSettingsDialog(Adw.PreferencesDialog):
     def __init__(self, workstep, **kwargs):
         super().__init__(**kwargs)
         self.workstep = workstep
+        self.set_title(f"{workstep.name} settings")
 
         # Create a preferences page
         page = Adw.PreferencesPage()
         self.add(page)
 
         # Create a preferences group
-        group = Adw.PreferencesGroup(title="Workstep Settings")
+        group = Adw.PreferencesGroup()
         page.add(group)
 
         # Add a spin row for cut speed
