@@ -142,8 +142,14 @@ class MainWindow(Adw.ApplicationWindow):
         self.hold_button = Gtk.ToggleButton()
         self.hold_button.set_child(self.hold_off_icon)
         self.hold_button.set_tooltip_text("Pause machine")
-        self.hold_button.connect("clicked", self.on_pause_clicked)
+        self.hold_button.connect("clicked", self.on_hold_clicked)
         toolbar.append(self.hold_button)
+
+        self.cancel_button = Gtk.Button()
+        self.cancel_button.set_child(get_icon('stop'))
+        self.cancel_button.set_tooltip_text("Cancel running job")
+        self.cancel_button.connect("clicked", self.on_cancel_clicked)
+        toolbar.append(self.cancel_button)
 
         # Create the Paned splitting the window into left and right sections.
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -262,9 +268,10 @@ class MainWindow(Adw.ApplicationWindow):
     def update_state(self):
         self.workbench.update(self.doc)
 
-        # Update button states.
+        # Update button states
         self.export_button.set_sensitive(self.doc.has_workpiece())
 
+        # Send button
         if driver_mgr.driver.__class__ is NoDeviceDriver:
             text = "Send to machine (select driver to enable)"
             sensitive = False
@@ -277,10 +284,20 @@ class MainWindow(Adw.ApplicationWindow):
         self.send_button.set_sensitive(sensitive)
         self.send_button.set_tooltip_text(text)
 
+        # Pause button
         device_status = self.machine_status.get_status()
         sensitive = device_status in (DeviceStatus.RUN, DeviceStatus.HOLD)
         self.hold_button.set_sensitive(sensitive)
         self.hold_button.set_active(device_status == DeviceStatus.HOLD)
+
+        # Cancel button
+        sensitive = device_status in (
+            DeviceStatus.RUN,
+            DeviceStatus.HOLD,
+            DeviceStatus.JOG,
+            DeviceStatus.CYCLE,
+        )
+        self.cancel_button.set_sensitive(sensitive)
 
     def on_status_bar_clicked(self, gesture, n_press, x, y, box):
         dialog = MachineView()
@@ -321,20 +338,8 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             button.set_child(self.visibility_off_icon)
 
-    def on_pause_clicked(self, button):
-        if button.get_active():
-            run_async(driver_mgr.driver.set_hold())
-            button.set_child(self.hold_on_icon)
-        else:
-            run_async(driver_mgr.driver.set_hold(False))
-            button.set_child(self.hold_off_icon)
-
     def on_clear_clicked(self, button):
         self.workbench.clear()
-
-    def on_send_clicked(self, button):
-        path = self.doc.workplan.get_result()
-        run_async(driver_mgr.driver.run(path, config.machine))
 
     def on_export_clicked(self, button):
         # Create a file chooser dialog for saving the file
@@ -357,6 +362,21 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Show the dialog and handle the response
         dialog.save(self, None, self.on_save_dialog_response)
+
+    def on_send_clicked(self, button):
+        path = self.doc.workplan.get_result()
+        run_async(driver_mgr.driver.run(path, config.machine))
+
+    def on_hold_clicked(self, button):
+        if button.get_active():
+            run_async(driver_mgr.driver.set_hold())
+            button.set_child(self.hold_on_icon)
+        else:
+            run_async(driver_mgr.driver.set_hold(False))
+            button.set_child(self.hold_off_icon)
+
+    def on_cancel_clicked(self, button):
+        run_async(driver_mgr.driver.cancel())
 
     def on_save_dialog_response(self, dialog, result):
         try:

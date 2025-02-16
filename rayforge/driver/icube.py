@@ -182,6 +182,9 @@ class ICubeDriver(Driver):
         else:
             await self._send_command('~')
 
+    async def cancel(self) -> None:
+        await self._send_command('%18')
+
     async def move_to(self, pos_x, pos_y) -> None:
         cmd = f"$J=G90 G21 F1500 X{float(pos_x)} Y{float(pos_y)}"
         await self._send_command(cmd)
