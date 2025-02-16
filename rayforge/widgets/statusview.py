@@ -3,6 +3,7 @@ from typing import Optional
 from blinker import Signal
 from ..transport.transport import TransportStatus
 from ..driver.driver import driver_mgr, DeviceState, DeviceStatus
+from ..driver.dummy import NoDeviceDriver
 from ..util.resources import get_icon
 
 
@@ -96,7 +97,7 @@ class MachineStatusIconWidget(Gtk.Box):
         elif status == DeviceStatus.TEST:
             return get_icon("test")
         else:
-            return get_icon("network-offline-symbolic")  # Default icon
+            return Gtk.Image.new_from_icon_name("network-offline-symbolic")
 
 
 class StatusWidget(Gtk.Box):
@@ -113,7 +114,10 @@ class StatusWidget(Gtk.Box):
 
     def set_status(self, status):
         self.icon.set_status(status)
-        self.label.set_label(status.name)
+        if status is None:
+            self.label.set_label("No driver selected")
+        else:
+            self.label.set_label(status.name)
 
 
 class ConnectionStatusMonitor(StatusWidget):
@@ -126,6 +130,8 @@ class ConnectionStatusMonitor(StatusWidget):
         self.on_driver_changed(driver_mgr, driver_mgr.driver)
 
     def on_driver_changed(self, manager, driver):
+        nodriver = driver is None or driver.__class__ == NoDeviceDriver
+        self.set_status(None if nodriver else DeviceStatus.UNKNOWN)
         if driver is None:
             return
 
@@ -139,10 +145,11 @@ class ConnectionStatusMonitor(StatusWidget):
         )
 
     def on_connection_status_changed(self,
-                                     sender,
+                                     driver,
                                      status: TransportStatus,
                                      message: Optional[str] = None):
-        self.set_status(status)
+        nodriver = driver_mgr.driver.__class__ == NoDeviceDriver
+        self.set_status(None if nodriver else status)
 
     def set_status(self, status):
         self.status = status
@@ -163,22 +170,21 @@ class MachineStatusMonitor(StatusWidget):
         self.on_driver_changed(self, driver_mgr.driver)  # trigger initial update
 
     def on_driver_changed(self, sender, driver):
+        nodriver = driver is None or driver.__class__ == NoDeviceDriver
+        self.set_status(None if nodriver else DeviceStatus.UNKNOWN)
         if driver is None:
             return
 
         # The driver may be new, or it may just have been reconfigured.
         # So we disconnect the signal in case it was already connected.
-        driver.state_changed.disconnect(
-            self.on_driver_state_changed
-        )
-        driver.state_changed.connect(
-            self.on_driver_state_changed
-        )
+        driver.state_changed.disconnect(self.on_driver_state_changed)
+        driver.state_changed.connect(self.on_driver_state_changed)
 
     def on_driver_state_changed(self,
-                                sender,
+                                driver,
                                 state: DeviceState):
-        self.set_status(state.status)
+        nodriver = driver_mgr.driver.__class__ == NoDeviceDriver
+        self.set_status(None if nodriver else status)
 
     def set_status(self, status):
         self.status = status
