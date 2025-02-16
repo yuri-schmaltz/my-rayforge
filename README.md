@@ -27,7 +27,7 @@ pip3 install rayforge
 | High quality path generation     | Interpolation based on spot size, path optimization     |
 | Multiple input formats           | SVG, DXF, and PNG import are supported                  |
 | Direct device support            | Easily [add support for your own laser](docs/driver.md) |
-| Much more                        | Air assist, device drivers                              |
+| Much more                        | Framing, support for air assist, control buttons, ...   |
 
 
 ## Development
