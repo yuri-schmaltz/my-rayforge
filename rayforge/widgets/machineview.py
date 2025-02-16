@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from gi.repository import Gtk, Adw
+from gi.repository import Gtk, Adw, GLib
 from ..driver.driver import driver_mgr, TransportStatus
 
 
@@ -70,9 +70,17 @@ class MachineView(Adw.Dialog):
         text_buffer = self.terminal.get_buffer()
         text_buffer.insert(text_buffer.get_end_iter(), formatted_message)
 
-        # Scroll to the end of the buffer
+        # Scroll to the end of the buffer. Gtk may not have calculated the
+        # text dimensions yet, so we queue this using idle_add. This ensures
+        # that the calculations are complete.
         textiter = text_buffer.get_end_iter()
-        self.terminal.scroll_to_iter(textiter, 0, False, 0, 0)
+        GLib.idle_add(self._scroll_to_bottom)
+
+    def _scroll_to_bottom(self):
+        text_buffer = self.terminal.get_buffer()
+        end_iter = text_buffer.get_end_iter()
+        self.terminal.scroll_to_iter(end_iter, 0.0, False, 0.0, 0.0)
+        return False  # Ensure this callback is only run once
 
     def on_log_received(self, sender, message=None):
         """
