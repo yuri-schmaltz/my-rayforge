@@ -73,12 +73,12 @@ class GrblDriver(Driver):
             await self.websocket.disconnect()
             self.websocket.received.disconnect(self.on_websocket_data_received)
             self.websocket.status_changed.disconnect(self.on_websocket_status_changed)
-            del self.websocket
+            self.websocket = None
         if self.http:
             await self.http.disconnect()
             self.http.received.disconnect(self.on_http_data_received)
             self.http.status_changed.disconnect(self.on_http_status_changed)
-            del self.http
+            self.http = None
         await super().cleanup()
 
     async def _get_hardware_info(self):
@@ -159,8 +159,10 @@ class GrblDriver(Driver):
                     str(e)
                 )
             finally:
-                await self.websocket.disconnect()
-                await self.http.disconnect()
+                if self.websocket:
+                    await self.websocket.disconnect()
+                if self.http:
+                    await self.http.disconnect()
 
             self._on_connection_status_changed(TransportStatus.SLEEPING)
             await asyncio.sleep(5)
