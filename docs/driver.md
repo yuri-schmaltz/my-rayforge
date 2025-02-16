@@ -10,12 +10,12 @@ A driver:
 - Translates generic Ops (machine instructions) into **specific machine commands**
   (e.g., Gcode).
 - **Emits signals** for UI integration, such as status changes, laser position
-  changes, or log messages.
+  updates, or log messages.
 - **Runs asynchronously** to avoid blocking the main thread.
 
-Rayforge tries to make driver implementation as easy as possible, by providing
-modules for most of the above functions. A typical driver uses `Transport` and
-`OpsEncoder` classes to provide the above features.
+Rayforge simplifies driver implementation by providing modules for most common
+tasks. A typical driver uses `Transport` and `OpsEncoder` classes to handle
+connectivity and command translation.
 
 ```mermaid
 graph TD;
@@ -23,11 +23,13 @@ graph TD;
     Driver-->OpsEncoder;
 ```
 
-The Transport classes maintain a stable connection to a device, while the Encoder
-translates the Rayforge-internal language to something device-specific.
+- Transport classes maintain stable connections to devices (with automatic
+  reconnection).
+- Encoders convert Rayforge's internal Ops language into device-specific
+  commands.
 
-For example, consider the GrblDriver. It communicates through HTTP and Websocket,
-so it uses two transports - both of which automatically reconnect as needed.
+For example, the GrblDriver uses HTTP and WebSocket transports alongside a
+G-code encoder:
 
 ```mermaid
 graph TD;
@@ -40,9 +42,7 @@ A driver should track the state of the device it is connected to. It does this
 by using the `DeviceStatus` and `DeviceState` classes:
 
 - `DeviceStatus` represents a status such as IDLE, RUN, or ALARM.
-- `DeviceState` encapsulates all state information, including the current
-  position of the tool, the current speed, the current status, and
-  all other states.
+- `DeviceState` Encapsulates full device state (position, speed, status, etc.).
 
 ```mermaid
 graph TD;
@@ -52,22 +52,23 @@ graph TD;
 
 ## OpsEncoder Overview
 
-The task of an OpsEncoder is to translate **Ops objects** into specific
-device commands. Ops objects are the Rayforge-internal "language" that
+An OpsEncoder translates **Ops objects** into device-specific
+commands. Ops objects are the Rayforge-internal "language" that
 describes what a machine should do.
 
-Rayforge already comes with a GcodeEncoder that translates Ops to a
-string containing G-code commands, so if your device is based on G-code,
-you do not have to write your own encoder.
+Rayforge includes a GcodeEncoder for G-code-compatible devices.
+For proprietary languages, implement a custom encoder first before
+developing the driver.
 
-Some vendors use a proprietary language instead of G-Code. For
-such devices I recommend that you first implementing an encoder. Only
-after the encoder is complete do you probably think about implementing
-a driver.
+The OpsEncoder has only one method with the following signature:
 
-The OpsEncoder has only one method: `OpsEncoder.encode(ops, machine)`.
-It is passed the machine for additional hints, so that it can respect
-machine settings that may affect the translation.
+```python
+def encode(ops: Ops, machine: Machine) -> str:
+```
+
+The Machine object is passed for additional hints, so that the
+encoder can respect any machine settings that may affect the
+translation.
 
 ```mermaid
 flowchart LR
@@ -88,11 +89,11 @@ represents a sequence of the following operations:
 
 | Method                    | Description                                |
 | ------------------------- | ------------------------------------------ |
-| `move_to(x, y)`           | Rapid movement to position (no cutting)    |
-| `line_to(x, y)`           | Cut/move to position                       |
+| `move_to(x, y)`           | Rapid movement (no cutting) (mm)           |
+| `line_to(x, y)`           | Cutting movement (mm)                      |
 | `set_power(value)`        | Laser power (0-100%)                       |
-| `set_cut_speed(value)`    | Cutting speed in mm/min                    |
-| `set_travel_speed(value)` | Rapid movement speed in mm/min             |
+| `set_cut_speed(value)`    | Cutting speed (mm/min)                     |
+| `set_travel_speed(value)` | Rapid movement speed (mm/min)              |
 | `enable_air_assist()`     | Turn on air assist                         |
 | `disable_air_assist()`    | Turn off air assist                        |
 
@@ -136,9 +137,23 @@ All drivers MUST provide the following methods:
       method ist defined as `setup(self, hostname: str)`, then
       Rayforge will use the type hint to offer the user a UI
       for entering a hostname.
+      **Only `str`, `int`, and `bool` types are supported.**
 
     o `setup()` is invoked after the user has configured the
        driver in the UI.
+
+  Example:
+    ```python
+    def setup(self, ip_address: str, port: int = 8080, enable_debug: bool = False):
+        """
+        Parameters:
+          - ip_address: Device IP (e.g., "192.168.1.100")
+          - port: HTTP port (default: 8080)
+          - enable_debug: Log extra details (default: False)
+        """
+        super().setup()
+        # Initialize your hardware connection here
+    ```
 
 - `cleanup()`: Closes all connections and frees resources.
 - `connect()`: Opens and maintains a persistent connection until cleanup()
@@ -150,23 +165,6 @@ All drivers MUST provide the following methods:
 - `cancel()`: Cancels the running program.
 - `move_to(x: float, y: float)`: Move the laser to the given position.
    Positions are passed in millimeters.
-
-Example for a `setup()`method:
-
-```python
-def setup(self, ip_address: str, port: int = 8080, enable_debug: bool = False):
-    """
-    Parameters:
-      - ip_address: Device IP (e.g., "192.168.1.100")
-      - port: HTTP port (default: 8080)
-      - enable_debug: Log extra details (default: False)
-    """
-    super().setup()
-    # Initialize your hardware connection here
-```
-
-The `setup()` method defines configuration fields that users will see in
-the UI. **Only `str`, `int`, and `bool` types are supported.**
 
 ### Properties
 
@@ -192,7 +190,7 @@ wrapper methods of the Driver for these methods, such as:
 - `Driver._on_command_status_changed()`
 - `Driver._on_connection_status_changed()`
 
-This is to ensure that the signals are sent in a GLib-safe manner.
+This ensures that the signals are sent in a GLib-safe manner.
 
 
 ## State Management
