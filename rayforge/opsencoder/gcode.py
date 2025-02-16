@@ -26,7 +26,11 @@ class GcodeEncoder(OpsEncoder):
             case ('set_power', power):
                 self._update_power(gcode, power, machine)
             case ('set_cut_speed', speed):
-                self.cut_speed = min(speed, machine.max_cut_speed)
+                # We limit to max travel speed, not max cut speed, to
+                # allow framing operations to go faster. Cut limits should
+                # should be kept by ensuring an Ops object is created
+                # with limits in mind.
+                self.cut_speed = min(speed, machine.max_travel_speed)
             case ('set_travel_speed', speed):
                 self.travel_speed = min(speed, machine.max_travel_speed)
             case 'enable_air_assist':
@@ -58,12 +62,18 @@ class GcodeEncoder(OpsEncoder):
     def _handle_move(self, gcode: list, x: float, y: float):
         """Rapid movement with laser safety"""
         self._laser_off(gcode)
-        gcode.append(f"G0 X{x:.3f} Y{y:.3f} F{self.travel_speed}")
+        cmd = f"G0 X{x:.3f} Y{y:.3f}"
+        if self.travel_speed:
+            cmd += f" F{self.travel_speed}"
+        gcode.append(cmd)
 
     def _handle_cut(self, gcode: list, x: float, y: float):
         """Cutting movement with laser activation"""
         self._laser_on(gcode)
-        gcode.append(f"G1 X{x:.3f} Y{y:.3f} F{self.cut_speed}")
+        cmd = f"G1 X{x:.3f} Y{y:.3f}"
+        if self.cut_speed:
+            cmd += f" F{self.cut_speed}"
+        gcode.append(cmd)
 
     def _laser_on(self, gcode: list):
         """Activate laser if not already on"""

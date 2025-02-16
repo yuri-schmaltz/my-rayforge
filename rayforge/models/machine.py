@@ -11,11 +11,16 @@ logger = logging.getLogger(__name__)
 class Laser:
     def __init__(self):
         self.max_power: int = 1000  # Max power (0-1000 for GRBL)
+        self.frame_power: int = 0  # 0 = framing not supported
         self.spot_size_mm: tuple[float, float] = 0.1, 0.1  # millimeters
         self.changed = Signal()
 
     def set_max_power(self, power):
         self.max_power = power
+        self.changed.send(self)
+
+    def set_frame_power(self, power):
+        self.frame_power = power
         self.changed.send(self)
 
     def set_spot_size(self, spot_size_x_mm, spot_size_y_mm):
@@ -25,6 +30,7 @@ class Laser:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "max_power": self.max_power,
+            "frame_power": self.frame_power,
             "spot_size_mm": self.spot_size_mm,
         }
 
@@ -32,6 +38,7 @@ class Laser:
     def from_dict(cls, data: Dict[str, Any]) -> 'Laser':
         lh = cls()
         lh.max_power = data.get("max_power", lh.max_power)
+        lh.frame_power = data.get("frame_power", lh.frame_power)
         lh.spot_size_mm = data.get("spot_size_mm", lh.spot_size_mm)
         return lh
 
@@ -94,8 +101,22 @@ class Machine:
 
     def add_head(self, head: Laser):
         self.heads.append(head)
-        head.changed.connect(lambda s: self.changed.send(self))
+        head.changed.connect(self._on_head_changed)
         self.changed.send(self)
+
+    def remove_head(self, head: Laser):
+        head.changed.disconnect(self._on_head_changed)
+        self.heads.remove(head)
+        self.changed.send(self)
+
+    def _on_head_changed(self, head, *args):
+        self.changed.send(self)
+
+    def can_frame(self):
+        for head in self.heads:
+            if head.frame_power:
+                return True
+        return False
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -126,7 +147,9 @@ class Machine:
         ma.driver = ma_data.get("driver")
         ma.driver_args = ma_data.get("driver_args", {})
         ma.dimensions = tuple(ma_data.get("dimensions", ma.dimensions))
-        ma.heads = [Laser.from_dict(o) for o in ma_data.get("heads", {})]
+        ma.heads = []
+        for obj in ma_data.get("heads", {}):
+            ma.add_head(Laser.from_dict(obj))
         speeds = ma_data.get("speeds", {})
         ma.max_cut_speed = speeds.get("max_cut_speed", ma.max_cut_speed)
         ma.max_travel_speed = speeds.get("max_travel_speed",

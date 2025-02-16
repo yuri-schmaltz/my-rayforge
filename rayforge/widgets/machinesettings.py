@@ -218,6 +218,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             title="Laser Configuration"
         )
         laserhead_page.add(self.laserhead_config_group)
+
         max_power_adjustment = Gtk.Adjustment(
             value=0,
             lower=0,
@@ -233,7 +234,22 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         self.max_power_row.connect("changed", self.on_max_power_changed)
         self.laserhead_config_group.add(self.max_power_row)
 
-        spot_size_adjustment = Gtk.Adjustment(
+        frame_power_adjustment = Gtk.Adjustment(
+            value=0,
+            lower=0,
+            upper=100,
+            step_increment=1,
+            page_increment=10
+        )
+        self.frame_power_row = Adw.SpinRow(
+            title="Frame Power",
+            subtitle="Power value in Gcode to use when framing. 0 to disable",
+            adjustment=frame_power_adjustment
+        )
+        self.frame_power_row.connect("changed", self.on_frame_power_changed)
+        self.laserhead_config_group.add(self.frame_power_row)
+
+        spot_size_x_adjustment = Gtk.Adjustment(
             value=0.1,
             lower=0.01,
             upper=0.2,
@@ -244,16 +260,23 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             title="Spot Size X",
             subtitle="Size of the laser spot in the X direction",
             digits=3,
-            adjustment=spot_size_adjustment
+            adjustment=spot_size_x_adjustment
         )
         self.spot_size_x_row.connect("changed", self.on_spot_size_changed)
         self.laserhead_config_group.add(self.spot_size_x_row)
 
+        spot_size_y_adjustment = Gtk.Adjustment(
+            value=0.1,
+            lower=0.01,
+            upper=0.2,
+            step_increment=0.01,
+            page_increment=0.05
+        )
         self.spot_size_y_row = Adw.SpinRow(
             title="Spot Size Y",
             subtitle="Size of the laser spot in the Y direction",
             digits=3,
-            adjustment=spot_size_adjustment
+            adjustment=spot_size_y_adjustment
         )
         self.spot_size_y_row.connect("changed", self.on_spot_size_changed)
         self.laserhead_config_group.add(self.spot_size_y_row)
@@ -315,7 +338,8 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         selected_row = self.laserhead_list.get_selected_row()
         if selected_row:
             index = selected_row.get_index()
-            self.machine.heads.pop(index)
+            head = self.machine.heads[index]
+            self.machine.remove_head(head)
             self.laserhead_list.remove(selected_row)
 
     def on_laserhead_selected(self, listbox, row):
@@ -324,6 +348,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             index = row.get_index()
             selected_head = self.machine.heads[index]
             self.max_power_row.set_value(selected_head.max_power)
+            self.frame_power_row.set_value(selected_head.frame_power)
+            spot_x, spot_y = selected_head.spot_size_mm
+            self.spot_size_x_row.set_value(spot_x)
+            self.spot_size_y_row.set_value(spot_y)
 
     def _get_selected_laser(self):
         selected_row = self.laserhead_list.get_selected_row()
@@ -340,6 +368,14 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         selected_laser.set_max_power(get_spinrow_int(spinrow))
         self.update_laserhead_list()
 
+    def on_frame_power_changed(self, spinrow):
+        """Update the max power of the selected Laser."""
+        selected_laser = self._get_selected_laser()
+        if not selected_laser:
+            return
+        selected_laser.set_frame_power(get_spinrow_int(spinrow))
+        self.update_laserhead_list()
+
     def on_spot_size_changed(self, spinrow):
         """Update the spot size of the selected Laser."""
         selected_laser = self._get_selected_laser()
@@ -354,7 +390,7 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
         """Update the labels in the Laser list."""
         for i, row in enumerate(self.laserhead_list):
             head = self.machine.heads[i]
-            row.set_title(f"Laser (Max Power: {head.max_power} W)")
+            row.set_title(f"Laser (Max Power: {head.max_power})")
 
     def on_preamble_changed(self, buffer):
         """Update the preamble when the text changes."""

@@ -29,3 +29,6 @@ class Doc:
 
     def has_workpiece(self):
         return bool(self.workpieces)
+
+    def has_result(self):
+        return self.workplan.has_result()

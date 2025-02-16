@@ -282,6 +282,9 @@ class Ops:
         result.commands = count*self.commands
         return result
 
+    def __len__(self):
+        return len(self.commands)
+
     def clear(self):
         self.commands = []
 
@@ -397,6 +400,43 @@ class Ops:
                 else:
                     raise ValueError('unexpected command '+op.command)
 
+    def get_frame(self, power=None, speed=None):
+        """
+        Returns a new Ops object containing four move_to operations forming a frame
+        around the occupied area of the original Ops. The occupied area includes
+        all points from line_to and close_path commands.
+        """
+        occupied_points = []
+        last_point = None
+        for cmd in self.commands:
+            if cmd[0] == 'move_to':
+                _, *last_point = cmd
+            elif cmd[0] == 'line_to':
+                _, x, y = cmd
+                occupied_points.append(last_point)
+                occupied_points.append((x, y))
+                last_point = x, y
+
+        if not occupied_points:
+            return Ops()
+
+        xs = [p[0] for p in occupied_points]
+        ys = [p[1] for p in occupied_points]
+        min_x, max_x = min(xs), max(xs)
+        min_y, max_y = min(ys), max(ys)
+
+        frame_ops = Ops()
+        if power is not None:
+            frame_ops.set_power(power)
+        if speed is not None:
+            frame_ops.set_cut_speed(speed)
+        frame_ops.move_to(min_x, min_y)
+        frame_ops.line_to(min_x, max_y)
+        frame_ops.line_to(max_x, max_y)
+        frame_ops.line_to(max_x, min_y)
+        frame_ops.line_to(min_x, min_y)
+        return frame_ops
+
     def distance(self):
         """
         Calculates the total distance of all moves. Mostly exists to help
@@ -410,6 +450,24 @@ class Ops:
             if op == 'move_to':
                 if last is not None:
                     total += math.dist(args, last)
+                last = args
+                start = args
+            elif op == 'line_to':
+                if last is not None:
+                    total += math.dist(args, last)
+                last = args
+        return total
+
+    def cut_distance(self):
+        """
+        Like distance(), but only counts cut distance.
+        """
+        total = 0.0
+
+        start = 0, 0
+        last = None
+        for op, *args in self.commands:
+            if op == 'move_to':
                 last = args
                 start = args
             elif op == 'line_to':

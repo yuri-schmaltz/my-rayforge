@@ -129,6 +129,12 @@ class MainWindow(Adw.ApplicationWindow):
         self.home_button.connect("clicked", self.on_home_clicked)
         toolbar.append(self.home_button)
 
+        self.frame_button = Gtk.Button()
+        self.frame_button.set_child(get_icon('frame'))
+        self.frame_button.set_tooltip_text("Cycle laser head around the occupied area")
+        self.frame_button.connect("clicked", self.on_frame_clicked)
+        toolbar.append(self.frame_button)
+
         self.send_button = Gtk.Button()
         self.send_button.set_child(get_icon('send'))
         self.send_button.set_tooltip_text("Send to machine")
@@ -271,6 +277,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.export_button.set_sensitive(self.doc.has_workpiece())
         self.home_button.set_sensitive(device_status == DeviceStatus.IDLE)
 
+        # Frame button
+        can_frame = config.machine.can_frame() and self.doc.has_result()
+        can_frame = can_frame and device_status == DeviceStatus.IDLE
+        self.frame_button.set_sensitive(can_frame)
+
         # Send button
         if driver_mgr.driver.__class__ is NoDeviceDriver:
             text = "Send to machine (select driver to enable)"
@@ -365,9 +376,25 @@ class MainWindow(Adw.ApplicationWindow):
     def on_home_clicked(self, button):
         run_async(driver_mgr.driver.home())
 
+    def on_frame_clicked(self, button):
+        try:
+            head = config.machine.heads[0]
+        except IndexError:
+            return
+        if not head.frame_power:
+            return
+
+        ops = self.doc.workplan.get_result()
+        frame = ops.get_frame(
+            power=head.frame_power,
+            speed=config.machine.max_travel_speed
+        )
+        frame *= 20  # cycle 20 times
+        run_async(driver_mgr.driver.run(frame, config.machine))
+
     def on_send_clicked(self, button):
-        path = self.doc.workplan.get_result()
-        run_async(driver_mgr.driver.run(path, config.machine))
+        ops = self.doc.workplan.get_result()
+        run_async(driver_mgr.driver.run(ops, config.machine))
 
     def on_hold_clicked(self, button):
         if button.get_active():

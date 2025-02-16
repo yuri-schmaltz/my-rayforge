@@ -154,3 +154,9 @@ class WorkPlan:
                 step.ops.optimize()
             ops += step.ops*step.passes
         return ops
+
+    def has_result(self):
+        for step in self.worksteps:
+            if step.ops.cut_distance() > 0:
+                return True
+        return False
