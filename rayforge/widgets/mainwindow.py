@@ -12,7 +12,9 @@ from ..opsencoder.gcode import GcodeEncoder
 from ..render import renderers, renderer_by_mime_type
 from .workbench import WorkBench
 from .workplanview import WorkPlanView
-from .connectionstatus import ConnectionStatusMonitor, TransportStatus
+from .statusview import ConnectionStatusMonitor, \
+                        TransportStatus, \
+                        MachineStatusMonitor
 from .machineview import MachineView
 from .machinesettings import MachineSettingsDialog
 
@@ -22,6 +24,15 @@ css = """
     border: none;
     box-shadow: none;
 }
+
+.statusbar {
+    border-radius: 5px;
+    padding: 12px;
+}
+
+.statusbar:hover {
+    background-color: @theme_hover_bg_color;
+}
 """
 
 
@@ -29,6 +40,14 @@ class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.set_title("Rayforge")
+
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_data(css, -1)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
 
         # Get the primary monitor size
         display = Gdk.Display.get_default()
@@ -103,10 +122,10 @@ class MainWindow(Adw.ApplicationWindow):
         toolbar.append(clear_button)
 
         self.visibility_on_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility_on')
+            get_icon_path('visibility-on')
         )
         self.visibility_off_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility_off')
+            get_icon_path('visibility-off')
         )
         button = Gtk.ToggleButton()
         button.set_active(True)
@@ -169,19 +188,39 @@ class MainWindow(Adw.ApplicationWindow):
         # Create a status bar.
         status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         status_bar.set_halign(Gtk.Align.END)
+        status_bar.set_margin_end(12)
+        status_bar.get_style_context().add_class("statusbar")
         vbox.append(status_bar)
 
+        # Monitor machine status
+        label = Gtk.Label()
+        label.set_markup("<b>Machine status:</b>")
+        status_bar.append(label)
+
+        self.machine_status = MachineStatusMonitor()
+        status_bar.append(self.machine_status)
+        self.machine_status.changed.connect(
+            self.on_machine_status_changed
+        )
+
         # Monitor connection status
+        label = Gtk.Label()
+        label.set_markup("<b>Connection status:</b>")
+        label.set_margin_start(12)
+        status_bar.append(label)
+
         self.connection_status = ConnectionStatusMonitor()
         status_bar.append(self.connection_status)
         self.connection_status.changed.connect(
             self.on_connection_status_changed
         )
-        self.connection_status.connect(
-            'clicked',
-            self.on_connection_status_clicked
-        )
 
+        # Open machine log if status bar is clicked.
+        gesture = Gtk.GestureClick()
+        gesture.connect("pressed", self.on_status_bar_clicked, status_bar)
+        status_bar.add_controller(gesture)
+
+        # Set of driver and config signals.
         self._try_driver_setup()
         config.changed.connect(self.on_config_changed)
         driver_mgr.changed.connect(self.on_driver_changed)
@@ -199,6 +238,9 @@ class MainWindow(Adw.ApplicationWindow):
             return
 
     def on_driver_changed(self, sender, driver):
+        self.update_state()
+
+    def on_machine_status_changed(self, sender):
         self.update_state()
 
     def on_connection_status_changed(self, sender):
@@ -235,7 +277,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.send_button.set_sensitive(sensitive)
         self.send_button.set_tooltip_text(text)
 
-    def on_connection_status_clicked(self, widget):
+    def on_status_bar_clicked(self, gesture, n_press, x, y, box):
         dialog = MachineView()
         dialog.present(self)
 

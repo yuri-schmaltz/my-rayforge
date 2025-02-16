@@ -123,7 +123,6 @@ class Driver(ABC):
         ))
 
     def _on_state_changed(self):
-        print("New state", self.state)
         GLib.idle_add(lambda: _falsify(
             self.state_changed.send,
             self,

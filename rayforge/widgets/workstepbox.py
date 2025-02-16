@@ -15,10 +15,10 @@ class WorkStepBox(GroupBox):
         self.delete_clicked = Signal()
 
         self.visibility_on_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility_on')
+            get_icon_path('visibility-on')
         )
         self.visibility_off_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility_off')
+            get_icon_path('visibility-off')
         )
         button = Gtk.ToggleButton()
         button.set_active(workstep.visible)
