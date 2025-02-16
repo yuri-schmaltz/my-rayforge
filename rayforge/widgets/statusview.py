@@ -184,7 +184,7 @@ class MachineStatusMonitor(StatusWidget):
                                 driver,
                                 state: DeviceState):
         nodriver = driver_mgr.driver.__class__ == NoDeviceDriver
-        self.set_status(None if nodriver else status)
+        self.set_status(None if nodriver else state.status)
 
     def set_status(self, status):
         self.status = status
