@@ -1,12 +1,13 @@
 import re
 import asyncio
 import aiohttp
+from copy import copy
 from typing import Optional
 from ..transport import HttpTransport, WebSocketTransport, TransportStatus
 from ..opsencoder.gcode import GcodeEncoder
 from ..models.ops import Ops
 from ..models.machine import Machine
-from .driver import Driver
+from .driver import Driver, DeviceStatus
 
 
 hw_info_url = '/command?plain=%5BESP420%5D&PAGEID='
@@ -18,6 +19,14 @@ upload_list_url = '/upload?path=/&PAGEID=0'
 execute_url = '/command?commandText=%5BESP220%5D/{filename}'
 status_url = command_url.format(command='')
 
+pos_re = re.compile(r':(\d+\.\d+),(\d+\.\d+),(\d+\.\d+)')
+fs_re = re.compile(r'FS:(\d+),(\d+)')
+
+def _parse_pos_triplet(pos, default=None):
+    match = pos_re.search(pos)
+    if not match or match.lastindex != 3:
+        return default
+    return [float(i) for i in match.groups()]
 
 class ICubeDriver(Driver):
     """
@@ -180,51 +189,70 @@ class ICubeDriver(Driver):
                                message: Optional[str] = None):
         self._on_command_status_changed(status, message)
 
-    def _parse_status(self, line):
+    def _parse_state(self, state_str):
         """
-        I have not figured out what the difference between the positions
-        reported by the device are yet. It reports "mpos", "wpos", and
-        sometimes "WC0" which also looks like a position.
-        All include three floats. I assume the third is Z, but it is
-        always 0 fot the iCube as it does not have a Z axis motor.
+        Example state_str:
+        Run|MPos:10.0,20.0,0.0|WPos:10.0,20.0,0.0|W0:10.0,20.0,0.0|FS:1500,0
 
-        FS: the first value looks like a speed. The second probably also
-        is, but I have never seen it >0, so no idea.
+        - First field is always the status.
+        - MPos is position in machine coords.
+        - WPos is position in work coords.
+        - No idea what W0 is.
+        - FS: the first value looks like a speed. The second probably also
+          is, but I have never seen it >0, so no idea.
+
+        Also note that not always all fields are included, and sometimes
+        others not listed here appear.
         """
+        # Split out the status.
         try:
-            _, mpos_str, wpos_str, fs_str, *_ = line.split('|')
+            status, *attribs = state_str.split('|')
         except ValueError:
-            return None
+            return
 
-        pos_re = re.compile(r':(\d+\.\d+),(\d+\.\d+),(\d+\.\d+)')
+        state = copy(self.state)
         try:
-            match = pos_re.search(mpos_str)
-            mpos = [float(i) for i in match.groups()]
-        except ValueError:
-            return None
-        try:
-            match = pos_re.search(wpos_str)
-            wpos = [float(i) for i in match.groups()]
-        except ValueError:
-            return None
+            state.status = DeviceStatus[status.upper()]
+        except KeyError:
+            self.log_received.send(
+                self,
+                message=f"device sent an unupported status: {status}"
+            )
 
-        fs_re = re.compile(r'FS:(\d+),(\d+)')
-        try:
-            match = fs_re.match(fs_str)
-            fs = [float(i) for i in match.groups()]
-        except ValueError:
-            return None
-        return mpos, wpos, fs
+        # Parse the substrings.
+        for attrib in attribs:
+            if attrib.startswith('MPos:'):
+                state.machine_pos = _parse_pos_triplet(
+                    attrib,
+                    state.machine_pos
+                )
+
+            elif attrib.startswith('WPos:'):
+                state.work_pos = _parse_pos_triplet(attrib, state.work_pos)
+
+            elif attrib.startswith('FS:'):
+                # This attribute is not actually used yet.
+                try:
+                    match = fs_re.match(attrib)
+                    fs = [int(i) for i in match.groups()]
+                except ValueError:
+                    pass
+
+            else:
+                pass # Ignore everything else
+
+        return state
 
     def on_websocket_data_received(self, sender, data: bytes):
         data = data.decode('utf-8')
         for line in data.splitlines():
-            if line.startswith('<Idle|'):
-                status = self._parse_status(line)
-                if status:
-                    mpos, wpos, fs = status
-                    self._on_position_changed(mpos[:2])
-            self._log(line)
+            if not line.startswith('<') or not line.endswith('>'):
+                self._log(line)
+                continue
+            state = self._parse_state(line[1:-1])
+            if state != self.state:
+                self.state = state
+                self._on_state_changed()
 
     def on_websocket_status_changed(self,
                                     sender,

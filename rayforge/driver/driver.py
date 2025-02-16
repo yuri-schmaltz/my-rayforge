@@ -2,10 +2,38 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from blinker import Signal
 from gi.repository import GLib
+from dataclasses import dataclass, field
+from enum import Enum, auto
 from ..transport import TransportStatus
 from ..asyncloop import run_async
 from ..models.ops import Ops
 from ..models.machine import Machine
+
+
+class DeviceStatus(Enum):
+    UNKNOWN = auto()
+    IDLE = auto()
+    RUN = auto()
+    HOLD = auto()
+    JOG = auto()
+    ALARM = auto()
+    DOOR = auto()
+    CHECK = auto()
+    HOME = auto()
+    SLEEP = auto()
+    TOOL = auto()
+    QUEUE = auto()
+    LOCK = auto()
+    UNLOCK = auto()
+    CYCLE = auto()
+    TEST = auto()
+
+
+@dataclass
+class DeviceState:
+    status: int = DeviceStatus.UNKNOWN
+    machine_pos: tuple[float, float, float] = None, None, None  # x, y, z in mm
+    work_pos: tuple[float, float, float] = None, None, None  # x, y, z in mm
 
 
 def _falsify(func, *args, **kwargs):
@@ -30,7 +58,7 @@ class Driver(ABC):
 
     All drivers provide the following signals:
        log_received: for log messages
-       position_changed: to monitor the position (in mm)
+       state_changed: emitted when the DeviceState changes
        command_status_changed: to monitor a command that was sent
        connection_status_changed: signals connectivity changes
 
@@ -43,10 +71,11 @@ class Driver(ABC):
 
     def __init__(self):
         self.log_received_safe = Signal()
-        self.position_changed_safe = Signal()
+        self.state_changed_safe = Signal()
         self.command_status_changed_safe = Signal()
         self.connection_status_changed_safe = Signal()
         self.did_setup = False
+        self.state = DeviceState()
 
     def setup(self):
         """
@@ -93,11 +122,12 @@ class Driver(ABC):
             message=message
         ))
 
-    def _on_position_changed(self, position: tuple[float, float]):
+    def _on_state_changed(self):
+        print("New state", self.state)
         GLib.idle_add(lambda: _falsify(
-            self.position_changed_safe.send,
+            self.state_changed_safe.send,
             self,
-            position=position
+            state=self.state
         ))
 
     def _on_command_status_changed(self,
