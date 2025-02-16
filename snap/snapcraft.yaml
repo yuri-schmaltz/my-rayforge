@@ -1,10 +1,6 @@
 name: rayforge
 version: git
-summary: A desktop application for laser cutting and engraving
-description: |
-  Rayforge is a desktop application designed for laser cutting
-  and engraving. It provides an intuitive interface for users
-  to create and manage their laser cutting projects.
+adopt-info: rayforge
 confinement: strict
 base: core24
 
@@ -12,6 +8,8 @@ apps:
   rayforge:
     extensions: [gnome]
     command: bin/rayforge
+    common-id: com.barebaric.rayforge
+    desktop: share/applications/com.barebaric.rayforge.desktop
     plugs:
       - home
       - gsettings
@@ -42,7 +40,4 @@ parts:
       - python3-pip
       - python3-setuptools
       - git  # Required for git describe
-    organize:
-      data/com.barebaric.rayforge.desktop: share/applications/com.barebaric.rayforge.desktop
-      data/com.barebaric.rayforge.metainfo.xml: share/metainfo/com.barebaric.rayforge.metainfo.xml
-      data/com.barebaric.rayforge.svg: share/icons/hicolor/scalable/apps/com.barebaric.rayforge.svg
+    parse-info: [share/metainfo/com.barebaric.rayforge.metainfo.xml]

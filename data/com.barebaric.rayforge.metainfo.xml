@@ -9,14 +9,17 @@
   <url type="bugtracker">https://github.com/barebaric/rayforge/issues</url>
   
   <name>Rayforge</name>
-  <summary>Laser cutting and engraving</summary>
+  <summary>A desktop application for laser cutting and engraving</summary>
   
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
   <description>
     <p>
-      A desktop application for laser cutters and engravers. Rayforge generates G-code from SVG, or PNGs.
+      Rayforge is a desktop application designed for laser cutting
+      and engraving. It provides an intuitive interface for users
+      to create and manage their laser cutting projects.
+      Rayforge supports import SVG, DXF, PDF, and PNGs.
     </p>
   </description>
   
@@ -28,7 +31,7 @@
     <display_length compare="ge">768</display_length>
   </recommends>
 
-  <icon type="remote">https://raw.githubusercontent.com/barebaric/rayforge/main/data/rayforge.svg</icon>
+  <icon type="local">share/icons/hicolor/scalable/apps/com.barebaric.rayforge.svg</icon>
 
   <branding>
     <color type="primary" scheme_preference="light">#efb0a1</color>
@@ -37,7 +40,7 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/barebaric/rayforge/main/data/ss-main.png</image>
+      <image>https://raw.githubusercontent.com/barebaric/rayforge/main/docs/ss-main.png</image>
     </screenshot>
   </screenshots>
 
