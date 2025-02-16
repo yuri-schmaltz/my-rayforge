@@ -132,6 +132,7 @@ class YourDriver(Driver):
 All drivers MUST provide the following methods:
 
 - `setup()`: This is a special method that has two purposes:
+
     o Any arguments in the definition of the method are used to
       auto-generate a user interface. For example, if the setup()
       method ist defined as `setup(self, hostname: str)`, then
