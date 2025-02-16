@@ -18,9 +18,9 @@ modules for most of the above functions. A typical driver uses `Transport` and
 `OpsEncoder` classes to provide the above features.
 
 ```mermaid
-  graph TD;
-      Driver-->Transport;
-      Driver-->OpsEncoder;
+graph TD;
+    Driver-->Transport;
+    Driver-->OpsEncoder;
 ```
 
 The Transport classes maintain a stable connection to a device, while the Encoder
@@ -30,10 +30,10 @@ For example, consider the GrblDriver. It communicates through HTTP and Websocket
 so it uses two transports - both of which automatically reconnect as needed.
 
 ```mermaid
-  graph TD;
-      GrblDriver-->HttpTransport;
-      GrblDriver-->WebSocketTransport;
-      GrblDriver-->GcodeEncoder;
+graph TD;
+    GrblDriver-->HttpTransport;
+    GrblDriver-->WebSocketTransport;
+    GrblDriver-->GcodeEncoder;
 ```
 
 A driver should track the state of the device it is connected to. It does this
@@ -45,8 +45,8 @@ by using the `DeviceStatus` and `DeviceState` classes:
   all other states.
 
 ```mermaid
-  graph TD;
-      Driver-->Status-->State;
+graph TD;
+    Driver-->Status-->State;
 ```
 
 
@@ -64,6 +64,17 @@ Some vendors use a proprietary language instead of G-Code. For
 such devices I recommend that you first implementing an encoder. Only
 after the encoder is complete do you probably think about implementing
 a driver.
+
+The OpsEncoder has only one method: `OpsEncoder.encode(ops, machine)`.
+It is passed the machine for additional hints, so that it can respect
+machine settings that may affect the translation.
+
+```mermaid
+flowchart LR
+    Ops-->OpsEncoder
+    Machine-->OpsEncoder
+    OpsEncoder-->End[Specific machine instructions]
+```
 
 
 ## Ops Overview
@@ -95,12 +106,12 @@ ops.enable_air_assist()    # Enable air assist
 ops.line_to(100, 100)      # Cut diagonally
 ```
 
-Rayforge passes the resulting Ops object to the driver's run() method to
+Rayforge passes the resulting Ops object to the driver's `run()` method to
 execute a program.
 
-To perform the translation into the native language of the device, the driver
-SHOULD use an OpsEncoder. You can find examples for such encoders
-[here](../rayforge/opsencoder/).
+As explained above, the driver SHOULD use an OpsEncoder to perform the translation
+into the native language of the device.
+You can find examples for such encoders [here](../rayforge/opsencoder/).
 
 
 ## Driver Implementation
@@ -169,17 +180,26 @@ Drivers MUST have the following properties:
 All drivers may provide the following signals:
 
 - `log_received`: for log messages
-- `position_changed`: to monitor the position (in mm)
+- `state_changed`: to monitor the state (see State object explanation above)
 - `command_status_changed`: to monitor a command that was sent
 - `connection_status_changed`: signals connectivity changes
 
-Note: All drivers also *implicitly* creates GLib-safe wrappers
-for the above signals; you MUST NOT emit these directly.
+You MUST NOT emit these directly! Instead, call the base class
+wrapper methods of the Driver for these methods, such as:
+
+- `Driver._log()`
+- `Driver._on_state_changed()`
+- `Driver._on_command_status_changed()`
+- `Driver._on_connection_status_changed()`
+
+This is to ensure that the signals are sent in a GLib-safe manner.
+
 
 ## State Management
 
 - Assume hardware retains state between commands (e.g., laser power)
 - Re-send critical states after reconnections
+
 
 ## Any questions?
 
