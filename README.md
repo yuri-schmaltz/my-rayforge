@@ -1,6 +1,7 @@
 # Rayforge
 
 Rayforge is a software for laser cutters and engravers.
+It supports direct communication with GRBL based machines.
 
 ![Screenshot](docs/ss-main.png)
 

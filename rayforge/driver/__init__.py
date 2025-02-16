@@ -2,7 +2,7 @@
 import inspect
 from .driver import Driver
 from .dummy import NoDeviceDriver
-from .icube import ICubeDriver
+from .grbl import GrblDriver
 
 def isdriver(obj):
     return (inspect.isclass(obj)

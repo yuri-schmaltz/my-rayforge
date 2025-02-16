@@ -22,18 +22,20 @@ status_url = command_url.format(command='?')
 pos_re = re.compile(r':(\d+\.\d+),(\d+\.\d+),(\d+\.\d+)')
 fs_re = re.compile(r'FS:(\d+),(\d+)')
 
+
 def _parse_pos_triplet(pos, default=None):
     match = pos_re.search(pos)
     if not match or match.lastindex != 3:
         return default
     return [float(i) for i in match.groups()]
 
-class ICubeDriver(Driver):
+
+class GrblDriver(Driver):
     """
-    Handles Sculpfun iCube via HTTP+WebSocket
+    Handles GRBL based devices via HTTP+WebSocket
     """
-    label = "Sculpfun iCube"
-    subtitle = 'Send Gcode via network connection'
+    label = "GRBL"
+    subtitle = 'Send GRBL-compatible Gcode via network connection'
 
     def __init__(self):
         super().__init__()
