@@ -25,7 +25,7 @@ pip3 install rayforge
 | Multi step operations            | For example, first engrave, then cut                    |
 | Mutltiple operation types        | Countour, External Outline, Raster Engraving            |
 | High quality path generation     | Interpolation based on spot size, path optimization     |
-| Multiple input formats           | SVG, DXF, and PNG import are supported                  |
+| Multiple input formats           | SVG, DXF, PDF, and PNG import are supported             |
 | Direct device support            | Easily [add support for your own laser](docs/driver.md) |
 | Much more                        | Framing, support for air assist, control buttons, ...   |
 
