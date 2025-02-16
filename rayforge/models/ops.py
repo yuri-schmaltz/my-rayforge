@@ -89,9 +89,6 @@ def split_segments(operations):
     Split a list of commands into segments. We use it to prepare
     for reordering the segments for travel distance minimization.
 
-    Substitutes close_path() by line_to; closing the segment is
-    then implicit at the end of the list.
-
     Returns a list of segments. In other words, a list of list[Op].
     """
     segments = []
@@ -103,17 +100,6 @@ def split_segments(operations):
             current_segment = [op]
         elif op.command == 'line_to':
             current_segment.append(op)
-        elif op.command == 'close_path':
-            # Replace close_path by a line_to. This is ok,
-            # because closing of the path is now implicit
-            # from the fact that we at the end of the segment.
-            if current_segment:
-                start = current_segment[0].args
-                if current_segment[-1].args != start:
-                    op = Op('line_to', start, copy(op.state))
-                    current_segment.append(op)
-                segments.append(current_segment)
-            current_segment = []
         else:
             raise ValueError('unexpected operation '+op.command)
 
@@ -284,6 +270,7 @@ class Ops:
     """
     def __init__(self):
         self.commands = []
+        self.last_move_to = 0.0, 0.0
 
     def __add__(self, ops):
         result = Ops()
@@ -299,13 +286,18 @@ class Ops:
         self.commands = []
 
     def move_to(self, x, y):
-        self.commands.append(('move_to', float(x), float(y)))
+        self.last_move_to = float(x), float(y)
+        self.commands.append(('move_to', *self.last_move_to))
 
     def line_to(self, x, y):
         self.commands.append(('line_to', float(x), float(y)))
 
     def close_path(self):
-        self.commands.append(('close_path',))
+        """
+        Convenience method that wraps line_to(). Makes a line to
+        the last move_to point.
+        """
+        self.line_to(*self.last_move_to)
 
     def set_power(self, power: float):
         """Laser power (0-1000 for GRBL)"""
@@ -399,10 +391,7 @@ class Ops:
                     self.set_travel_speed(op.state.travel_speed)
 
                 if op.command == 'line_to':
-                    if op is segment[-1] and op.args == segment_start_pos:
-                        self.close_path()
-                    else:
-                        self.line_to(*op.args)
+                    self.line_to(*op.args)
                 elif op.command == 'move_to':
                     self.move_to(*op.args)
                 else:
@@ -427,10 +416,6 @@ class Ops:
                 if last is not None:
                     total += math.dist(args, last)
                 last = args
-            elif op == 'close_path':
-                if start is not None:
-                    total += math.dist(start, last)
-                last = start
         return total
 
     def dump(self):

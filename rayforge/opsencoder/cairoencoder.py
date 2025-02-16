@@ -60,13 +60,6 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case ('close_path',):
-                    if active_path:
-                        ctx.set_source_rgb(1, 0, 1)
-                        ctx.close_path()
-                        ctx.stroke()
-                        active_path = False
-
                 case _:
                     pass  # ignore unsupported operations
 

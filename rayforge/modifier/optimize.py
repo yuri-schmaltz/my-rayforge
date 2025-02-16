@@ -9,4 +9,4 @@ class Optimizer(Modifier):
     But it is a useful aid for debugging the path optimizer.
     """
     def run(self, workstep, surface, pixels_per_mm, ymax):
-        workstep.path.optimize()
+        workstep.ops.optimize()

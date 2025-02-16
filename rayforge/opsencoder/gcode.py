@@ -11,7 +11,6 @@ class GcodeEncoder(OpsEncoder):
         self.travel_speed = None      # Current travel speed (mm/min)
         self.air_assist = False       # Air assist state
         self.laser_active = False     # Laser on/off state
-        self.position = (None, None)  # Last known coordinates
 
     def encode(self, ops: Ops, machine: Machine) -> str:
         """Main encoding workflow"""
@@ -38,8 +37,6 @@ class GcodeEncoder(OpsEncoder):
                 self._handle_move(gcode, x, y)
             case ('line_to', x, y):
                 self._handle_cut(gcode, x, y)
-            case ('close_path',):
-                self._close_path(gcode)
 
     def _update_power(self, gcode: list, power: float, machine: Machine):
         """Update laser power and toggle state if needed"""
@@ -62,19 +59,11 @@ class GcodeEncoder(OpsEncoder):
         """Rapid movement with laser safety"""
         self._laser_off(gcode)
         gcode.append(f"G0 X{x:.3f} Y{y:.3f} F{self.travel_speed}")
-        self.position = (x, y)
 
     def _handle_cut(self, gcode: list, x: float, y: float):
         """Cutting movement with laser activation"""
         self._laser_on(gcode)
         gcode.append(f"G1 X{x:.3f} Y{y:.3f} F{self.cut_speed}")
-        self.position = (x, y)
-
-    def _close_path(self, gcode: list):
-        """Close path by returning to start position"""
-        if self.position != (None, None) and self.laser_active:
-            start_x, start_y = self.position
-            self._handle_cut(gcode, start_x, start_y)
 
     def _laser_on(self, gcode: list):
         """Activate laser if not already on"""

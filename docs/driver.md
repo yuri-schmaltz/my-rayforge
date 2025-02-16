@@ -24,7 +24,6 @@ represents a sequence of the following operations:
 | ------------------------- | ------------------------------------------ |
 | `move_to(x, y)`           | Rapid movement to position (no cutting)    |
 | `line_to(x, y)`           | Cut/move to position                       |
-| `close_path()`            | Close the current path (connects to start) |
 | `set_power(value)`        | Laser power (0-100%)                       |
 | `set_cut_speed(value)`    | Cutting speed in mm/min                    |
 | `set_travel_speed(value)` | Rapid movement speed in mm/min             |
