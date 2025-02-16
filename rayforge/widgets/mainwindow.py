@@ -3,9 +3,9 @@ from .. import __version__
 from ..asyncloop import run_async
 from ..config import config
 from ..driver import get_driver, get_driver_cls
-from ..driver.driver import driver_mgr
+from ..driver.driver import driver_mgr, DeviceStatus
 from ..driver.dummy import NoDeviceDriver
-from ..util.resources import get_icon_path
+from ..util.resources import get_icon
 from ..models.doc import Doc
 from ..models.workpiece import WorkPiece
 from ..opsencoder.gcode import GcodeEncoder
@@ -96,16 +96,14 @@ class MainWindow(Adw.ApplicationWindow):
         vbox.append(toolbar)
 
         # Import and export icons
-        icon = Gtk.Image.new_from_file(get_icon_path('open'))
         open_button = Gtk.Button()
-        open_button.set_child(icon)
+        open_button.set_child(get_icon('open'))
         open_button.set_tooltip_text("Import image")
         open_button.connect("clicked", self.on_open_clicked)
         toolbar.append(open_button)
 
-        icon = Gtk.Image.new_from_file(get_icon_path('publish'))
         self.export_button = Gtk.Button()
-        self.export_button.set_child(icon)
+        self.export_button.set_child(get_icon('publish'))
         self.export_button.set_tooltip_text("Generate GCode")
         self.export_button.connect("clicked", self.on_export_clicked)
         toolbar.append(self.export_button)
@@ -114,19 +112,14 @@ class MainWindow(Adw.ApplicationWindow):
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         toolbar.append(sep)
 
-        icon = Gtk.Image.new_from_file(get_icon_path('clear-layers'))
         clear_button = Gtk.Button()
-        clear_button.set_child(icon)
+        clear_button.set_child(get_icon('clear-layers'))
         clear_button.set_tooltip_text("Remove all workpieces")
         clear_button.connect("clicked", self.on_clear_clicked)
         toolbar.append(clear_button)
 
-        self.visibility_on_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility-on')
-        )
-        self.visibility_off_icon = Gtk.Image.new_from_file(
-            get_icon_path('visibility-off')
-        )
+        self.visibility_on_icon = get_icon('visibility-on')
+        self.visibility_off_icon = get_icon('visibility-off')
         button = Gtk.ToggleButton()
         button.set_active(True)
         button.set_child(self.visibility_on_icon)
@@ -138,12 +131,19 @@ class MainWindow(Adw.ApplicationWindow):
         sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
         toolbar.append(sep)
 
-        icon = Gtk.Image.new_from_file(get_icon_path('send'))
         self.send_button = Gtk.Button()
-        self.send_button.set_child(icon)
+        self.send_button.set_child(get_icon('send'))
         self.send_button.set_tooltip_text("Send to machine")
         self.send_button.connect("clicked", self.on_send_clicked)
         toolbar.append(self.send_button)
+
+        self.hold_on_icon = get_icon('play-arrow')
+        self.hold_off_icon = get_icon('pause')
+        self.hold_button = Gtk.ToggleButton()
+        self.hold_button.set_child(self.hold_off_icon)
+        self.hold_button.set_tooltip_text("Pause machine")
+        self.hold_button.connect("clicked", self.on_pause_clicked)
+        toolbar.append(self.hold_button)
 
         # Create the Paned splitting the window into left and right sections.
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
@@ -277,6 +277,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.send_button.set_sensitive(sensitive)
         self.send_button.set_tooltip_text(text)
 
+        device_status = self.machine_status.get_status()
+        sensitive = device_status in (DeviceStatus.RUN, DeviceStatus.HOLD)
+        self.hold_button.set_sensitive(sensitive)
+        self.hold_button.set_active(device_status == DeviceStatus.HOLD)
+
     def on_status_bar_clicked(self, gesture, n_press, x, y, box):
         dialog = MachineView()
         dialog.present(self)
@@ -315,6 +320,14 @@ class MainWindow(Adw.ApplicationWindow):
             button.set_child(self.visibility_on_icon)
         else:
             button.set_child(self.visibility_off_icon)
+
+    def on_pause_clicked(self, button):
+        if button.get_active():
+            run_async(driver_mgr.driver.set_hold())
+            button.set_child(self.hold_on_icon)
+        else:
+            run_async(driver_mgr.driver.set_hold(False))
+            button.set_child(self.hold_off_icon)
 
     def on_clear_clicked(self, button):
         self.workbench.clear()

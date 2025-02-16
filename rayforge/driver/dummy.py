@@ -15,5 +15,8 @@ class NoDeviceDriver(Driver):
     async def run(self, ops: Ops) -> None:
         pass
 
+    async def set_hold(self, hold: bool = True) -> None:
+        pass
+
     async def move_to(self, pos_x, pos_y) -> None:
         pass

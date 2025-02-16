@@ -13,11 +13,11 @@ from .driver import Driver, DeviceStatus
 hw_info_url = '/command?plain=%5BESP420%5D&PAGEID='
 fw_info_url = '/command?plain=%5BESP800%5D&PAGEID='
 eeprom_info_url = '/command?plain=%5BESP400%5D&PAGEID='
-command_url = '/command?commandText=?&PAGEID={command}'
+command_url = '/command?commandText={command}&PAGEID='
 upload_url = '/upload'
 upload_list_url = '/upload?path=/&PAGEID=0'
 execute_url = '/command?commandText=%5BESP220%5D/{filename}'
-status_url = command_url.format(command='')
+status_url = command_url.format(command='?')
 
 pos_re = re.compile(r':(\d+\.\d+),(\d+\.\d+),(\d+\.\d+)')
 fs_re = re.compile(r'FS:(\d+),(\d+)')
@@ -103,7 +103,7 @@ class ICubeDriver(Driver):
                 data = await response.text()
         return data
 
-    async def _send_gcode_command(self, command):
+    async def _send_command(self, command):
         async with aiohttp.ClientSession() as session:
             url = command_url.format(command=command)
             async with session.get(
@@ -176,9 +176,15 @@ class ICubeDriver(Driver):
             )
             raise
 
+    async def set_hold(self, hold: bool = True) -> None:
+        if hold:
+            await self._send_command('!')
+        else:
+            await self._send_command('~')
+
     async def move_to(self, pos_x, pos_y) -> None:
         cmd = f"$J=G90 G21 F1500 X{float(pos_x)} Y{float(pos_y)}"
-        await self._send_gcode_command(cmd)
+        await self._send_command(cmd)
 
     def on_http_data_received(self, sender, data: bytes):
         pass
@@ -207,6 +213,7 @@ class ICubeDriver(Driver):
         # Split out the status.
         try:
             status, *attribs = state_str.split('|')
+            status = status.split(':')[0]
         except ValueError:
             return
 

@@ -62,9 +62,8 @@ class Driver(ABC):
        command_status_changed: to monitor a command that was sent
        connection_status_changed: signals connectivity changes
 
-    All drivers also provide GLib-safe wrappers for the above signals;
-    these arte guaranteed to be triggered in the main GLib event loop
-    for convenient usage in UI functions.
+    Subclasses of driver MUST NOT emit these signals directly;
+    the should instead call self._log, self,_on_state_changed, etc.
     """
     label = None
     subtitle = None
@@ -105,6 +104,14 @@ class Driver(ABC):
         """
         Converts the given Ops into commands for the machine, and executes
         them.
+        """
+        pass
+
+    @abstractmethod
+    async def set_hold(self, hold: bool = True) -> None:
+        """
+        Sends a command to put the currently executing program on hold.
+        If hold is False, sends the command to remove the hold.
         """
         pass
 
