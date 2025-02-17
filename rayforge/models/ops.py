@@ -1,6 +1,7 @@
 import numpy as np
 import math
 from copy import copy
+from typing import NamedTuple
 from dataclasses import dataclass
 
 
@@ -23,11 +24,15 @@ class State:
         return self.air_assist == target_state.air_assist
 
 
-@dataclass
-class Op:
-    command: str
-    args: object
-    state: State
+class Command(NamedTuple):
+    """
+    Note that the state attribute is not set by default. It is later
+    filled during the pre-processing stage, where state commands are
+    removed.
+    """
+    name: str
+    args: tuple = ()
+    state: State = None  # Intended state during the executing of this command
 
 
 def preprocess_commands(commands):
@@ -36,26 +41,25 @@ def preprocess_commands(commands):
     state of the machine. This is to prepare for re-ordering without
     changing the intended state during each command.
 
-    Returns a list of Op objects. Any state commands are wipe out,
+    Returns a list of Command objects. Any state commands are wipe out,
     as the state is now included in every operation.
     """
     operations = []
     state = State()
-    for command in commands:
-        match command:
-            case ('set_power', power):
-                state.power = power
-            case ('set_cut_speed', speed):
-                state.cut_speed = speed
-            case ('set_travel_speed', speed):
-                state.travel_speed = speed
-            case ('enable_air_assist',):
+    for cmd in commands:
+        match cmd.name:
+            case 'set_power':
+                state.power = cmd.args[0]
+            case 'set_cut_speed':
+                state.cut_speed = cmd.args[0]
+            case 'set_travel_speed':
+                state.travel_speed = cmd.args[0]
+            case 'enable_air_assist':
                 state.air_assist = True
-            case ('disable_air_assist',):
+            case 'disable_air_assist':
                 state.air_assist = False
             case _:
-                cmd, *args = command
-                operations.append(Op(cmd, args, copy(state)))
+                operations.append(cmd._replace(state = copy(state)))
     return operations
 
 
@@ -67,7 +71,7 @@ def split_long_segments(operations):
     so we need to separate them and run the path optimizer on
     each segment individually.
 
-    The result is a list of Op lists.
+    The result is a list of Command lists.
     """
     if len(operations) <= 1:
         return [operations]
@@ -84,24 +88,24 @@ def split_long_segments(operations):
     return segments
 
 
-def split_segments(operations):
+def split_segments(commands):
     """
     Split a list of commands into segments. We use it to prepare
     for reordering the segments for travel distance minimization.
 
-    Returns a list of segments. In other words, a list of list[Op].
+    Returns a list of segments. In other words, a list of list[Command].
     """
     segments = []
     current_segment = []
-    for op in operations:
-        if op.command == 'move_to':
+    for cmd in commands:
+        if cmd.name == 'move_to':
             if current_segment:
                 segments.append(current_segment)
-            current_segment = [op]
-        elif op.command in ('line_to', 'arc_to'):
-            current_segment.append(op)
+            current_segment = [cmd]
+        elif cmd.name in ('line_to', 'arc_to'):
+            current_segment.append(cmd)
         else:
-            raise ValueError('unexpected operation '+op.command)
+            raise ValueError('unexpected Command '+cmd.name)
 
     if current_segment:
         segments.append(current_segment)
@@ -136,20 +140,22 @@ def flip_segment(segment):
 
     new_segment = []
     for i in range(length-1, -1, -1):
-        prev_op = segment[(i+1) % length]
-        new_op = copy(segment[i])
-        new_op.state = prev_op.state
-        new_op.command = prev_op.command
-        new_op.args = new_op.args[:2]
+        cmd = segment[i]
+        prev_cmd = segment[(i+1) % length]
+        new_cmd = cmd._replace(
+            state = prev_cmd.state,
+            name = prev_cmd.name,
+            args = cmd.args[:2]
+        )
 
         # Fix arc_to parameters
-        if new_op.command == 'arc_to' and i > 0:
+        if new_cmd.name == 'arc_to' and i > 0:
             # Get original arc (prev op in original segment)
-            orig_op = segment[i+1]
-            x_end, y_end, i_orig, j_orig, clockwise_orig = orig_op.args
+            orig_cmd = segment[i+1]
+            x_end, y_end, i_orig, j_orig, clockwise_orig = orig_cmd.args
 
             # Calculate center and new offsets
-            x_start, y_start = new_op.args[:2]
+            x_start, y_start = new_cmd.args
             center_x = x_start + i_orig
             center_y = y_start + j_orig
             new_i = center_x - x_end
@@ -157,9 +163,11 @@ def flip_segment(segment):
             new_clockwise = not clockwise_orig
 
             # Update arc parameters
-            new_op.args = x_end, y_end, new_i, new_j, new_clockwise
+            new_cmd = new_cmd._replace(
+                args = (x_start, y_start, new_i, new_j, new_clockwise)
+            )
 
-        new_segment.append(new_op)
+        new_segment.append(new_cmd)
 
     return new_segment
 
@@ -169,9 +177,9 @@ def greedy_order_segments(segments):
     Greedy ordering using vectorized math.dist computations.
     Part of the path optimization algorithm.
 
-    It is assumed that the input segments contain only Op objects
+    It is assumed that the input segments contain only Command objects
     that are NOT state commands (such as 'set_power'), so it is
-    ensured that each Op performs a position change (i.e. it has
+    ensured that each Command performs a position change (i.e. it has
     x,y coordinates).
     """
     if not segments:
@@ -183,12 +191,12 @@ def greedy_order_segments(segments):
     current_pos = np.array(current_seg[-1].args)
     remaining = segments[1:]
     while remaining:
-        # Note that "op.args" contains x,y coordinates, because the
+        # Note that "Command.args" contains x,y coordinates, because the
         # segments do not contain any state commands.
         # Find the index of the best next path to take, i.e. the
-        # Op that adds the smalles amount of travel distance.
-        starts = np.array([seg[0].args for seg in remaining])
-        ends = np.array([seg[-1].args for seg in remaining])
+        # Command that adds the smalles amount of travel distance.
+        starts = np.array([seg[0].args[:2] for seg in remaining])
+        ends = np.array([seg[-1].args[:2] for seg in remaining])
         d_starts = np.linalg.norm(starts - current_pos, axis=1)
         d_ends = np.linalg.norm(ends - current_pos, axis=1)
         candidate_dists = np.minimum(d_starts, d_ends)
@@ -199,18 +207,18 @@ def greedy_order_segments(segments):
         if d_ends[best_idx] < d_starts[best_idx]:
             best_seg = flip_segment(best_seg)
 
-        start_op = best_seg[0]
-        start_op_command = start_op.command
-        if start_op_command != 'move_to':
-            end_op = best_seg[-1]
-            start_op_state = start_op.state
-            end_op_command = end_op.command
-            end_op_state = end_op.state
+        start_cmd = best_seg[0]
+        start_cmd_name = start_cmd.name
+        if start_cmd_name != 'move_to':
+            end_cmd = best_seg[-1]
+            start_cmd_state = start_cmd.state
+            end_cmd_name = end_cmd.name
+            end_cmd_state = end_cmd.state
 
-            start_op.command = end_op_command
-            start_op.state = end_op_state
-            end_op.command = start_op_command
-            end_op.state = start_op_state
+            start_cmd.name = end_cmd_name
+            start_cmd.state = end_cmd_state
+            end_cmd.name = start_cmd_name
+            end_cmd.state = start_cmd_state
 
         ordered.append(best_seg)
         current_pos = np.array(best_seg[-1].args)
@@ -296,6 +304,9 @@ class Ops:
         self.commands = []
         self.last_move_to = 0.0, 0.0
 
+    def __iter__(self):
+        return iter(self.commands)
+
     def __add__(self, ops):
         result = Ops()
         result.commands = self.commands + ops.commands
@@ -314,10 +325,12 @@ class Ops:
 
     def move_to(self, x, y):
         self.last_move_to = float(x), float(y)
-        self.commands.append(('move_to', *self.last_move_to))
+        cmd = Command(name='move_to', args=self.last_move_to)
+        self.commands.append(cmd)
 
     def line_to(self, x, y):
-        self.commands.append(('line_to', float(x), float(y)))
+        cmd = Command(name='line_to', args=(float(x), float(y)))
+        self.commands.append(cmd)
 
     def close_path(self):
         """
@@ -331,40 +344,42 @@ class Ops:
         Adds an arc command with specified endpoint, center offsets,
         and direction (cw/ccw).
         """
-        self.commands.append((
-            'arc_to',
-            float(x), float(y), float(i), float(j),
-            bool(clockwise)
+        self.commands.append(Command(
+            name='arc_to',
+            args=(float(x), float(y), float(i), float(j), bool(clockwise))
         ))
 
     def set_power(self, power: float):
         """Laser power (0-1000 for GRBL)"""
-        self.commands.append(('set_power', float(power)))
+        cmd = Command(name='set_power', args=(float(power),))
+        self.commands.append(cmd)
 
     def set_cut_speed(self, speed: float):
         """Cutting speed (mm/min)"""
-        self.commands.append(('set_cut_speed', float(speed)))
+        cmd = Command(name='set_cut_speed', args=(float(speed),))
+        self.commands.append(cmd)
 
     def set_travel_speed(self, speed: float):
         """Rapid movement speed (mm/min)"""
-        self.commands.append(('set_travel_speed', float(speed)))
+        cmd = Command(name='set_travel_speed', args=(float(speed),))
+        self.commands.append(cmd)
 
     def enable_air_assist(self, enable=True):
         if enable:
-            self.commands.append(('enable_air_assist',))
+            self.commands.append(Command(name='enable_air_assist'))
         else:
             self.disable_air_assist()
 
     def disable_air_assist(self):
-        self.commands.append(('disable_air_assist',))
+        self.commands.append(Command(name='disable_air_assist'))
 
     def optimize(self, max_iter=1000):
         """
         Uses the 2-opt swap algorithm to address the Traveline Salesman Problem
-        to minimize travel moves in the GCode.
+        to minimize travel moves in the commands.
 
         This is made harder by the fact that some commands cannot be
-        reordered. For example, if the ops contains multiple commands
+        reordered. For example, if the Ops contains multiple commands
         to toggle air-assist, we cannot reorder the operations without
         ensuring that air-assist remains on for the sections that need it.
         Ops optimization may lead to a situation where the number of
@@ -373,12 +388,12 @@ class Ops:
 
         To avoid these problems, we implement the following process:
 
-        1. Preprocess the Ops sequentially, duplicating the intended
-           state (e.g. cutting, power, ...) and attaching it to the each
+        1. Preprocess the command list, duplicating the intended
+           state (e.g. cutting, power, ...) and attaching it to each
            command. Here we also drop all state commands.
 
-        2. Split the ops into non-reorderable segments. Segment in this
-           step means an "as long as possible" sequence that may still
+        2. Split the command list into non-reorderable segments. Segment in
+           this step means an "as long as possible" sequence that may still
            include sub-segments, as long as those sub-segments are
            reorderable.
 
@@ -417,24 +432,24 @@ class Ops:
 
             prev_state = State()
 
-            for op in segment:
-                if op.state.air_assist != prev_state.air_assist:
-                    self.enable_air_assist(op.state.air_assist)
-                if op.state.power != prev_state.power:
-                    self.set_power(op.state.power)
-                if op.state.cut_speed != prev_state.cut_speed:
-                    self.set_cut_speed(op.state.cut_speed)
-                if op.state.travel_speed != prev_state.travel_speed:
-                    self.set_travel_speed(op.state.travel_speed)
+            for cmd in segment:
+                if cmd.state.air_assist != prev_state.air_assist:
+                    self.enable_air_assist(cmd.state.air_assist)
+                if cmd.state.power != prev_state.power:
+                    self.set_power(cmd.state.power)
+                if cmd.state.cut_speed != prev_state.cut_speed:
+                    self.set_cut_speed(cmd.state.cut_speed)
+                if cmd.state.travel_speed != prev_state.travel_speed:
+                    self.set_travel_speed(cmd.state.travel_speed)
 
-                if op.command == 'line_to':
-                    self.line_to(*op.args)
-                elif op.command == 'move_to':
-                    self.move_to(*op.args)
-                elif op.command == 'arc_to':
-                    self.arc_to(*op.args)
+                if cmd.name == 'line_to':
+                    self.line_to(*cmd.args)
+                elif cmd.name == 'move_to':
+                    self.move_to(*cmd.args)
+                elif cmd.name == 'arc_to':
+                    self.arc_to(*cmd.args)
                 else:
-                    raise ValueError('unexpected command '+op.command)
+                    raise ValueError('unexpected command '+cmd.name)
 
     def get_frame(self, power=None, speed=None):
         """
@@ -499,13 +514,13 @@ class Ops:
         total = 0.0
 
         last = None
-        for op, *args in self.commands:
-            if op == 'move_to':
-                last = args
-            elif op == 'line_to':
+        for cmd in self.commands:
+            if cmd.name == 'move_to':
+                last = cmd.args
+            elif cmd.name == 'line_to':
                 if last is not None:
-                    total += math.dist(args, last)
-                last = args
+                    total += math.dist(cmd.args, last)
+                last = cmd.args
         return total
 
     def dump(self):
@@ -514,10 +529,10 @@ class Ops:
 
 if __name__ == '__main__':
     test_segment = [
-        Op('move_to', (1, 1), State(power=1)),
-        Op('line_to', (2, 2), State(power=2)),
-        Op('arc_to',  (3, 3, 0.4, 0.4, True), State(power=3)),
-        Op('line_to', (4, 4), State(power=4)),
+        Command('move_to', (1, 1), State(power=1)),
+        Command('line_to', (2, 2), State(power=2)),
+        Command('arc_to',  (3, 3, 0.4, 0.4, True), State(power=3)),
+        Command('line_to', (4, 4), State(power=4)),
     ]
     print(test_segment)
     print(flip_segment(test_segment))

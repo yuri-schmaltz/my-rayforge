@@ -36,9 +36,9 @@ class CairoEncoder(OpsEncoder):
         active_path = False
         prev_point = 0, ymax
 
-        for cmd in ops.commands:
-            match cmd:
-                case ('move_to', x, y):
+        for cmd in ops:
+            match cmd.name, cmd.args:
+                case 'move_to', (x, y):
                     if active_path:
                         ctx.set_source_rgb(1, 0, 1)
                         ctx.stroke()  # Finalize previous path
@@ -53,7 +53,7 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case ('line_to', x, y):
+                case 'line_to', (x, y):
                     adjusted_y = ymax-y
                     ctx.move_to(*prev_point)
                     ctx.set_source_rgb(1, 0, 1)
@@ -61,7 +61,7 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case ('arc_to', x, y, i, j, clockwise):
+                case 'arc_to', (x, y, i, j, clockwise):
                     # x, y: absolute values
                     # i, j: relative position of arc center from start point.
                     adjusted_y = ymax-y
