@@ -73,7 +73,6 @@ class MachineView(Adw.Dialog):
         # Scroll to the end of the buffer. Gtk may not have calculated the
         # text dimensions yet, so we queue this using idle_add. This ensures
         # that the calculations are complete.
-        textiter = text_buffer.get_end_iter()
         GLib.idle_add(self._scroll_to_bottom)
 
     def _scroll_to_bottom(self):

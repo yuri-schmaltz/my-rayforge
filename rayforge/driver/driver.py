@@ -2,10 +2,9 @@ from abc import ABC, abstractmethod
 from typing import Optional
 from blinker import Signal
 from gi.repository import GLib
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
 from ..transport import TransportStatus
-from ..asyncloop import run_async
 from ..models.ops import Ops
 from ..models.machine import Machine
 
@@ -34,6 +33,7 @@ class DeviceState:
     status: int = DeviceStatus.UNKNOWN
     machine_pos: tuple[float, float, float] = None, None, None  # x, y, z in mm
     work_pos: tuple[float, float, float] = None, None, None  # x, y, z in mm
+    feed_rate: int = None
 
 
 def _falsify(func, *args, **kwargs):

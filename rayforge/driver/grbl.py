@@ -72,7 +72,9 @@ class GrblDriver(Driver):
         if self.websocket:
             await self.websocket.disconnect()
             self.websocket.received.disconnect(self.on_websocket_data_received)
-            self.websocket.status_changed.disconnect(self.on_websocket_status_changed)
+            self.websocket.status_changed.disconnect(
+                self.on_websocket_status_changed
+            )
             self.websocket = None
         if self.http:
             await self.http.disconnect()
@@ -151,8 +153,8 @@ class GrblDriver(Driver):
                 self._log(eeprom_info)
 
                 async with asyncio.TaskGroup() as tg:
-                    http = tg.create_task(self.http.connect())
-                    socket = tg.create_task(self.websocket.connect())
+                    tg.create_task(self.http.connect())
+                    tg.create_task(self.websocket.connect())
             except Exception as e:
                 self._on_connection_status_changed(
                     TransportStatus.ERROR,
@@ -214,8 +216,7 @@ class GrblDriver(Driver):
         - MPos is position in machine coords.
         - WPos is position in work coords.
         - No idea what W0 is.
-        - FS: the first value looks like a speed. The second probably also
-          is, but I have never seen it >0, so no idea.
+        - FS: tuple of feed rate and spindle speed
 
         Also note that not always all fields are included, and sometimes
         others not listed here appear.
@@ -248,15 +249,16 @@ class GrblDriver(Driver):
                 state.work_pos = _parse_pos_triplet(attrib, state.work_pos)
 
             elif attrib.startswith('FS:'):
-                # This attribute is not actually used yet.
                 try:
                     match = fs_re.match(attrib)
                     fs = [int(i) for i in match.groups()]
-                except ValueError:
+                    state.feed_rate = int(fs[0])
+                    # We ignore fs[1] (="spindle speed")
+                except (ValueError, IndexError):
                     pass
 
             else:
-                pass # Ignore everything else
+                pass  # Ignore everything else
 
         return state
 

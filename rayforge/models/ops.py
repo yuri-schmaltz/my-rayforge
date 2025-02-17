@@ -381,7 +381,6 @@ class Ops:
                 continue  # skip empty segments
 
             prev_state = State()
-            segment_start_pos = segment[0].args
 
             for op in segment:
                 if op.state.air_assist != prev_state.air_assist:
@@ -402,9 +401,9 @@ class Ops:
 
     def get_frame(self, power=None, speed=None):
         """
-        Returns a new Ops object containing four move_to operations forming a frame
-        around the occupied area of the original Ops. The occupied area includes
-        all points from line_to and close_path commands.
+        Returns a new Ops object containing four move_to operations forming
+        a frame around the occupied area of the original Ops. The occupied
+        area includes all points from line_to and close_path commands.
         """
         occupied_points = []
         last_point = None
@@ -444,14 +443,12 @@ class Ops:
         """
         total = 0.0
 
-        start = 0, 0
         last = None
         for op, *args in self.commands:
             if op == 'move_to':
                 if last is not None:
                     total += math.dist(args, last)
                 last = args
-                start = args
             elif op == 'line_to':
                 if last is not None:
                     total += math.dist(args, last)
@@ -464,12 +461,10 @@ class Ops:
         """
         total = 0.0
 
-        start = 0, 0
         last = None
         for op, *args in self.commands:
             if op == 'move_to':
                 last = args
-                start = args
             elif op == 'line_to':
                 if last is not None:
                     total += math.dist(args, last)

@@ -63,7 +63,10 @@ class MachineSettingsDialog(Adw.PreferencesDialog):
             "Whether Rayforce will send a homing command when it is started"
         )
         home_on_start_row.set_active(machine.home_on_start)
-        home_on_start_row.connect('notify::active', self.on_home_on_start_changed)
+        home_on_start_row.connect(
+            'notify::active',
+            self.on_home_on_start_changed
+        )
         machine_group.add(home_on_start_row)
 
         # Max Travel Speed

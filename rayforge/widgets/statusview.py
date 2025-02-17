@@ -167,7 +167,7 @@ class MachineStatusMonitor(StatusWidget):
         super().__init__(MachineStatusIconWidget(), self.status)
 
         driver_mgr.changed.connect(self.on_driver_changed)
-        self.on_driver_changed(self, driver_mgr.driver)  # trigger initial update
+        self.on_driver_changed(self, driver_mgr.driver)  # trigger update
 
     def on_driver_changed(self, sender, driver):
         nodriver = driver is None or driver.__class__ == NoDeviceDriver

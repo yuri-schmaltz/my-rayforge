@@ -1,11 +1,9 @@
 import re
 import io
 import cairo
-import numpy as np
 from PIL import Image
 import pymupdf
 from pypdf import PdfReader, PdfWriter
-from ..util.cairoutil import make_transparent
 from .renderer import Renderer
 
 

@@ -27,6 +27,7 @@ class App(Adw.Application):
         shutdown()
         Adw.Application.do_shutdown(self)
 
+
 def main():
     parser = argparse.ArgumentParser(
             description="A GCode generator for laser cutters.")
@@ -38,6 +39,7 @@ def main():
     app = App(args)
     app.run(None)
     config_mgr.save()
+
 
 if __name__ == "__main__":
     main()

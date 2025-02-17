@@ -2,7 +2,7 @@ from gi.repository import Gtk, Gio, GLib, Gdk, Adw
 from .. import __version__
 from ..asyncloop import run_async
 from ..config import config
-from ..driver import get_driver, get_driver_cls
+from ..driver import get_driver_cls
 from ..driver.driver import driver_mgr, DeviceStatus
 from ..driver.dummy import NoDeviceDriver
 from ..util.resources import get_icon
@@ -132,7 +132,9 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.frame_button = Gtk.Button()
         self.frame_button.set_child(get_icon('frame'))
-        self.frame_button.set_tooltip_text("Cycle laser head around the occupied area")
+        self.frame_button.set_tooltip_text(
+            "Cycle laser head around the occupied area"
+        )
         self.frame_button.connect("clicked", self.on_frame_clicked)
         toolbar.append(self.frame_button)
 
