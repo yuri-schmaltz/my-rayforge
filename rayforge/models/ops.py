@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from copy import copy, deepcopy
+from copy import copy
 from dataclasses import dataclass
 
 
@@ -98,7 +98,7 @@ def split_segments(operations):
             if current_segment:
                 segments.append(current_segment)
             current_segment = [op]
-        elif op.command == 'line_to':
+        elif op.command in ('line_to', 'arc_to'):
             current_segment.append(op)
         else:
             raise ValueError('unexpected operation '+op.command)
@@ -114,29 +114,53 @@ def flip_segment(segment):
     machine state while traveling TO the point.
 
     Example:
-      state:    A    B    C    D
-      points:   -> 1 -> 2 -> 3 -> 4
+      state:     A            B            C           D
+      points:   -> move_to 1 -> line_to 2 -> arc_to 3 -> line_to 4
 
     After flipping this sequence, the state is in the wrong position:
 
-      state:    D    C    B    A
-      points:   -> 4 -> 3 -> 2 -> 1
+      state:     D            C           B            A
+      points:   -> line_to 4 -> arc_to 3 -> line_to 2 -> move_to 1
 
     Note that for example the edge between point 3 and 2 no longer has
     state C, it is B instead. 4 -> 3 should be D, but is C.
-    So we have to shift the state to the next point. Correct:
+    So we have to shift the state and the command to the next point.
+    Correct:
 
-      state:    A    D    C    B
-      points:   -> 4 -> 3 -> 2 -> 1
+      state:     A            D            C           B
+      points:   -> move_to 4 -> line_to 3 -> arc_to 2 -> line_to 1
     """
-    new_segment = list(reversed(deepcopy(segment)))
-    last_state = copy(new_segment[-1].state)
-    for i in range(len(new_segment)-1, -1, -1):
-        op = new_segment[i]
-        op.state = new_segment[i-1].state
-    new_segment[0].state = last_state
-    new_segment[0].command = 'move_to'
-    new_segment[-1].command = 'line_to'
+    length = len(segment)
+    if length <= 1:
+        return segment
+
+    new_segment = []
+    for i in range(length-1, -1, -1):
+        prev_op = segment[(i+1) % length]
+        new_op = copy(segment[i])
+        new_op.state = prev_op.state
+        new_op.command = prev_op.command
+        new_op.args = new_op.args[:2]
+
+        # Fix arc_to parameters
+        if new_op.command == 'arc_to' and i > 0:
+            # Get original arc (prev op in original segment)
+            orig_op = segment[i+1]
+            x_end, y_end, i_orig, j_orig, clockwise_orig = orig_op.args
+
+            # Calculate center and new offsets
+            x_start, y_start = new_op.args[:2]
+            center_x = x_start + i_orig
+            center_y = y_start + j_orig
+            new_i = center_x - x_end
+            new_j = center_y - y_end
+            new_clockwise = not clockwise_orig
+
+            # Update arc parameters
+            new_op.args = x_end, y_end, new_i, new_j, new_clockwise
+
+        new_segment.append(new_op)
+
     return new_segment
 
 
@@ -302,6 +326,17 @@ class Ops:
         """
         self.line_to(*self.last_move_to)
 
+    def arc_to(self, x, y, i, j, clockwise=True):
+        """
+        Adds an arc command with specified endpoint, center offsets,
+        and direction (cw/ccw).
+        """
+        self.commands.append((
+            'arc_to',
+            float(x), float(y), float(i), float(j),
+            bool(clockwise)
+        ))
+
     def set_power(self, power: float):
         """Laser power (0-1000 for GRBL)"""
         self.commands.append(('set_power', float(power)))
@@ -396,6 +431,8 @@ class Ops:
                     self.line_to(*op.args)
                 elif op.command == 'move_to':
                     self.move_to(*op.args)
+                elif op.command == 'arc_to':
+                    self.arc_to(*op.args)
                 else:
                     raise ValueError('unexpected command '+op.command)
 
@@ -479,7 +516,7 @@ if __name__ == '__main__':
     test_segment = [
         Op('move_to', (1, 1), State(power=1)),
         Op('line_to', (2, 2), State(power=2)),
-        Op('line_to', (3, 3), State(power=3)),
+        Op('arc_to',  (3, 3, 0.4, 0.4, True), State(power=3)),
         Op('line_to', (4, 4), State(power=4)),
     ]
     print(test_segment)

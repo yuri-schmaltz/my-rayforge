@@ -103,6 +103,7 @@ class Contour(WorkStep):
             MakeTransparent(),
             ToGrayscale(),
             EdgeTracer(),
+            # Optimizer(),
         ]
 
 
@@ -115,6 +116,7 @@ class Rasterize(WorkStep):
             MakeTransparent(),
             ToGrayscale(),
             Rasterizer(),
+            # Optimizer(),
         ]
 
 

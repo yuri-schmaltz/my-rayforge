@@ -91,6 +91,7 @@ represents a sequence of the following operations:
 | ------------------------- | ------------------------------------------ |
 | `move_to(x, y)`           | Rapid movement (no cutting) (mm)           |
 | `line_to(x, y)`           | Cutting movement (mm)                      |
+| `arc_to(x, y, i, j)`      | Cutting arc movement (mm)                  |
 | `set_power(value)`        | Laser power (0-100%)                       |
 | `set_cut_speed(value)`    | Cutting speed (mm/min)                     |
 | `set_travel_speed(value)` | Rapid movement speed (mm/min)              |

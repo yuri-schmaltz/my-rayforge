@@ -38,9 +38,11 @@ class GcodeEncoder(OpsEncoder):
             case 'disable_air_assist':
                 self._set_air_assist(gcode, False, machine)
             case ('move_to', x, y):
-                self._handle_move(gcode, x, y)
+                self._handle_move_to(gcode, x, y)
             case ('line_to', x, y):
-                self._handle_cut(gcode, x, y)
+                self._handle_line_to(gcode, x, y)
+            case ('arc_to', x, y, i, j, direction):
+                self._handle_arc_to(gcode, x, y, i, j, direction)
 
     def _update_power(self, gcode: list, power: float, machine: Machine):
         """Update laser power and toggle state if needed"""
@@ -59,7 +61,7 @@ class GcodeEncoder(OpsEncoder):
         if cmd:
             gcode.append(cmd)
 
-    def _handle_move(self, gcode: list, x: float, y: float):
+    def _handle_move_to(self, gcode: list, x: float, y: float):
         """Rapid movement with laser safety"""
         self._laser_off(gcode)
         cmd = f"G0 X{x:.3f} Y{y:.3f}"
@@ -67,10 +69,25 @@ class GcodeEncoder(OpsEncoder):
             cmd += f" F{self.travel_speed}"
         gcode.append(cmd)
 
-    def _handle_cut(self, gcode: list, x: float, y: float):
+    def _handle_line_to(self, gcode: list, x: float, y: float):
         """Cutting movement with laser activation"""
         self._laser_on(gcode)
         cmd = f"G1 X{x:.3f} Y{y:.3f}"
+        if self.cut_speed:
+            cmd += f" F{self.cut_speed}"
+        gcode.append(cmd)
+
+    def _handle_arc_to(self,
+                       gcode: list,
+                       x: float,
+                       y: float,
+                       i: float,
+                       j: float,
+                       clockwise: bool):
+        """Cutting movement with laser activation"""
+        self._laser_on(gcode)
+        cmd = "G2" if clockwise else "G3"
+        cmd += f" X{x:.3f} Y{y:.3f} I{i:.3f} J{j:.3f}"
         if self.cut_speed:
             cmd += f" F{self.cut_speed}"
         gcode.append(cmd)
