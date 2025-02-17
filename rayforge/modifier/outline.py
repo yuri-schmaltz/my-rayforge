@@ -92,26 +92,3 @@ class EdgeTracer(Modifier):
                                        cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_NONE)
         contours2ops(contours, workstep.ops, pixels_per_mm, ymax)
-
-
-class SVGOutline(Modifier):
-    """
-    DYSFUNCT FOR NOW! THIS IS A TODO
-    Transforms SVG paths to our internal Ops objects, as
-    outlines for laser cutting.
-    """
-    def run(self, workstep, surface, pixels_per_mm, ymax):
-        # Use svgpathtools to extract paths and attributes of each of the
-        # SVG workpieces.
-        for workpiece in workstep.workpieces:
-            if not issubclass(workpiece.renderer, SVGRenderer):
-                continue  # not an SVG
-
-            fp = io.Bytes(workpiece.data)
-            paths, attributes, svg_attributes = svg2paths2(fp)
-
-            width = svg_attributes.get('width'),
-            height = svg_attributes.get('height')
-            for svgpath, attr in zip(paths, attributes):
-                print("NOT IMPLEMENTED", svgpath, attr, width, height)
-                # TODO: append stuff to workstep.path
