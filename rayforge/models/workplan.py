@@ -1,11 +1,8 @@
 from typing import List
 from ..config import config
-from ..modifier import Modifier, \
-                       MakeTransparent, \
-                       ToGrayscale, \
-                       OutlineTracer, \
-                       EdgeTracer, \
-                       Rasterizer
+from ..modifier import Modifier, MakeTransparent, ToGrayscale
+from ..opsproducer import OpsProducer, OutlineTracer, EdgeTracer, Rasterizer
+from ..opstransformer import Optimize
 from .machine import Laser
 from .ops import Ops
 from blinker import Signal
@@ -19,10 +16,17 @@ class WorkStep:
     """
     typelabel = None
 
-    def __init__(self, name=None):
+    def __init__(self, opsproducer: OpsProducer, name=None):
         self.name: str = name or self.typelabel
         self.visible: bool = True
-        self.modifiers: List[Modifier] = []
+        self.modifiers: List[Modifier] = [
+            MakeTransparent(),
+            ToGrayscale(),
+        ]
+        self.opsproducer: OpsProducer = opsproducer
+        self.opstransformers: List[OpsTransformer] = [
+            # Optimize(),
+        ]
         self.passes: int = 1
         self.ops: Ops = Ops()
         self.laser: Laser = None
@@ -52,7 +56,7 @@ class WorkStep:
         self.power = power
         self.changed.send(self)
 
-    def run(self, surface, pixels_per_mm, ymax):
+    def run(self, machine, surface, pixels_per_mm):
         """
         surface: the input surface containing an image that the
         modifiers should modify (or convert to Ops).
@@ -64,8 +68,23 @@ class WorkStep:
         self.ops.set_cut_speed(self.cut_speed)
         self.ops.set_travel_speed(self.travel_speed)
         self.ops.enable_air_assist(self.air_assist)
+
+        # Apply bitmap modifiers.
         for modifier in self.modifiers:
-            modifier.run(self, surface, pixels_per_mm, ymax)
+            modifier.run(surface)
+
+        # Produce an Ops object from the resulting surface.
+        self.ops += self.opsproducer.run(
+            machine,
+            self.laser,
+            surface,
+            pixels_per_mm
+        )
+
+        # Apply Ops object transformations.
+        for transformer in self.opstransformers:
+            transformer.run(self.ops)
+
         self.ops.disable_air_assist()
 
     def _on_laser_changed(self, sender, **kwargs):
@@ -86,38 +105,21 @@ class Outline(WorkStep):
     typelabel = "External Outline"
 
     def __init__(self, name=None, **kwargs):
-        super().__init__(name, **kwargs)
-        self.modifiers = [
-            MakeTransparent(),
-            ToGrayscale(),
-            OutlineTracer(),
-        ]
+        super().__init__(OutlineTracer(), name, **kwargs)
 
 
 class Contour(WorkStep):
     typelabel = "Contour"
 
     def __init__(self, name=None, **kwargs):
-        super().__init__(name, **kwargs)
-        self.modifiers = [
-            MakeTransparent(),
-            ToGrayscale(),
-            EdgeTracer(),
-            # Optimizer(),
-        ]
+        super().__init__(EdgeTracer(), name, **kwargs)
 
 
 class Rasterize(WorkStep):
     typelabel = "Raster Engrave"
 
     def __init__(self, name=None, **kwargs):
-        super().__init__(name, **kwargs)
-        self.modifiers = [
-            MakeTransparent(),
-            ToGrayscale(),
-            Rasterizer(),
-            # Optimizer(),
-        ]
+        super().__init__(Rasterizer(), name, **kwargs)
 
 
 class WorkPlan:
@@ -153,7 +155,7 @@ class WorkPlan:
         ops = Ops()
         for step in self.worksteps:
             if optimize:
-                step.ops.optimize()
+                Optimize().run(step.ops)
             ops += step.ops*step.passes
         return ops
 

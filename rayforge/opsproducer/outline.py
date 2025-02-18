@@ -1,7 +1,8 @@
 import cairo
 import numpy as np
 import cv2
-from .modifier import Modifier
+from ..models.ops import Ops
+from .producer import OpsProducer
 
 
 def prepare_surface_for_tracing(surface):
@@ -33,13 +34,14 @@ def prepare_surface_for_tracing(surface):
     return cv2.cvtColor(img, target_fmt)
 
 
-def contours2ops(contours, ops, pixels_per_mm, ymax):
+def contours2ops(contours, pixels_per_mm, ymax):
     """
     The resulting Ops needs to be in machine coordinates, i.e. zero
     point must be at the bottom left, and units need to be mm.
     Since Cairo coordinates put the zero point at the top left, we must
     subtract Y from the machine's Y axis maximum.
     """
+    ops = Ops()
     scale_x, scale_y = pixels_per_mm
     for contour in contours:
         # Smooth contour
@@ -54,27 +56,29 @@ def contours2ops(contours, ops, pixels_per_mm, ymax):
                 x, y = point[0]
                 ops.line_to(x/scale_x, ymax-y/scale_y)
             ops.close_path()
+    return ops
 
 
-class OutlineTracer(Modifier):
+class OutlineTracer(OpsProducer):
     """
     Find external outlines for laser cutting.
     """
-    def run(self, workstep, surface, pixels_per_mm, ymax):
+    def run(self, machine, laser, surface, pixels_per_mm):
         # Find contours of the black areas
         binary = prepare_surface_for_tracing(surface)
         _, binary = cv2.threshold(binary, 10, 255, cv2.THRESH_BINARY_INV)
         contours, _ = cv2.findContours(binary,
                                        cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_NONE)
-        contours2ops(contours, workstep.ops, pixels_per_mm, ymax)
+        ymax = machine.dimensions[1]
+        return contours2ops(contours, pixels_per_mm, ymax)
 
 
-class EdgeTracer(Modifier):
+class EdgeTracer(OpsProducer):
     """
     Find all edges (including holes) for laser cutting.
     """
-    def run(self, workstep, surface, pixels_per_mm, ymax):
+    def run(self, machine, laser, surface, pixels_per_mm):
         binary = prepare_surface_for_tracing(surface)
         binary = cv2.GaussianBlur(binary, (5, 5), 0)
         binary = cv2.morphologyEx(
@@ -88,4 +92,5 @@ class EdgeTracer(Modifier):
         contours, _ = cv2.findContours(edges,
                                        cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_NONE)
-        contours2ops(contours, workstep.ops, pixels_per_mm, ymax)
+        ymax = machine.dimensions[1]
+        return contours2ops(contours, pixels_per_mm, ymax)

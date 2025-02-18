@@ -1,11 +1,11 @@
 class Modifier:
     """
-    Any process that operates on WorkPieces.
+    Modifies a Cairo surface.
     """
     def __init__(self):
         self.label = self.__class__.__name__
 
-    def run(self, workstep, surface, pixels_per_mm, ymax):
+    def run(self, surface):
         """
         - workstep: the WorkStep that the process is a part of
         - surface: an input surface. Can be manipulated in-place,

@@ -73,10 +73,9 @@ class WorkStepElement(CanvasElement):
 
         # Let the workstep process our surface in-place.
         width, height = self.size_px()
-        ymax = self.canvas.root.height_mm
         pixels_per_mm = self.get_pixels_per_mm()
         workstep = self.data
-        workstep.run(self.surface, pixels_per_mm, ymax)
+        workstep.run(config.machine, self.surface, pixels_per_mm)
 
         # If Ops were generated, render only it. i.e. clear the current
         # bitmap.

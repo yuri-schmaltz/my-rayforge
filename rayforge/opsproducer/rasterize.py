@@ -1,7 +1,7 @@
 import cairo
 import numpy as np
 from ..models.ops import Ops
-from .modifier import Modifier
+from .producer import OpsProducer
 
 
 def rasterize_horizontally(surface,
@@ -109,15 +109,15 @@ def rasterize_horizontally(surface,
     return ops
 
 
-class Rasterizer(Modifier):
+class Rasterizer(OpsProducer):
     """
     Generates rastered movements (using only straight lines)
     across filled pixels in the surface.
     """
-    def run(self, workstep, surface, pixels_per_mm, ymax):
-        workstep.ops = rasterize_horizontally(
+    def run(self, machine, laser, surface, pixels_per_mm):
+        return rasterize_horizontally(
             surface,
-            ymax,
+            machine.dimensions[1],  # y max for axis inversion
             pixels_per_mm,
-            workstep.laser.spot_size_mm[1]
+            laser.spot_size_mm[1]
         )
