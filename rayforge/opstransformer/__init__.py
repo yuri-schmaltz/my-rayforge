@@ -2,6 +2,7 @@
 import inspect
 from .transformer import OpsTransformer
 from .optimize import Optimize
+from .arcwelder import ArcWeld
 
 transformer_by_name = dict(
     [(name, obj) for name, obj in list(locals().items())

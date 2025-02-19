@@ -2,7 +2,7 @@ from typing import List
 from ..config import config
 from ..modifier import Modifier, MakeTransparent, ToGrayscale
 from ..opsproducer import OpsProducer, OutlineTracer, EdgeTracer, Rasterizer
-from ..opstransformer import Optimize
+from ..opstransformer import Optimize, ArcWeld
 from .machine import Laser
 from .ops import Ops
 from blinker import Signal
@@ -26,6 +26,7 @@ class WorkStep:
         self.opsproducer: OpsProducer = opsproducer
         self.opstransformers: List[OpsTransformer] = [
             # Optimize(),
+            # ArcWeld(),
         ]
         self.passes: int = 1
         self.ops: Ops = Ops()
