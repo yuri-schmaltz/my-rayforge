@@ -78,6 +78,8 @@ class CairoEncoder(OpsEncoder):
                     angle1 = math.atan2(start_y - center_y, start_x - center_x)
                     angle2 = math.atan2(adjusted_y - center_y, x - center_x)
                     if clockwise:
+                        ctx.arc(center_x, center_y, radius, angle1, angle2)
+                    else:
                         ctx.arc_negative(
                             center_x,
                             center_y,
@@ -85,8 +87,6 @@ class CairoEncoder(OpsEncoder):
                             angle1,
                             angle2
                         )
-                    else:
-                        ctx.arc(center_x, center_y, radius, angle1, angle2)
 
                     prev_point = x, adjusted_y
                     active_path = True
