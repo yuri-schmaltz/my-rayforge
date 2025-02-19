@@ -66,7 +66,7 @@ class CairoEncoder(OpsEncoder):
                     # i, j: relative position of arc center from start point.
                     adjusted_y = ymax-y
                     ctx.move_to(*prev_point)
-                    ctx.set_source_rgb(1, 0, 1)
+                    ctx.set_source_rgb(1, 0, 0)
 
                     # Start point is the x, y of the previous operation.
                     start_x, start_y = prev_point
