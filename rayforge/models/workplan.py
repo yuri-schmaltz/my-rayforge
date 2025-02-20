@@ -1,11 +1,16 @@
+import os
 from typing import List
 from ..config import config
 from ..modifier import Modifier, MakeTransparent, ToGrayscale
 from ..opsproducer import OpsProducer, OutlineTracer, EdgeTracer, Rasterizer
-from ..opstransformer import Optimize, ArcWeld
+from ..opstransformer import OpsTransformer, Optimize, ArcWeld
 from .machine import Laser
 from .ops import Ops
 from blinker import Signal
+
+
+DEBUG_OPTIMIZE = os.environ.get('DEBUG_OPTIMIZE', False)
+DEBUG_ARCWELD = os.environ.get('DEBUG_ARCWELD', False)
 
 
 class WorkStep:
@@ -24,10 +29,7 @@ class WorkStep:
             ToGrayscale(),
         ]
         self.opsproducer: OpsProducer = opsproducer
-        self.opstransformers: List[OpsTransformer] = [
-            # Optimize(),
-            # ArcWeld(),
-        ]
+        self.opstransformers: List[OpsTransformer] = []
         self.passes: int = 1
         self.ops: Ops = Ops()
         self.laser: Laser = None
@@ -39,6 +41,11 @@ class WorkStep:
         self.cut_speed: int = config.machine.max_cut_speed
         self.travel_speed: int = config.machine.max_travel_speed
         self.air_assist: bool = False
+
+        if DEBUG_OPTIMIZE:
+            self.opstransformers.append(Optimize())
+        if DEBUG_ARCWELD:
+            self.opstransformers.append(ArcWeld())
 
     def set_passes(self, passes=True):
         self.passes = int(passes)
