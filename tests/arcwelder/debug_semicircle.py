@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from rayforge.models.ops import Ops
+from rayforge.models.ops import Ops, MoveToCommand, ArcToCommand
 from rayforge.opstransformer.arcwelder import ArcWeld
 from rayforge.opstransformer.arcwelder.points import fit_circle
 
@@ -31,17 +31,18 @@ def debug_semicircle():
     # Processed commands
     current_pos = None
     for cmd in ops.commands:
-        if cmd.name == 'move_to':
-            current_pos = cmd.args
-            ax2.plot(*current_pos, 'go')
-        elif cmd.name == 'arc_to':
-            end_x, end_y, I, J, _ = cmd.args
-            center = (current_pos[0] + I, current_pos[1] + J)
-            theta = np.linspace(0, np.pi, 50)
-            x = center[0] + np.hypot(I, J) * np.cos(theta)
-            y = center[1] + np.hypot(I, J) * np.sin(theta)
-            ax2.plot(x, y, 'r--')
-            current_pos = (end_x, end_y)
+        match cmd:
+            case MoveToCommand():
+                current_pos = cmd.args
+                ax2.plot(*current_pos, 'go')
+            case ArcToCommand():
+                end_x, end_y, I, J, _ = cmd.args
+                center = (current_pos[0] + I, current_pos[1] + J)
+                theta = np.linspace(0, np.pi, 50)
+                x = center[0] + np.hypot(I, J) * np.cos(theta)
+                y = center[1] + np.hypot(I, J) * np.sin(theta)
+                ax2.plot(x, y, 'r--')
+                current_pos = (end_x, end_y)
     
     ax2.set_title("Processed Arc")
     plt.show()
