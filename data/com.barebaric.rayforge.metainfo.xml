@@ -10,7 +10,12 @@
   
   <name>Rayforge</name>
   <summary>A desktop application for laser cutting and engraving</summary>
-  
+
+  <categories>
+    <category>Utility</category>
+    <category>Engineering</category>
+  </categories>
+
   <metadata_license>MIT</metadata_license>
   <project_license>MIT</project_license>
 
@@ -40,7 +45,8 @@
 
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/barebaric/rayforge/main/docs/ss-main.png</image>
+      <caption>The main window of Rayforge.</caption>
+      <image type="source" width="1462" height="1209">https://raw.githubusercontent.com/barebaric/rayforge/main/docs/ss-main.png</image>
     </screenshot>
   </screenshots>
 
