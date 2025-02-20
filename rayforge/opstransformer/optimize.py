@@ -327,21 +327,24 @@ class Optimize(OpsTransformer):
 
         # 5. Reassemble the ops, reintroducing state change commands.
         ops.commands = []
+        prev_state = State()
         for segment in result:
             if not segment:
                 continue  # skip empty segments
 
-            prev_state = State()
-
             for cmd in segment:
                 if cmd.state.air_assist != prev_state.air_assist:
                     ops.enable_air_assist(cmd.state.air_assist)
+                    prev_state.air_assist = cmd.state.air_assist
                 if cmd.state.power != prev_state.power:
                     ops.set_power(cmd.state.power)
+                    prev_state.power = cmd.state.power
                 if cmd.state.cut_speed != prev_state.cut_speed:
                     ops.set_cut_speed(cmd.state.cut_speed)
+                    prev_state.cut_speed = cmd.state.cut_speed
                 if cmd.state.travel_speed != prev_state.travel_speed:
                     ops.set_travel_speed(cmd.state.travel_speed)
+                    prev_state.travel_speed = cmd.state.travel_speed
 
                 if not cmd.is_state_command():
                     ops.add(cmd)
