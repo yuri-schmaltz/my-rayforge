@@ -30,13 +30,9 @@ jobs:
       run: pip install --no-cache-dir -r requirements.txt
 
     - name: Run pytest
-      uses: pavelzw/pytest-action@v2
-      with:
-        verbose: true
-        emoji: true
-        job-summary: true
-        click-to-expand: true
-        report-title: 'PyTest Report'
+      run: |
+        pip install pytest pytest-cov
+        python -m pytest -vv
 
     - name: Build a wheel
       run: python3 -m build
