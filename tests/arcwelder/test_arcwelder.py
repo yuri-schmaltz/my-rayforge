@@ -1,6 +1,6 @@
 import math
 import numpy as np
-from rayforge.models.ops import Ops, Command
+from rayforge.models.ops import Ops, MoveToCommand, LineToCommand, ArcToCommand
 from rayforge.opstransformer.arcwelder import ArcWeld
 from rayforge.opstransformer.arcwelder.points import fit_circle
 
@@ -30,7 +30,7 @@ def test_arc_welder_converts_semicircle():
     welder.run(ops)
     
     # Verify arc generation
-    arc_commands = [cmd for cmd in ops.commands if cmd.name == 'arc_to']
+    arc_commands = [cmd for cmd in ops if cmd.__class__ == ArcToCommand]
     assert len(arc_commands) == 1, "Should replace the entire segment with one arc"
     
     # Validate arc parameters
@@ -64,7 +64,7 @@ def test_arc_welder_ignores_straight_lines():
     welder.run(ops)
     
     # No arcs should be generated for colinear points
-    assert all(cmd.name != 'arc_to' for cmd in ops.commands), "Arcs incorrectly generated"
+    assert all((not isinstance(cmd, ArcToCommand)) for cmd in ops), "Arcs incorrectly generated"
 
 def test_arc_with_trailing_straight_lines():
     ops = Ops()
@@ -92,14 +92,14 @@ def test_arc_with_trailing_straight_lines():
     
     # Validate results
     commands = ops.commands
-    cmd_types = [cmd.name for cmd in commands]
+    cmd_types = [cmd.__class__ for cmd in commands]
     assert cmd_types == [
-        'move_to',
-        'arc_to', 
-        'line_to',
-        'line_to',
-        'line_to',
-        'line_to',
+        MoveToCommand,
+        ArcToCommand,
+        LineToCommand,
+        LineToCommand,
+        LineToCommand,
+        LineToCommand,
     ], f"Unexpected command sequence: {cmd_types}"
     
     # Validate arc parameters
@@ -193,8 +193,8 @@ def test_arc_processing_flow():
     welder.process_segment(segment, ops)
     
     # Validate command sequence
-    cmd_names = [cmd.name for cmd in ops.commands]
-    assert cmd_names == ['move_to', 'arc_to'], "Should replace entire segment with one arc"
+    cmd_types = [cmd.__class__ for cmd in ops]
+    assert cmd_types == [MoveToCommand, ArcToCommand], "Should replace entire segment with one arc"
     
     # Validate arc parameters
     arc_cmd = ops.commands[1]
@@ -214,12 +214,12 @@ def test_process_segment_structure():
         (0, 0), (1, 0), (2, 0), (3, 0), (4, 0)
     ]
     welder.process_segment(segment, ops)
-    assert [cmd.name for cmd in ops.commands] == [
-        'move_to',
-        'line_to',
-        'line_to',
-        'line_to',
-        'line_to',
+    assert [cmd.__class__ for cmd in ops] == [
+        MoveToCommand,
+        LineToCommand,
+        LineToCommand,
+        LineToCommand,
+        LineToCommand,
     ]
 
 def test_move_to_handling():
@@ -228,10 +228,10 @@ def test_move_to_handling():
 
     # Manually build command sequence
     ops.commands = [
-        Command('move_to', (0, 0)),
-        Command('line_to', (1, 0)),
-        Command('move_to', (2, 0)),
-        Command('line_to', (3, 0))
+        MoveToCommand((0, 0)),
+        LineToCommand((1, 0)),
+        MoveToCommand((2, 0)),
+        LineToCommand((3, 0))
     ]
 
     # Process commands
@@ -239,7 +239,7 @@ def test_move_to_handling():
 
     # Verify output
     assert len(ops.commands) == 4
-    assert [cmd.name for cmd in ops.commands] == [
-        'move_to', 'line_to',
-        'move_to', 'line_to'
+    assert [cmd.__class__ for cmd in ops] == [
+        MoveToCommand, LineToCommand,
+        MoveToCommand, LineToCommand,
     ]
