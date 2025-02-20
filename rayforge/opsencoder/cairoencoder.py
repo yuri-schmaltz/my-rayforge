@@ -1,6 +1,6 @@
 import math
 import cairo
-from ..models.ops import Ops, MoveToCommand, LineToCommand, ArcToCommand
+from ..models.ops import Ops
 from ..models.machine import Machine
 from .encoder import OpsEncoder
 

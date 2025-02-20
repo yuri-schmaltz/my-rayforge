@@ -1,7 +1,5 @@
 import math
-import numpy as np
 from ...models.ops import Ops, \
-                          State, \
                           LineToCommand, \
                           ArcToCommand, \
                           MoveToCommand
@@ -11,11 +9,13 @@ from .points import remove_duplicates, \
                     arc_direction, \
                     fit_circle
 
+
 def contains_command(segment, cmdcls):
     for cmd in segment:
         if isinstance(cmd, cmdcls):
             return True
     return False
+
 
 def split_into_segments(commands):
     """
@@ -70,6 +70,7 @@ def split_into_segments(commands):
         segments.append(current_segment)
 
     return segments
+
 
 class ArcWeld(OpsTransformer):
     """
@@ -141,9 +142,9 @@ class ArcWeld(OpsTransformer):
             return False
         center, radius, error = arc
         if (error > self.tolerance
-            or radius < 1
-            or radius > 100
-            or are_colinear(subsegment)):
+         or radius < 1
+         or radius > 100
+         or are_colinear(subsegment)):
             return False
 
         # Angular continuity checks

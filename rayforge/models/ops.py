@@ -1,6 +1,4 @@
-import numpy as np
 import math
-from copy import copy
 from typing import NamedTuple
 from dataclasses import dataclass
 
@@ -242,14 +240,3 @@ class Ops:
 
     def dump(self):
         print(self.commands)
-
-
-if __name__ == '__main__':
-    test_segment = [
-        MoveToCommand((1, 1), State(power=1)),
-        LineToCommand((2, 2), State(power=2)),
-        ArcToCommand((3, 3, 0.4, 0.4, True), State(power=3)),
-        LineToCommand((4, 4), State(power=4)),
-    ]
-    print(test_segment)
-    print(flip_segment(test_segment))

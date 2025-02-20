@@ -1,14 +1,4 @@
-from ..models.ops import Ops, \
-                         State, \
-                         Command, \
-                         SetPowerCommand, \
-                         SetCutSpeedCommand, \
-                         SetTravelSpeedCommand, \
-                         EnableAirAssistCommand, \
-                         DisableAirAssistCommand, \
-                         LineToCommand, \
-                         ArcToCommand, \
-                         MoveToCommand
+from ..models.ops import Ops, Command
 from ..models.machine import Machine
 from .encoder import OpsEncoder
 

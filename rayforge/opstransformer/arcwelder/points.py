@@ -1,4 +1,3 @@
-import math
 import numpy as np
 from scipy.optimize import least_squares
 from itertools import groupby
@@ -17,7 +16,7 @@ def are_colinear(points):
     """
     if len(points) < 3:
         return True
-        
+
     p1, p2, p3 = points[0], points[1], points[2]
     area = abs((p2[0]-p1[0])*(p3[1]-p1[1])
              - (p2[1]-p1[1])*(p3[0]-p1[0]))
@@ -30,7 +29,7 @@ def is_clockwise(points):
     """
     if len(points) < 3:
         return False
-    
+
     p1, p2, p3 = points[0], points[1], points[2]
     cross = ((p2[0]-p1[0])*(p3[1]-p2[1])
            - (p2[1]-p1[1])*(p3[0]-p2[0]))
@@ -70,8 +69,11 @@ def fit_circle(points):
     r0 = np.mean(np.sqrt((x-x0)**2 + (y-y0)**2))
 
     # Fit a circle.
-    func = lambda p: np.sqrt((x-p[0])**2 + (y-p[1])**2) - p[2]
-    result = least_squares(func, [x0, y0, r0], method='lm')
+    result = least_squares(
+        lambda p: np.sqrt((x-p[0])**2 + (y-p[1])**2) - p[2],
+        [x0, y0, r0],
+        method='lm'
+    )
     xc, yc, r = result.x
 
     # Calculate the maximum deviation.

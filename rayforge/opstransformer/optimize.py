@@ -3,15 +3,12 @@ import math
 from copy import copy
 from ..models.ops import Ops, \
                          State, \
-                         Command, \
                          SetPowerCommand, \
                          SetCutSpeedCommand, \
                          SetTravelSpeedCommand, \
                          EnableAirAssistCommand, \
                          DisableAirAssistCommand, \
-                         LineToCommand, \
-                         ArcToCommand, \
-                         MoveToCommand
+                         ArcToCommand
 from .transformer import OpsTransformer
 
 
@@ -38,7 +35,7 @@ def preprocess_commands(commands):
         elif isinstance(cmd, DisableAirAssistCommand):
             state.air_assist = False
         else:
-            operations.append(cmd._replace(state = copy(state)))
+            operations.append(cmd._replace(state=copy(state)))
     return operations
 
 
@@ -122,8 +119,8 @@ def flip_segment(segment):
         cmd = segment[i]
         prev_cmd = segment[(i+1) % length]
         new_cmd = prev_cmd.__class__(
-            state = prev_cmd.state,
-            args = cmd.args[:2]
+            state=prev_cmd.state,
+            args=cmd.args[:2]
         )
 
         # Fix arc_to parameters
@@ -142,7 +139,7 @@ def flip_segment(segment):
 
             # Update arc parameters
             new_cmd = new_cmd._replace(
-                args = (x_start, y_start, new_i, new_j, new_clockwise)
+                args=(x_start, y_start, new_i, new_j, new_clockwise)
             )
 
         new_segment.append(new_cmd)
@@ -194,12 +191,12 @@ def greedy_order_segments(segments):
             end_cmd_state = end_cmd.state
 
             start_cmd = end_cmd_cls(
-                args = start_cmd.args,
-                state = end_cmd_state
+                args=start_cmd.args,
+                state=end_cmd_state
             )
             end_cmd = start_cmd_cls(
-                args = start_cmd.args,
-                state = end_cmd_state
+                args=end_cmd.args,
+                state=start_cmd_state
             )
 
         ordered.append(best_seg)
