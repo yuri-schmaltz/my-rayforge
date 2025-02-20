@@ -31,27 +31,30 @@ class GcodeEncoder(OpsEncoder):
 
     def _handle_command(self, gcode: list, cmd: Command, machine: Machine):
         """Dispatch command to appropriate handler"""
-        match cmd, cmd.args:
-            case SetPowerCommand(), (power,):
-                self._update_power(gcode, power, machine)
-            case SetCutSpeedCommand(), (speed,):
+        match cmd:
+            case SetPowerCommand():
+                self._update_power(gcode, cmd.power, machine)
+            case SetCutSpeedCommand():
                 # We limit to max travel speed, not max cut speed, to
                 # allow framing operations to go faster. Cut limits should
                 # should be kept by ensuring an Ops object is created
                 # with limits in mind.
-                self.cut_speed = min(speed, machine.max_travel_speed)
-            case SetTravelSpeedCommand(), (speed,):
-                self.travel_speed = min(speed, machine.max_travel_speed)
-            case EnableAirAssistCommand(), ():
+                self.cut_speed = min(cmd.speed, machine.max_travel_speed)
+            case SetTravelSpeedCommand():
+                self.travel_speed = min(cmd.speed, machine.max_travel_speed)
+            case EnableAirAssistCommand():
                 self._set_air_assist(gcode, True, machine)
-            case DisableAirAssistCommand(), ():
+            case DisableAirAssistCommand():
                 self._set_air_assist(gcode, False, machine)
-            case MoveToCommand(), (x, y):
-                self._handle_move_to(gcode, x, y)
-            case LineToCommand(), (x, y):
-                self._handle_line_to(gcode, x, y)
-            case ArcToCommand(), (x, y, i, j, direction):
-                self._handle_arc_to(gcode, x, y, i, j, direction)
+            case MoveToCommand():
+                self._handle_move_to(gcode, *cmd.end)
+            case LineToCommand():
+                self._handle_line_to(gcode, *cmd.end)
+            case ArcToCommand():
+                self._handle_arc_to(gcode,
+                                    *cmd.end,
+                                    *cmd.center_offset,
+                                    cmd.clockwise)
 
     def _update_power(self, gcode: list, power: float, machine: Machine):
         """Update laser power and toggle state if needed"""

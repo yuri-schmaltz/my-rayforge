@@ -22,14 +22,21 @@ class State:
         return self.air_assist == target_state.air_assist
 
 
-class Command(NamedTuple):
+class Command:
     """
     Note that the state attribute is not set by default. It is later
     filled during the pre-processing stage, where state commands are
     removed.
     """
-    args: tuple = ()
+    end: tuple = None   # x, y of end position, None for state command
     state: State = None  # Intended state during the executing of this command
+
+    def __init__(self, end=None, state=None):
+        self.end = end
+        self.state = state
+
+    def apply_to_state(self, state):
+        pass
 
     def is_state_command(self):
         return False
@@ -54,33 +61,71 @@ class LineToCommand(Command):
 
 
 class ArcToCommand(Command):
+    center_offset: tuple = None
+    clockwise: bool = True
+
+    def __init__(self, end, center_offset, clockwise):
+        super().__init__(end)
+        self.center_offset = center_offset
+        self.clockwise = clockwise
+
     def is_cutting_command(self):
         return True
 
 
 class SetPowerCommand(Command):
+    power: int = None
+
+    def __init__(self, power):
+        self.power = power
+
     def is_state_command(self):
         return True
+
+    def apply_to_state(self, state):
+        state.power = self.power
 
 
 class SetCutSpeedCommand(Command):
+    speed = None
+
+    def __init__(self, speed):
+        self.speed = speed
+
     def is_state_command(self):
         return True
+
+    def apply_to_state(self, state):
+        state.cut_speed = self.speed
 
 
 class SetTravelSpeedCommand(Command):
+    speed = None
+
+    def __init__(self, speed):
+        self.speed = speed
+
     def is_state_command(self):
         return True
+
+    def apply_to_state(self, state):
+        state.travel_speed = self.speed
 
 
 class EnableAirAssistCommand(Command):
     def is_state_command(self):
         return True
 
+    def apply_to_state(self, state):
+        state.air_assist = True
+
 
 class DisableAirAssistCommand(Command):
     def is_state_command(self):
         return True
+
+    def apply_to_state(self, state):
+        state.air_assist = False
 
 
 class Ops:
@@ -117,11 +162,11 @@ class Ops:
 
     def move_to(self, x, y):
         self.last_move_to = float(x), float(y)
-        cmd = MoveToCommand(args=self.last_move_to)
+        cmd = MoveToCommand(self.last_move_to)
         self.commands.append(cmd)
 
     def line_to(self, x, y):
-        cmd = LineToCommand(args=(float(x), float(y)))
+        cmd = LineToCommand((float(x), float(y)))
         self.commands.append(cmd)
 
     def close_path(self):
@@ -137,22 +182,22 @@ class Ops:
         and direction (cw/ccw).
         """
         self.commands.append(ArcToCommand(
-            args=(float(x), float(y), float(i), float(j), bool(clockwise))
+            (float(x), float(y)), (float(i), float(j)), bool(clockwise)
         ))
 
     def set_power(self, power: float):
         """Laser power (0-1000 for GRBL)"""
-        cmd = SetPowerCommand(args=(float(power),))
+        cmd = SetPowerCommand(float(power))
         self.commands.append(cmd)
 
     def set_cut_speed(self, speed: float):
         """Cutting speed (mm/min)"""
-        cmd = SetCutSpeedCommand(args=(float(speed),))
+        cmd = SetCutSpeedCommand(float(speed))
         self.commands.append(cmd)
 
     def set_travel_speed(self, speed: float):
         """Rapid movement speed (mm/min)"""
-        cmd = SetTravelSpeedCommand(args=(float(speed),))
+        cmd = SetTravelSpeedCommand(float(speed))
         self.commands.append(cmd)
 
     def enable_air_assist(self, enable=True):
@@ -174,12 +219,11 @@ class Ops:
         last_point = None
         for cmd in self.commands:
             if cmd.is_travel_command():
-                last_point = cmd.args
+                last_point = cmd.end
             elif cmd.is_cutting_command():
-                x, y = cmd.args[:2]
                 occupied_points.append(last_point)
-                occupied_points.append((x, y))
-                last_point = x, y
+                occupied_points.append(cmd.end)
+                last_point = cmd.end
 
         if not occupied_points:
             return Ops()
@@ -212,13 +256,13 @@ class Ops:
         for cmd in self.commands:
             if cmd.is_travel_command():
                 if last is not None:
-                    total += math.dist(cmd.args, last)
-                last = cmd.args
+                    total += math.dist(cmd.end, last)
+                last = cmd.end
             elif cmd.is_cutting_command():
                 # treating arcs as lines is probably good enough
                 if last is not None:
-                    total += math.dist(cmd.args[:2], last)
-                last = cmd.args[:2]
+                    total += math.dist(cmd.end, last)
+                last = cmd.end
         return total
 
     def cut_distance(self):
@@ -230,12 +274,12 @@ class Ops:
         last = None
         for cmd in self.commands:
             if cmd.is_travel_command():
-                last = cmd.args
+                last = cmd.end
             elif cmd.is_cutting_command():
                 # treating arcs as lines is probably good enough
                 if last is not None:
-                    total += math.dist(cmd.args[:2], last)
-                last = cmd.args[:2]
+                    total += math.dist(cmd.end, last)
+                last = cmd.end
         return total
 
     def segments(self):

@@ -24,18 +24,11 @@ def preprocess_commands(commands):
     operations = []
     state = State()
     for cmd in commands:
-        if isinstance(cmd, SetPowerCommand):
-            state.power = cmd.args[0]
-        elif isinstance(cmd, SetCutSpeedCommand):
-            state.cut_speed = cmd.args[0]
-        elif isinstance(cmd, SetTravelSpeedCommand):
-            state.travel_speed = cmd.args[0]
-        elif isinstance(cmd, EnableAirAssistCommand):
-            state.air_assist = True
-        elif isinstance(cmd, DisableAirAssistCommand):
-            state.air_assist = False
+        if cmd.is_state_command():
+            cmd.apply_to_state(state)
         else:
-            operations.append(cmd._replace(state=copy(state)))
+            cmd.state = copy(state)
+            operations.append(cmd)
     return operations
 
 
@@ -118,29 +111,27 @@ def flip_segment(segment):
     for i in range(length-1, -1, -1):
         cmd = segment[i]
         prev_cmd = segment[(i+1) % length]
-        new_cmd = prev_cmd.__class__(
-            state=prev_cmd.state,
-            args=cmd.args[:2]
-        )
+        new_cmd = copy(prev_cmd)
+        new_cmd.end = cmd.end
 
         # Fix arc_to parameters
         if isinstance(new_cmd, ArcToCommand) and i > 0:
             # Get original arc (prev op in original segment)
             orig_cmd = segment[i+1]
-            x_end, y_end, i_orig, j_orig, clockwise_orig = orig_cmd.args
+            x_end, y_end = orig_cmd.end
+            i_orig, j_orig = orig_cmd.center_offset
 
             # Calculate center and new offsets
-            x_start, y_start = new_cmd.args
+            x_start, y_start = new_cmd.end
             center_x = x_start + i_orig
             center_y = y_start + j_orig
             new_i = center_x - x_end
             new_j = center_y - y_end
-            new_clockwise = not clockwise_orig
 
             # Update arc parameters
-            new_cmd = new_cmd._replace(
-                args=(x_start, y_start, new_i, new_j, new_clockwise)
-            )
+            new_cmd.end = x_start, y_start
+            new_cmd.center_offset = new_i, new_j
+            new_cmd.clockwise = not orig_cmd.clockwise
 
         new_segment.append(new_cmd)
 
@@ -163,15 +154,13 @@ def greedy_order_segments(segments):
     ordered = []
     current_seg = segments[0]
     ordered.append(current_seg)
-    current_pos = np.array(current_seg[-1].args)
+    current_pos = np.array(current_seg[-1].end)
     remaining = segments[1:]
     while remaining:
-        # Note that "Command.args" contains x,y coordinates, because the
-        # segments do not contain any state commands.
         # Find the index of the best next path to take, i.e. the
         # Command that adds the smalles amount of travel distance.
-        starts = np.array([seg[0].args[:2] for seg in remaining])
-        ends = np.array([seg[-1].args[:2] for seg in remaining])
+        starts = np.array([seg[0].end for seg in remaining])
+        ends = np.array([seg[-1].end for seg in remaining])
         d_starts = np.linalg.norm(starts - current_pos, axis=1)
         d_ends = np.linalg.norm(ends - current_pos, axis=1)
         candidate_dists = np.minimum(d_starts, d_ends)
@@ -185,22 +174,11 @@ def greedy_order_segments(segments):
         start_cmd = best_seg[0]
         if not start_cmd.is_travel_command():
             end_cmd = best_seg[-1]
-            start_cmd_cls = start_cmd.__class__
-            start_cmd_state = start_cmd.state
-            end_cmd_cls = end_cmd.__class__
-            end_cmd_state = end_cmd.state
-
-            start_cmd = end_cmd_cls(
-                args=start_cmd.args,
-                state=end_cmd_state
-            )
-            end_cmd = start_cmd_cls(
-                args=end_cmd.args,
-                state=start_cmd_state
-            )
+            best_seg[0], best_seg[-1] = best_seg[-1], best_seg[0]
+            start_cmd.end, end_cmd.end = end_cmd.end, start_cmd.end
 
         ordered.append(best_seg)
-        current_pos = np.array(best_seg[-1].args)
+        current_pos = np.array(best_seg[-1].end)
 
     return ordered
 
@@ -216,18 +194,18 @@ def flip_segments(ordered):
         for i in range(1, len(ordered)):
             # Calculate cost of travel (=travel distance from last segment
             # +travel distance to next segment)
-            prev_segment_end = ordered[i-1][-1].args
+            prev_segment_end = ordered[i-1][-1].end
             segment = ordered[i]
-            cost = math.dist(prev_segment_end, segment[0].args)
+            cost = math.dist(prev_segment_end, segment[0].end)
             if i < len(ordered)-1:
-                cost += math.dist(segment[-1].args, ordered[i+1][0].args)
+                cost += math.dist(segment[-1].end, ordered[i+1][0].end)
 
             # Flip and calculate the flipped cost.
             flipped = flip_segment(segment)
-            flipped_cost = math.dist(prev_segment_end, flipped[0].args)
+            flipped_cost = math.dist(prev_segment_end, flipped[0].end)
             if i < len(ordered)-1:
-                flipped_cost += math.dist(flipped[-1].args,
-                                          ordered[i+1][0].args)
+                flipped_cost += math.dist(flipped[-1].end,
+                                          ordered[i+1][0].end)
 
             # Choose the shorter one.
             if flipped_cost < cost:
@@ -250,18 +228,18 @@ def two_opt(ordered, max_iter=1000):
         improved = False
         for i in range(n-2):
             for j in range(i+2, n):
-                A_end = ordered[i][-1]
-                B_start = ordered[i+1][0]
-                E_end = ordered[j][-1]
+                a_end = ordered[i][-1]
+                b_start = ordered[i+1][0]
+                e_end = ordered[j][-1]
                 if j < n - 1:
-                    F_start = ordered[j+1][0]
-                    curr_cost = math.dist(A_end.args, B_start.args) \
-                              + math.dist(E_end.args, F_start.args)
-                    new_cost = math.dist(A_end.args, E_end.args) \
-                             + math.dist(B_start.args, F_start.args)
+                    f_start = ordered[j+1][0]
+                    curr_cost = math.dist(a_end.end, b_start.end) \
+                              + math.dist(e_end.end, f_start.end)
+                    new_cost = math.dist(a_end.end, e_end.end) \
+                             + math.dist(b_start.end, f_start.end)
                 else:
-                    curr_cost = math.dist(A_end.args, B_start.args)
-                    new_cost = math.dist(A_end.args, E_end.args)
+                    curr_cost = math.dist(a_end.end, b_start.end)
+                    new_cost = math.dist(a_end.end, e_end.end)
                 if new_cost < curr_cost:
                     sub = ordered[i+1:j+1]
                     # Reverse order and flip each segment.

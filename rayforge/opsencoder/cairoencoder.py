@@ -37,7 +37,7 @@ class CairoEncoder(OpsEncoder):
         prev_point = 0, ymax
 
         for cmd in ops:
-            match cmd, cmd.args:
+            match cmd, cmd.end:
                 case MoveToCommand(), (x, y):
                     if active_path:
                         ctx.set_source_rgb(1, 0, 1)
@@ -61,7 +61,7 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case ArcToCommand(), (x, y, i, j, clockwise):
+                case ArcToCommand(), (x, y):
                     # x, y: absolute values
                     # i, j: relative position of arc center from start point.
                     adjusted_y = ymax-y
@@ -72,12 +72,13 @@ class CairoEncoder(OpsEncoder):
                     start_x, start_y = prev_point
 
                     # Draw the arc in the correct direction
+                    i, j = cmd.center_offset
                     center_x = start_x+i
                     center_y = start_y+j
                     radius = math.dist(prev_point, (center_x, center_y))
                     angle1 = math.atan2(start_y - center_y, start_x - center_x)
                     angle2 = math.atan2(adjusted_y - center_y, x - center_x)
-                    if clockwise:
+                    if cmd.clockwise:
                         ctx.arc(center_x, center_y, radius, angle1, angle2)
                     else:
                         ctx.arc_negative(

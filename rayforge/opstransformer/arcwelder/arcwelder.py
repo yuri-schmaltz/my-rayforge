@@ -33,7 +33,7 @@ def split_into_segments(commands):
             if current_segment:
                 segments.append(current_segment)
             current_segment = [cmd]
-            current_pos = cmd.args
+            current_pos = cmd.end
 
         elif isinstance(cmd, ArcToCommand):
             # Start new segment
@@ -42,7 +42,7 @@ def split_into_segments(commands):
                 current_segment = [cmd]
             else:
                 current_segment.append(cmd)
-            current_pos = cmd.args[:2]
+            current_pos = cmd.end
 
         elif isinstance(cmd, LineToCommand):
             # Add to current segment and track position
@@ -54,7 +54,7 @@ def split_into_segments(commands):
                     raise ValueError("line_to requires a starting position")
                 current_segment.append(MoveToCommand(current_pos))
             current_segment.append(cmd)
-            current_pos = cmd.args
+            current_pos = cmd.end
 
         elif cmd.is_state_command():
             # All other commands are standalone
@@ -86,7 +86,7 @@ class ArcWeld(OpsTransformer):
 
         for segment in segments:
             if contains_command(segment, LineToCommand):
-                self.process_segment([cmd.args for cmd in segment], ops)
+                self.process_segment([cmd.end for cmd in segment], ops)
             else:
                 for command in segment:
                     ops.add(command)
