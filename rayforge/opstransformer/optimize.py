@@ -1,7 +1,17 @@
 import numpy as np
 import math
 from copy import copy
-from ..models.ops import Ops, Command, State
+from ..models.ops import Ops, \
+                         State, \
+                         Command, \
+                         SetPowerCommand, \
+                         SetCutSpeedCommand, \
+                         SetTravelSpeedCommand, \
+                         EnableAirAssistCommand, \
+                         DisableAirAssistCommand, \
+                         LineToCommand, \
+                         ArcToCommand, \
+                         MoveToCommand
 from .transformer import OpsTransformer
 
 
@@ -17,19 +27,18 @@ def preprocess_commands(commands):
     operations = []
     state = State()
     for cmd in commands:
-        match cmd.name:
-            case 'set_power':
-                state.power = cmd.args[0]
-            case 'set_cut_speed':
-                state.cut_speed = cmd.args[0]
-            case 'set_travel_speed':
-                state.travel_speed = cmd.args[0]
-            case 'enable_air_assist':
-                state.air_assist = True
-            case 'disable_air_assist':
-                state.air_assist = False
-            case _:
-                operations.append(cmd._replace(state = copy(state)))
+        if isinstance(cmd, SetPowerCommand):
+            state.power = cmd.args[0]
+        elif isinstance(cmd, SetCutSpeedCommand):
+            state.cut_speed = cmd.args[0]
+        elif isinstance(cmd, SetTravelSpeedCommand):
+            state.travel_speed = cmd.args[0]
+        elif isinstance(cmd, EnableAirAssistCommand):
+            state.air_assist = True
+        elif isinstance(cmd, DisableAirAssistCommand):
+            state.air_assist = False
+        else:
+            operations.append(cmd._replace(state = copy(state)))
     return operations
 
 
@@ -68,14 +77,14 @@ def split_segments(commands):
     segments = []
     current_segment = []
     for cmd in commands:
-        if cmd.name == 'move_to':
+        if cmd.is_travel_command():
             if current_segment:
                 segments.append(current_segment)
             current_segment = [cmd]
-        elif cmd.name in ('line_to', 'arc_to'):
+        elif cmd.is_cutting_command():
             current_segment.append(cmd)
         else:
-            raise ValueError('unexpected Command '+cmd.name)
+            raise ValueError(f'unexpected Command {cmd}')
 
     if current_segment:
         segments.append(current_segment)
@@ -112,14 +121,13 @@ def flip_segment(segment):
     for i in range(length-1, -1, -1):
         cmd = segment[i]
         prev_cmd = segment[(i+1) % length]
-        new_cmd = cmd._replace(
+        new_cmd = prev_cmd.__class__(
             state = prev_cmd.state,
-            name = prev_cmd.name,
             args = cmd.args[:2]
         )
 
         # Fix arc_to parameters
-        if new_cmd.name == 'arc_to' and i > 0:
+        if isinstance(new_cmd, ArcToCommand) and i > 0:
             # Get original arc (prev op in original segment)
             orig_cmd = segment[i+1]
             x_end, y_end, i_orig, j_orig, clockwise_orig = orig_cmd.args
@@ -178,17 +186,21 @@ def greedy_order_segments(segments):
             best_seg = flip_segment(best_seg)
 
         start_cmd = best_seg[0]
-        start_cmd_name = start_cmd.name
-        if start_cmd_name != 'move_to':
+        if not start_cmd.is_travel_command():
             end_cmd = best_seg[-1]
+            start_cmd_cls = start_cmd.__class__
             start_cmd_state = start_cmd.state
-            end_cmd_name = end_cmd.name
+            end_cmd_cls = end_cmd.__class__
             end_cmd_state = end_cmd.state
 
-            start_cmd.name = end_cmd_name
-            start_cmd.state = end_cmd_state
-            end_cmd.name = start_cmd_name
-            end_cmd.state = start_cmd_state
+            start_cmd = end_cmd_cls(
+                args = start_cmd.args,
+                state = end_cmd_state
+            )
+            end_cmd = start_cmd_cls(
+                args = start_cmd.args,
+                state = end_cmd_state
+            )
 
         ordered.append(best_seg)
         current_pos = np.array(best_seg[-1].args)
@@ -334,11 +346,7 @@ class Optimize(OpsTransformer):
                 if cmd.state.travel_speed != prev_state.travel_speed:
                     ops.set_travel_speed(cmd.state.travel_speed)
 
-                if cmd.name == 'line_to':
-                    ops.line_to(*cmd.args)
-                elif cmd.name == 'move_to':
-                    ops.move_to(*cmd.args)
-                elif cmd.name == 'arc_to':
-                    ops.arc_to(*cmd.args)
+                if not cmd.is_state_command():
+                    ops.add(cmd)
                 else:
-                    raise ValueError('unexpected command '+cmd.name)
+                    raise ValueError(f'unexpected command {cmd}')

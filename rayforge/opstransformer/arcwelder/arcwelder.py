@@ -1,15 +1,19 @@
 import math
 import numpy as np
-from ...models.ops import Ops, Command, State
+from ...models.ops import Ops, \
+                          State, \
+                          LineToCommand, \
+                          ArcToCommand, \
+                          MoveToCommand
 from ..transformer import OpsTransformer
 from .points import remove_duplicates, \
                     are_colinear, \
                     arc_direction, \
                     fit_circle
 
-def contains_command(segment, cmdname):
+def contains_command(segment, cmdcls):
     for cmd in segment:
-        if cmd.name == cmdname:
+        if isinstance(cmd, cmdcls):
             return True
     return False
 
@@ -24,39 +28,35 @@ def split_into_segments(commands):
     current_pos = None  # Track current position
 
     for cmd in commands:
-        if cmd.name == 'move_to':
+        if cmd.is_travel_command():
             # Start new segment
             if current_segment:
                 segments.append(current_segment)
             current_segment = [cmd]
             current_pos = cmd.args
 
-        elif cmd.name == 'arc_to':
+        elif isinstance(cmd, ArcToCommand):
             # Start new segment
-            if contains_command(current_segment, 'line_to'):
+            if contains_command(current_segment, LineToCommand):
                 segments.append(current_segment)
                 current_segment = [cmd]
             else:
                 current_segment.append(cmd)
             current_pos = cmd.args[:2]
 
-        elif cmd.name == 'line_to':
+        elif isinstance(cmd, LineToCommand):
             # Add to current segment and track position
-            if contains_command(current_segment, 'arc_to'):
+            if contains_command(current_segment, ArcToCommand):
                 segments.append(current_segment)
                 current_segment = []
             if not current_segment:
                 if current_pos is None:
                     raise ValueError("line_to requires a starting position")
-                current_segment.append(Command('move_to', current_pos))
+                current_segment.append(MoveToCommand(current_pos))
             current_segment.append(cmd)
             current_pos = cmd.args
 
-        elif cmd.name in ('set_power',
-                          'set_cut_speed',
-                          'set_travel_speed',
-                          'enable_air_assist',
-                          'disable_air_assist'):
+        elif cmd.is_state_command():
             # All other commands are standalone
             if current_segment:
                 segments.append(current_segment)
@@ -64,7 +64,7 @@ def split_into_segments(commands):
             segments.append([cmd])
 
         else:
-            raise ValueError(f"Unsupported command: {cmd.name}")
+            raise ValueError(f"Unsupported command: {cmd}")
 
     if current_segment:
         segments.append(current_segment)
@@ -84,11 +84,11 @@ class ArcWeld(OpsTransformer):
         ops.clear()
 
         for segment in segments:
-            if contains_command(segment, 'line_to'):
+            if contains_command(segment, LineToCommand):
                 self.process_segment([cmd.args for cmd in segment], ops)
             else:
                 for command in segment:
-                    getattr(ops, command.name)(*command.args)
+                    ops.add(command)
 
     def process_segment(self, segment, ops):
         if not segment:
