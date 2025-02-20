@@ -1,6 +1,6 @@
 import math
 import cairo
-from ..models.ops import Ops
+from ..models.ops import Ops, MoveToCommand, LineToCommand, ArcToCommand
 from ..models.machine import Machine
 from .encoder import OpsEncoder
 
@@ -37,8 +37,8 @@ class CairoEncoder(OpsEncoder):
         prev_point = 0, ymax
 
         for cmd in ops:
-            match cmd.__class__.__name__, cmd.args:
-                case 'MoveToCommand', (x, y):
+            match cmd, cmd.args:
+                case MoveToCommand(), (x, y):
                     if active_path:
                         ctx.set_source_rgb(1, 0, 1)
                         ctx.stroke()  # Finalize previous path
@@ -53,7 +53,7 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case 'LineToCommand', (x, y):
+                case LineToCommand(), (x, y):
                     adjusted_y = ymax-y
                     ctx.move_to(*prev_point)
                     ctx.set_source_rgb(1, 0, 1)
@@ -61,7 +61,7 @@ class CairoEncoder(OpsEncoder):
                     prev_point = x, adjusted_y
                     active_path = True
 
-                case 'ArcToCommand', (x, y, i, j, clockwise):
+                case ArcToCommand(), (x, y, i, j, clockwise):
                     # x, y: absolute values
                     # i, j: relative position of arc center from start point.
                     adjusted_y = ymax-y

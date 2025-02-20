@@ -1,4 +1,13 @@
-from ..models.ops import Ops, Command
+from ..models.ops import Ops, \
+                         Command, \
+                         SetPowerCommand, \
+                         SetCutSpeedCommand, \
+                         SetTravelSpeedCommand, \
+                         EnableAirAssistCommand, \
+                         DisableAirAssistCommand, \
+                         MoveToCommand, \
+                         LineToCommand, \
+                         ArcToCommand
 from ..models.machine import Machine
 from .encoder import OpsEncoder
 
@@ -22,26 +31,26 @@ class GcodeEncoder(OpsEncoder):
 
     def _handle_command(self, gcode: list, cmd: Command, machine: Machine):
         """Dispatch command to appropriate handler"""
-        match cmd.__class__.__name__, cmd.args:
-            case 'SetPowerCommand', (power,):
+        match cmd, cmd.args:
+            case SetPowerCommand(), (power,):
                 self._update_power(gcode, power, machine)
-            case 'SetCutSpeedCommand', (speed,):
+            case SetCutSpeedCommand(), (speed,):
                 # We limit to max travel speed, not max cut speed, to
                 # allow framing operations to go faster. Cut limits should
                 # should be kept by ensuring an Ops object is created
                 # with limits in mind.
                 self.cut_speed = min(speed, machine.max_travel_speed)
-            case 'SetTravelSpeedCommand', (speed,):
+            case SetTravelSpeedCommand(), (speed,):
                 self.travel_speed = min(speed, machine.max_travel_speed)
-            case 'EnableAirAssistCommand', ():
+            case EnableAirAssistCommand(), ():
                 self._set_air_assist(gcode, True, machine)
-            case 'DisableAirAssistCommand', ():
+            case DisableAirAssistCommand(), ():
                 self._set_air_assist(gcode, False, machine)
-            case 'MoveToCommand', (x, y):
+            case MoveToCommand(), (x, y):
                 self._handle_move_to(gcode, x, y)
-            case 'LineToCommand', (x, y):
+            case LineToCommand(), (x, y):
                 self._handle_line_to(gcode, x, y)
-            case 'ArcToCommand', (x, y, i, j, direction):
+            case ArcToCommand(), (x, y, i, j, direction):
                 self._handle_arc_to(gcode, x, y, i, j, direction)
 
     def _update_power(self, gcode: list, power: float, machine: Machine):
