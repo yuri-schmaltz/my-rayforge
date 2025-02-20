@@ -238,5 +238,28 @@ class Ops:
                 last = cmd.args[:2]
         return total
 
+    def segments(self):
+        segment = []
+        for command in self.commands:
+            if not segment:
+                segment.append(command)
+                continue
+
+            if command.is_travel_command():
+                yield segment
+                segment = [command]
+
+            elif command.is_cutting_command():
+                segment.append(command)
+
+            elif command.is_state_command():
+                yield segment
+                yield [command]
+                segment = []
+
+        if segment:
+            yield segment
+
     def dump(self):
-        print(self.commands)
+        for segment in self.segments():
+            print(segment)
