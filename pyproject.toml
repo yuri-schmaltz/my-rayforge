@@ -24,7 +24,7 @@ rayforge = "rayforge.app:main"
 
 [build-system]
 requires = [
-  "setuptools >= 40.9.0", "setuptools-git-versioning"
+  "setuptools >= 40.9.0", "setuptools-git-versioning", "pytest"
 ]
 build-backend = "setuptools.build_meta"
 
