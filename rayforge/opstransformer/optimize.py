@@ -1,14 +1,7 @@
 import numpy as np
 import math
 from copy import copy
-from ..models.ops import Ops, \
-                         State, \
-                         SetPowerCommand, \
-                         SetCutSpeedCommand, \
-                         SetTravelSpeedCommand, \
-                         EnableAirAssistCommand, \
-                         DisableAirAssistCommand, \
-                         ArcToCommand
+from ..models.ops import Ops, State, ArcToCommand
 from .transformer import OpsTransformer
 
 

@@ -3,11 +3,6 @@ from ..models.ops import Ops, LineToCommand, MoveToCommand
 from .transformer import OpsTransformer
 from .arcwelder.points import remove_duplicates
 
-import math
-from ..models.ops import Ops, LineToCommand, MoveToCommand
-from .transformer import OpsTransformer
-from .arcwelder.points import remove_duplicates
-
 
 class Smooth(OpsTransformer):
     """Smooths Ops points with a moving average, keeping sharp corners."""

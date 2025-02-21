@@ -44,7 +44,8 @@ def are_colinear(points, tolerance=0.01):
         vx = p[0] - p1[0]
         vy = p[1] - p1[1]
         # Perpendicular distance = |ax + by + c| / sqrt(a^2 + b^2)
-        # Line equation: ax + by + c = 0, where a=dy, b=-dx, c=-(dy*p1x - dx*p1y)
+        # Line equation: ax + by + c = 0, where
+        #                a=dy, b=-dx, c=-(dy*p1x - dx*p1y)
         dist = abs(dy * vx - dx * vy) / line_length
         if dist > tolerance:
             return False
@@ -151,12 +152,14 @@ def arc_to_polyline_deviation(points, center, radius):
             # Vectors from center to points
             v1x, v1y = x1 - xc, y1 - yc
             v2x, v2y = x2 - xc, y2 - yc
+
             # Dot product to find angle
             dot = v1x * v2x + v1y * v2y
             mag1 = math.hypot(v1x, v1y)
             mag2 = math.hypot(v2x, v2y)
             if mag1 < 1e-6 or mag2 < 1e-6:
-                deviation = abs(d1 - radius) if mag1 < 1e-6 else abs(d2 - radius)
+                deviation = abs(d1 - radius) if mag1 < 1e-6 \
+                       else abs(d2 - radius)
             else:
                 cos_theta = min(1.0, max(-1.0, dot / (mag1 * mag2)))
                 theta = math.acos(cos_theta)
@@ -168,4 +171,3 @@ def arc_to_polyline_deviation(points, center, radius):
 
         max_deviation = max(max_deviation, deviation)
     return max_deviation
-

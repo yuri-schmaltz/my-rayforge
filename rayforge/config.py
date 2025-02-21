@@ -4,6 +4,7 @@ from platformdirs import user_config_dir
 from .models.machine import MachineManager
 from .models.config import ConfigManager
 
+
 CONFIG_DIR = Path(user_config_dir("rayforge"))
 MACHINE_DIR = CONFIG_DIR / "machines"
 MACHINE_DIR.mkdir(parents=True, exist_ok=True)
@@ -14,6 +15,7 @@ print(f"Config dir is {CONFIG_DIR}")
 def getflag(name, default=False):
     default = 'true' if default else 'false'
     return os.environ.get(name, default).lower() in ('true', '1')
+
 
 """
 TODO # Load machine templates.

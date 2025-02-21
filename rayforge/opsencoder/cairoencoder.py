@@ -66,14 +66,17 @@ class CairoEncoder(OpsEncoder):
 
                         # Draw the arc in the correct direction
                         # x, y: absolute values
-                        # i, j: relative position of arc center from start point.
+                        # i, j: relative pos of arc center from start point.
                         i, j = cmd.center_offset
                         center_x = start_x+i
                         center_y = start_y+j
                         adjusted_y = ymax-y
-                        radius = math.dist((start_x, start_y), (center_x, center_y))
-                        angle1 = math.atan2(start_y - center_y, start_x - center_x)
-                        angle2 = math.atan2(adjusted_y - center_y, x - center_x)
+                        radius = math.dist((start_x, start_y),
+                                           (center_x, center_y))
+                        angle1 = math.atan2(start_y - center_y,
+                                            start_x - center_x)
+                        angle2 = math.atan2(adjusted_y - center_y,
+                                            x - center_x)
                         if cmd.clockwise:
                             ctx.arc(center_x, center_y, radius, angle1, angle2)
                         else:
