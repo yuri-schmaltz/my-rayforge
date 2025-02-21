@@ -26,7 +26,7 @@ def test_arc_welder_converts_semicircle():
         ops.line_to(*p)
     
     # Process with ArcWelder
-    welder = ArcWeld(tolerance=0.1, min_points=3)
+    welder = ArcWeld(tolerance=0.1, min_points=3, max_points=25)
     welder.run(ops)
     
     # Verify arc generation
@@ -78,7 +78,7 @@ def test_arc_with_trailing_straight_lines():
     ops.move_to(radius, 0)  # Start at (5,0)
     
     # Semicircle points
-    angles = np.linspace(0, np.pi, 10)
+    angles = np.linspace(0, np.pi, 20)
     for theta in angles[1:]:  # Skip first point (5,0)
         x = center[0] + radius * np.cos(theta)
         y = center[1] + radius * np.sin(theta)
@@ -87,8 +87,8 @@ def test_arc_with_trailing_straight_lines():
     # Straight line points
     for x in np.linspace(-5, -10, 5):
         ops.line_to(x, 0)
-    
-    welder = ArcWeld(tolerance=0.1, min_points=5)
+
+    welder = ArcWeld(tolerance=0.1, min_points=5, max_points=50)
     welder.run(ops)
     
     # Validate results
@@ -97,7 +97,7 @@ def test_arc_with_trailing_straight_lines():
     assert cmd_types == [
         MoveToCommand,
         ArcToCommand,
-        LineToCommand
+        LineToCommand,
     ], f"Unexpected command sequence: {cmd_types}"
     
     # Validate arc parameters
@@ -174,11 +174,11 @@ def test_is_valid_arc_angular_continuity():
         "Should reject arc due to large angular step"
 
 def test_arc_processing_flow():
-    welder = ArcWeld(tolerance=0.1, min_points=3)
+    welder = ArcWeld(tolerance=0.1, min_points=3, max_points=50)
     ops = Ops()
     
     # Exact semicircle points on a circle with radius 5, center (0,0)
-    angles = np.linspace(0, np.pi, 12)  # 10 points for 180 degrees
+    angles = np.linspace(0, np.pi, 40)
     segment = [
         (5 * np.cos(theta), 
         5 * np.sin(theta))

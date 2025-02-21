@@ -17,7 +17,7 @@ def debug_semicircle():
     print("Fit Result:", result)
     
     # Process segment
-    welder = ArcWeld(tolerance=0.1)
+    welder = ArcWeld(tolerance=0.1, max_points=20)
     ops = Ops()
     welder.process_segment(points, ops)
     
@@ -30,17 +30,18 @@ def debug_semicircle():
     
     # Processed commands
     current_pos = None
-    for cmd in ops.commands:
+    for cmd in ops:
         match cmd:
             case MoveToCommand():
-                current_pos = cmd.args
+                current_pos = cmd.end
                 ax2.plot(*current_pos, 'go')
             case ArcToCommand():
-                end_x, end_y, I, J, _ = cmd.args
-                center = (current_pos[0] + I, current_pos[1] + J)
+                end_x, end_y = cmd.end
+                i, j = cmd.center_offset
+                center = (current_pos[0] + i, current_pos[1] + j)
                 theta = np.linspace(0, np.pi, 50)
-                x = center[0] + np.hypot(I, J) * np.cos(theta)
-                y = center[1] + np.hypot(I, J) * np.sin(theta)
+                x = center[0] + np.hypot(i, j) * np.cos(theta)
+                y = center[1] + np.hypot(i, j) * np.sin(theta)
                 ax2.plot(x, y, 'r--')
                 current_pos = (end_x, end_y)
     

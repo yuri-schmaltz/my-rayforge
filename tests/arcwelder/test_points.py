@@ -5,7 +5,8 @@ from rayforge.opstransformer.arcwelder.points import remove_duplicates, \
                                                      are_colinear, \
                                                      is_clockwise, \
                                                      arc_direction, \
-                                                     fit_circle
+                                                     fit_circle, \
+                                                     arc_to_polyline_deviation
 
 
 def test_remove_duplicates():
@@ -239,7 +240,7 @@ def test_fit_circle_partial_arc_accuracy():
     center = (7, 3)
     radius = 5.0
     # Generate points along a 90-degree arc (π/2 to π radians)
-    angles = np.linspace(np.pi/2, np.pi, 20)
+    angles = np.linspace(np.pi/2, np.pi, 50)
     points = [
         (center[0] + radius * np.cos(theta),
          center[1] + radius * np.sin(theta))
@@ -261,3 +262,43 @@ def test_fit_circle_partial_arc_accuracy():
 
     # Validate error
     assert error < 0.05, f"Error too large: {error:.3f}mm"
+
+
+def test_arc_to_polyline_deviation_perfect_arc():
+    """Test deviation for a perfect 90-degree arc."""
+    center = (7, 3)
+    radius = 5.0
+    angles = np.linspace(np.pi/2, np.pi, 10)
+    points = [(center[0] + radius * np.cos(t), center[1] + radius * np.sin(t))
+              for t in angles]
+    deviation = arc_to_polyline_deviation(points, center, radius)
+    assert deviation < 0.05, f"Deviation too large: {deviation}"
+
+
+def test_arc_to_polyline_deviation_too_large():
+    """Test deviation for a perfect 90-degree arc."""
+    center = (7, 3)
+    radius = 5.0
+    angles = np.linspace(np.pi/2, np.pi, 5)
+    points = [(center[0] + radius * np.cos(t), center[1] + radius * np.sin(t))
+              for t in angles]
+    deviation = arc_to_polyline_deviation(points, center, radius)
+    assert deviation > 0.05, f"Expected larger deviation: {deviation}"
+
+
+def test_arc_to_polyline_deviation_straight_line():
+    """Test deviation for a straight line with a large-radius arc."""
+    points = [(0, 0), (1, 0.01), (2, -0.01), (3, 0)]
+    center = (1.5, 10)  # Large radius arc
+    radius = 100.0
+    deviation = arc_to_polyline_deviation(points, center, radius)
+    assert deviation > 0.05, f"Deviation too small: {deviation}"
+
+
+def test_arc_to_polyline_deviation_single_segment():
+    """Test deviation for a single line segment."""
+    points = [(0, 0), (1, 1)]
+    center = (0.5, 0.5)
+    radius = math.sqrt(0.5)
+    deviation = arc_to_polyline_deviation(points, center, radius)
+    assert deviation < 1.0, f"Deviation too large: {deviation}"

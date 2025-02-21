@@ -32,7 +32,7 @@ def debug_arc_fitting():
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
     
     # Plot original
-    original_points = [cmd.args for cmd in original_commands if not cmd.is_state_command()]
+    original_points = [cmd.end for cmd in original_commands if not cmd.is_state_command()]
     x_orig, y_orig = zip(*original_points)
     ax1.plot(x_orig, y_orig, 'b.-', label='Original')
     ax1.set_title('Original Path')
@@ -44,31 +44,30 @@ def debug_arc_fitting():
     for cmd in processed_commands:
         match cmd:
             case MoveToCommand():
-                current_pos = cmd.args
+                current_pos = cmd.end
                 x_proc.append(current_pos[0])
                 y_proc.append(current_pos[1])
             case LineToCommand():
-                x_proc.append(cmd.args[0])
-                y_proc.append(cmd.args[1])
-                current_pos = cmd.args
+                x_proc.append(cmd.end[0])
+                y_proc.append(cmd.end[1])
+                current_pos = cmd.end
             case ArcToCommand():
                 # Approximate arc with 50 points
-                end_x, end_y, I, J, clockwise = cmd.args
-                center = (current_pos[0] + I, current_pos[1] + J)
-                radius = np.hypot(I, J)
+                end_x, end_y = cmd.end
+                i, j = cmd.center_offset
+                radius = np.hypot(i, j)
                 
-                start_angle = np.arctan2(current_pos[1] - center[1], 
-                                       current_pos[0] - center[0])
-                end_angle = np.arctan2(end_y - center[1],
-                                     end_x - center[0])
+                start_angle = np.arctan2(current_pos[1] - j, 
+                                         current_pos[0] - i)
+                end_angle = np.arctan2(end_y-j, end_x-i)
                 
                 angles = np.linspace(start_angle, end_angle, 50)
-                if clockwise:
+                if cmd.clockwise:
                     angles = angles[::-1]
                     
                 arc_points = [
-                    (center[0] + radius * np.cos(theta),
-                     center[1] + radius * np.sin(theta))
+                    (i + radius * np.cos(theta),
+                     j + radius * np.sin(theta))
                     for theta in angles
                 ]
                 x_proc.extend([p[0] for p in arc_points])
@@ -84,7 +83,7 @@ def debug_arc_fitting():
     # Print command sequence for inspection
     print("\nOriginal commands:")
     for cmd in original_commands:
-        print(f"{cmd}: {cmd.args}")
+        print(f"{cmd}: {cmd.end}")
         
     print("\nProcessed commands:")
     for cmd in processed_commands:

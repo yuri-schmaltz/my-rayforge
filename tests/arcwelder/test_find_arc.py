@@ -16,7 +16,7 @@ def generate_arc_points(center, radius, start_angle, end_angle, num_points):
 
 def test_find_perfect_arc():
     """Test ideal semicircle with sufficient points"""
-    welder = ArcWeld(tolerance=0.1, min_points=5)
+    welder = ArcWeld(tolerance=0.1, min_points=5, max_points=25)
     center = (0, 0)
     radius = 10.0
     points = generate_arc_points(center, radius, 0, np.pi, 20)
@@ -100,7 +100,7 @@ def test_find_latest_valid_arc():
 
 def test_error_threshold_enforcement():
     """Test tolerance threshold rejects arcs with high fitting errors"""
-    welder = ArcWeld(tolerance=0.05, min_points=5)
+    welder = ArcWeld(tolerance=0.05, min_points=5, max_points=25)
     
     # Generate points with guaranteed high error
     noisy_points = generate_arc_points((0,0), 5, 0, np.pi/2, 20)

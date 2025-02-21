@@ -7,14 +7,12 @@ from ..transformer import OpsTransformer
 from .points import remove_duplicates, \
                     are_colinear, \
                     arc_direction, \
-                    fit_circle
+                    fit_circle, \
+                    arc_to_polyline_deviation
 
 
 def contains_command(segment, cmdcls):
-    for cmd in segment:
-        if isinstance(cmd, cmdcls):
-            return True
-    return False
+    return any(isinstance(cmd, cmdcls) for cmd in segment)
 
 
 def split_into_segments(commands):
@@ -75,10 +73,21 @@ def split_into_segments(commands):
 class ArcWeld(OpsTransformer):
     """
     Converts line sequences into arcs using pre-validated geometric utilities.
+
+    tolerance: Max allowed deviation from arc
+    min_points: Minimum number of points to attempt arc fitting
+    max_points: Maximum number of points to attempt arc fitting
+    max_angular_step: Max angle between points on the arc
     """
-    def __init__(self, tolerance=0.049, min_points=10):
-        self.tolerance = tolerance  # Max allowed deviation from arc
-        self.min_points = min_points  # Minimum points to attempt arc fitting
+    def __init__(self,
+                 tolerance=0.049,
+                 min_points=6,
+                 max_points=15,
+                 max_angular_step=75):
+        self.tolerance = tolerance
+        self.min_points = min_points
+        self.max_points = max_points
+        self.max_step = math.radians(max_angular_step)
 
     def run(self, ops: Ops):
         segments = split_into_segments(ops.commands)
@@ -95,26 +104,63 @@ class ArcWeld(OpsTransformer):
         if not segment:
             return
 
-        # Process all points without adding an extra move_to
+        # Bail out early for short segments.
         segment = remove_duplicates(segment)
-        index = 0
-        n = len(segment)
+        length = len(segment)
+        if length < self.min_points:
+            ops.move_to(*segment[0])
+            for point in segment[1:]:
+                ops.line_to(*point)
+            return
 
+        # Walk along the segment trying to find arcs that may fit.
         ops.move_to(*segment[0])
-        while index < n:
-            if index != 0:
-                ops.line_to(*segment[index])
-            best_arc, best_end = self._find_longest_valid_arc(segment, index)
-            if best_arc:
-                self._add_arc_command(segment, index, best_end, best_arc, ops)
-                index = best_end
-            else:
-                index += 1
+        index = 1
+        while index < length:
+            # Consume colinear points first
+            colinear_points = self._count_colinear_points(segment, index-1)
+
+            if colinear_points:
+                ops.line_to(*segment[index+colinear_points-2])
+                index += colinear_points
+                continue
+
+            # Try to find an arc that fits the points starting at index.
+            # fit_segment already performs a fast deviation calculation,
+            # but it only checks deviation from original points and not
+            # from the lines that connect the points.
+            arc, arc_end = self._find_longest_valid_arc(segment, index-1)
+            if arc:
+                # Perform better, but more expensive, deviation calculation.
+                deviation = arc_to_polyline_deviation(segment[index-1:arc_end],
+                                                      *arc[:2])
+                if deviation <= self.tolerance:
+                    self._add_arc_command(segment, index-1, arc_end, arc, ops)
+                    index = arc_end  # Move to the last point of the arc
+                    continue
+
+            # Ending up here, no fitting arc was found at the current index.
+            ops.line_to(*segment[index])
+            index += 1
+
+    def _count_colinear_points(self, segment, start):
+        """Advance index past colinear points, returning the end index."""
+        length = len(segment)
+        if length-start < 3:
+            return 0
+
+        end = start+3
+        found = None
+        while end < length and are_colinear(segment[start:end+1]):
+            end += 1
+            found = end-start
+
+        return found
 
     def _add_arc_command(self, segment, start, end, arc, ops):
         center, radius, _ = arc
         start_point = segment[start]
-        end_point = segment[end - 1]  # Use end-1 to get the correct endpoint
+        end_point = segment[end-1]
 
         # Calculate I and J offsets
         i = center[0] - start_point[0]
@@ -125,7 +171,7 @@ class ArcWeld(OpsTransformer):
         ops.arc_to(end_point[0], end_point[1], i, j, clockwise)
 
     def _find_longest_valid_arc(self, segment, start_index):
-        max_search = len(segment)-start_index
+        max_search = min(len(segment)-start_index, self.max_points)
 
         for length in range(max_search, self.min_points-1, -1):
             end = start_index+length
@@ -141,26 +187,19 @@ class ArcWeld(OpsTransformer):
         if arc is None:
             return False
         center, radius, error = arc
-        if (error > self.tolerance
-         or radius < 1
-         or radius > 100
-         or are_colinear(subsegment)):
+        if error > self.tolerance or radius < 1 or radius > 100:
             return False
 
         # Angular continuity checks
-        max_step = math.radians(85)  # degrees between consecutive points
-        angles = []
+        prev_angle = None
         for x, y in subsegment:
             dx = x - center[0]
             dy = y - center[1]
             angle = math.atan2(dy, dx)
-            angles.append(angle)
-
-        # Check consecutive angular steps
-        for i in range(1, len(angles)):
-            delta = abs(angles[i] - angles[i-1])
-            delta = min(delta, 2 * math.pi - delta)  # Account for wrapping
-            if delta > max_step:
-                return False
-
+            if prev_angle is not None:
+                delta = abs(angle - prev_angle)
+                delta = min(delta, 2 * math.pi - delta)
+                if delta > self.max_step:
+                    return False
+            prev_angle = angle
         return True
