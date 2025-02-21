@@ -3,13 +3,14 @@ from typing import List
 from ..config import config
 from ..modifier import Modifier, MakeTransparent, ToGrayscale
 from ..opsproducer import OpsProducer, OutlineTracer, EdgeTracer, Rasterizer
-from ..opstransformer import OpsTransformer, Optimize, ArcWeld
+from ..opstransformer import OpsTransformer, Optimize, Smooth, ArcWeld
 from .machine import Laser
 from .ops import Ops
 from blinker import Signal
 
 
 DEBUG_OPTIMIZE = os.environ.get('DEBUG_OPTIMIZE', False)
+DEBUG_SMOOTH = os.environ.get('DEBUG_SMOOTH', False)
 DEBUG_ARCWELD = os.environ.get('DEBUG_ARCWELD', False)
 
 
@@ -44,6 +45,8 @@ class WorkStep:
 
         if DEBUG_OPTIMIZE:
             self.opstransformers.append(Optimize())
+        if DEBUG_SMOOTH:
+            self.opstransformers.append(Smooth())
         if DEBUG_ARCWELD:
             self.opstransformers.append(ArcWeld())
 
