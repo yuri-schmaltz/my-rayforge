@@ -76,7 +76,7 @@ class ArcWeld(OpsTransformer):
     """
     Converts line sequences into arcs using pre-validated geometric utilities.
     """
-    def __init__(self, tolerance=0.1, min_points=10):
+    def __init__(self, tolerance=0.049, min_points=10):
         self.tolerance = tolerance  # Max allowed deviation from arc
         self.min_points = min_points  # Minimum points to attempt arc fitting
 
