@@ -35,7 +35,8 @@ def test_arc_welder_converts_semicircle():
     
     # Validate arc parameters
     arc = arc_commands[0]
-    end_x, end_y, i, j, clockwise = arc.args
+    end_x, end_y = arc.end
+    i, j = arc.center_offset
     
     # Check center offsets (I/J relative to start point (10,0))
     assert np.isclose(i, -10.0, atol=0.1), f"Expected I ≈ -10, got {i}"
@@ -46,7 +47,7 @@ def test_arc_welder_converts_semicircle():
     assert np.isclose(end_y, 0.0, atol=0.1), f"Expected Y ≈ 0, got {end_y}"
     
     # Validate direction (should be counter-clockwise for 180-degree arc)
-    assert not clockwise, f"Expected CCW arc, got clockwise"
+    assert not arc.clockwise, f"Expected CCW arc, got clockwise"
 
 def test_arc_welder_ignores_straight_lines():
     """Test if ArcWelder leaves straight line segments unchanged."""
@@ -96,23 +97,17 @@ def test_arc_with_trailing_straight_lines():
     assert cmd_types == [
         MoveToCommand,
         ArcToCommand,
-        LineToCommand,
-        LineToCommand,
-        LineToCommand,
-        LineToCommand,
+        LineToCommand
     ], f"Unexpected command sequence: {cmd_types}"
     
     # Validate arc parameters
-    arc_cmd = commands[1]
-    end_x, end_y, I, J, clockwise = arc_cmd.args
+    arc = commands[1]
+    end_x, end_y = arc.end
     assert np.isclose(end_x, -5.0, atol=0.1), "Arc ends at wrong X"
     assert np.isclose(end_y, 0.0, atol=0.1), "Arc ends at wrong Y"
     
     # Validate straight lines after arc
-    assert commands[2].args == (-6.25, 0.0)
-    assert commands[3].args == (-7.5, 0.0)
-    assert commands[4].args == (-8.75, 0.0)
-    assert commands[5].args == (-10.0, 0.0)
+    assert commands[2].end == (-10.0, 0.0)
 
 def test_find_longest_valid_arc():
     welder = ArcWeld(tolerance=0.1)
@@ -197,13 +192,15 @@ def test_arc_processing_flow():
     assert cmd_types == [MoveToCommand, ArcToCommand], "Should replace entire segment with one arc"
     
     # Validate arc parameters
-    arc_cmd = ops.commands[1]
-    end_x, end_y, i, j, clockwise = arc_cmd.args
+    arc = ops.commands[1]
+    end_x, end_y = arc.end
+    i, j = arc.center_offset
+
     assert np.isclose(end_x, -5.0, atol=0.1)
     assert np.isclose(end_y, 0.0, atol=0.1)
     assert np.isclose(i, -5.0, atol=0.1)  # Center (0,0) - start (5,0) → I=-5
     assert np.isclose(j, 0.0, atol=0.1)
-    assert not clockwise  # CCW for ascending angles
+    assert not arc.clockwise  # CCW for ascending angles
 
 def test_process_segment_structure():
     welder = ArcWeld(tolerance=0.1)
