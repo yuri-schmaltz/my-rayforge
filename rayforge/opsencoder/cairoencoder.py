@@ -35,8 +35,8 @@ class CairoEncoder(OpsEncoder):
         # Apply coordinate scaling and line width
         ctx.scale(scale_x, scale_y)
         ctx.set_hairline(True)
+        ctx.move_to(0, ymax)
 
-        prev_point = 0, ymax
         for segment in ops.segments():
             for cmd in segment:
                 match cmd, cmd.end:
@@ -48,37 +48,32 @@ class CairoEncoder(OpsEncoder):
                         # Ops.segments() ensures that each travel move opens
                         # a new segment.
                         if SHOW_TRAVEL_MOVES:
-                            ctx.move_to(*prev_point)
                             ctx.set_source_rgb(.8, .8, .8)
                             ctx.line_to(x, adjusted_y)
                             ctx.stroke()
-                        else:
-                            ctx.move_to(x, adjusted_y)
 
-                        prev_point = x, adjusted_y
+                        ctx.move_to(x, adjusted_y)
 
                     case LineToCommand(), (x, y):
                         adjusted_y = ymax-y
                         ctx.line_to(x, adjusted_y)
-                        prev_point = x, adjusted_y
 
                     case ArcToCommand(), (x, y):
-                        # x, y: absolute values
-                        # i, j: relative position of arc center from start point.
-                        adjusted_y = ymax-y
-
                         # Start point is the x, y of the previous operation.
-                        start_x, start_y = prev_point
+                        start_x, start_y = ctx.get_current_point()
+                        ctx.set_source_rgb(1, 0, 1)
+                        ctx.stroke()
 
                         # Draw the arc in the correct direction
+                        # x, y: absolute values
+                        # i, j: relative position of arc center from start point.
                         i, j = cmd.center_offset
                         center_x = start_x+i
                         center_y = start_y+j
-                        radius = math.dist(prev_point, (center_x, center_y))
+                        adjusted_y = ymax-y
+                        radius = math.dist((start_x, start_y), (center_x, center_y))
                         angle1 = math.atan2(start_y - center_y, start_x - center_x)
                         angle2 = math.atan2(adjusted_y - center_y, x - center_x)
-                        ctx.stroke()
-                        ctx.set_source_rgb(0, 0, 1)
                         if cmd.clockwise:
                             ctx.arc(center_x, center_y, radius, angle1, angle2)
                         else:
@@ -89,11 +84,9 @@ class CairoEncoder(OpsEncoder):
                                 angle1,
                                 angle2
                             )
+                        ctx.set_source_rgb(0, 0, 1)
                         ctx.stroke()
                         ctx.move_to(x, adjusted_y)
-                        ctx.set_source_rgb(1, 0, 1)
-
-                        prev_point = x, adjusted_y
 
                     case _:
                         pass  # ignore unsupported operations
