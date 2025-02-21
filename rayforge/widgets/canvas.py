@@ -22,6 +22,7 @@ class CanvasElement:
     children: list = field(default_factory=list)
     background: (float, float, float, float) = 0, 0, 0, 0
     data: object = None
+    dirty: bool = False
 
     def get_pixels_per_mm(self):
         return self.canvas.pixels_per_mm_x, \
@@ -162,7 +163,7 @@ class CanvasElement:
         _, _, width, height = self.crop_region_px()
 
         for child in self.children:
-            child.allocate()
+            child.allocate(force)
 
         # If the size didn't change, do nothing.
         if self.surface \
@@ -171,12 +172,23 @@ class CanvasElement:
                 and not force:
             return
 
+        self.dirty = True
         self.surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
 
     def _rect_to_child_coords_px(self, child, rect_px):
         x, y, w, h = rect_px
         child_x, child_y, child_w, child_h = child.rect_px()
         return x-child_x, y-child_y, w, h
+
+    def render_if_dirty(self, clip=None):
+        if not self.dirty:
+            return
+        if clip is None:
+            clip = self.rect_px()
+        for child in self.children:
+            child.render_if_dirty(clip)
+            child.dirty = False
+        self.render(clip)
 
     def render(self, clip=None):
         """
@@ -303,7 +315,7 @@ class Canvas(Gtk.DrawingArea):
         width, height = self.get_width(), self.get_height()
         bounds = Graphene.Rect().init(0, 0, width, height)
 
-        self.root.render()
+        self.root.render_if_dirty()
         ctx = snapshot.append_cairo(bounds)
         ctx.set_source_surface(self.root.surface, *self.root.pos_px())
         ctx.paint()
