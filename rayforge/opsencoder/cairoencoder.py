@@ -37,6 +37,7 @@ class CairoEncoder(OpsEncoder):
         ctx.set_hairline(True)
         ctx.move_to(0, ymax)
 
+        prev_point = 0, ymax
         for segment in ops.segments():
             for cmd in segment:
                 match cmd, cmd.end:
@@ -49,6 +50,7 @@ class CairoEncoder(OpsEncoder):
                         # a new segment.
                         if SHOW_TRAVEL_MOVES:
                             ctx.set_source_rgb(.8, .8, .8)
+                            ctx.move_to(*prev_point)
                             ctx.line_to(x, adjusted_y)
                             ctx.stroke()
 
@@ -57,6 +59,7 @@ class CairoEncoder(OpsEncoder):
                     case LineToCommand(), (x, y):
                         adjusted_y = ymax-y
                         ctx.line_to(x, adjusted_y)
+                        prev_point = x, adjusted_y
 
                     case ArcToCommand(), (x, y):
                         # Start point is the x, y of the previous operation.
@@ -90,6 +93,7 @@ class CairoEncoder(OpsEncoder):
                         ctx.set_source_rgb(0, 0, 1)
                         ctx.stroke()
                         ctx.move_to(x, adjusted_y)
+                        prev_point = x, adjusted_y
 
                     case _:
                         pass  # ignore unsupported operations
