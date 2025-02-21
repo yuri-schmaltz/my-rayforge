@@ -158,7 +158,6 @@ class Ops:
         Returns a list of Command objects. Any state commands are wipe out,
         as the state is now included in every operation.
         """
-        operations = []
         state = State()
         for cmd in self.commands:
             if cmd.is_state_command():
