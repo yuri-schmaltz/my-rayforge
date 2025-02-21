@@ -269,6 +269,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.update_state()
 
     def on_doc_changed(self, sender, **kwargs):
+        self.workbench.update(self.doc)
         self.update_state()
 
     def on_config_changed(self, sender, **kwargs):
@@ -279,10 +280,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Apply selected device driver.
         self._try_driver_setup()
+        self.workbench.update(self.doc)
         self.update_state()
 
     def update_state(self):
-        self.workbench.update(self.doc)
         device_status = self.machine_status.get_status()
 
         # Update button states
@@ -458,6 +459,7 @@ class MainWindow(Adw.ApplicationWindow):
         renderer = renderer_by_mime_type[mime_type]
         wp = WorkPiece.from_file(filename, renderer)
         self.doc.add_workpiece(wp)
+        self.workbench.update(self.doc)
         self.update_state()
 
     def show_about_dialog(self, action, param):
