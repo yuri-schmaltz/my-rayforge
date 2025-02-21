@@ -28,12 +28,12 @@ class Command:
     filled during the pre-processing stage, where state commands are
     removed.
     """
-    end: tuple = None   # x, y of end position, None for state command
-    state: State = None  # Intended state during the executing of this command
-
     def __init__(self, end=None, state=None):
-        self.end = end
-        self.state = state
+        self.end: tuple = end  # x, y of end position, None for state command
+        self.state: State = state  # Intended state during execution
+
+    def __repr__(self):
+        return f"<{super().__repr__()} {self.__dict__}"
 
     def apply_to_state(self, state):
         pass
@@ -61,23 +61,19 @@ class LineToCommand(Command):
 
 
 class ArcToCommand(Command):
-    center_offset: tuple = None
-    clockwise: bool = True
-
     def __init__(self, end, center_offset, clockwise):
         super().__init__(end)
-        self.center_offset = center_offset
-        self.clockwise = clockwise
+        self.center_offset: tuple = center_offset
+        self.clockwise: bool = clockwise
 
     def is_cutting_command(self):
         return True
 
 
 class SetPowerCommand(Command):
-    power: int = None
-
     def __init__(self, power):
-        self.power = power
+        super().__init__()
+        self.power: int = power
 
     def is_state_command(self):
         return True
@@ -87,10 +83,9 @@ class SetPowerCommand(Command):
 
 
 class SetCutSpeedCommand(Command):
-    speed = None
-
     def __init__(self, speed):
-        self.speed = speed
+        super().__init__()
+        self.speed: int = speed
 
     def is_state_command(self):
         return True
@@ -100,10 +95,9 @@ class SetCutSpeedCommand(Command):
 
 
 class SetTravelSpeedCommand(Command):
-    speed = None
-
     def __init__(self, speed):
-        self.speed = speed
+        super().__init__()
+        self.speed: int = speed
 
     def is_state_command(self):
         return True
