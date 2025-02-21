@@ -1,12 +1,12 @@
-import os
 import math
 import cairo
+from ..config import getflag
 from ..models.ops import Ops, MoveToCommand, LineToCommand, ArcToCommand
 from ..models.machine import Machine
 from .encoder import OpsEncoder
 
 
-SHOW_TRAVEL_MOVES = bool(os.environ.get('SHOW_TRAVEL_MOVES', False))
+SHOW_TRAVEL_MOVES = getflag('SHOW_TRAVEL_MOVES')
 
 
 class CairoEncoder(OpsEncoder):
@@ -38,7 +38,6 @@ class CairoEncoder(OpsEncoder):
 
         prev_point = 0, ymax
         for segment in ops.segments():
-            print(segment)
             for cmd in segment:
                 match cmd, cmd.end:
                     case MoveToCommand(), (x, y):
