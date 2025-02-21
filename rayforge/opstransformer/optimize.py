@@ -5,26 +5,6 @@ from ..models.ops import Ops, State, ArcToCommand
 from .transformer import OpsTransformer
 
 
-def preprocess_commands(commands):
-    """
-    Preprocess the commands, enriching each command by the indended
-    state of the machine. This is to prepare for re-ordering without
-    changing the intended state during each command.
-
-    Returns a list of Command objects. Any state commands are wipe out,
-    as the state is now included in every operation.
-    """
-    operations = []
-    state = State()
-    for cmd in commands:
-        if cmd.is_state_command():
-            cmd.apply_to_state(state)
-        else:
-            cmd.state = copy(state)
-            operations.append(cmd)
-    return operations
-
-
 def split_long_segments(operations):
     """
     Split a list of operations such that segments where air assist
@@ -278,13 +258,14 @@ class Optimize(OpsTransformer):
         # 1. Preprocess such that each operation has a state.
         # This also causes all state commands to be dropped - we
         # need to re-add them later.
-        operations = preprocess_commands(ops.commands)
+        ops.preload_state()
+        commands = [c for c in ops if not c.is_state_command()]
 
         # 2. Split the operations into long segments where
         # the state stays more or less the same, i.e. no switching
         # of states that we should be careful with, such as toggling
         # air assist.
-        long_segments = split_long_segments(operations)
+        long_segments = split_long_segments(commands)
 
         # 3. Split the long segments into small, re-orderable
         # segments.

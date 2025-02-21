@@ -1,4 +1,5 @@
 import math
+from copy import copy
 from dataclasses import dataclass
 
 
@@ -146,6 +147,24 @@ class Ops:
 
     def __len__(self):
         return len(self.commands)
+
+    def preload_state(self):
+        """
+        Walks through all commands, enriching each by the indended
+        state of the machine. The state is useful for some post-processors
+        that need to re-order commands without changing the intended
+        state during each command.
+
+        Returns a list of Command objects. Any state commands are wipe out,
+        as the state is now included in every operation.
+        """
+        operations = []
+        state = State()
+        for cmd in self.commands:
+            if cmd.is_state_command():
+                cmd.apply_to_state(state)
+            else:
+                cmd.state = copy(state)
 
     def clear(self):
         self.commands = []
