@@ -15,7 +15,8 @@ def lru_cache_unless_forced(maxsize: int = 128):
             # Check if 'force' is in kwargs and is True
             force = kwargs.pop('force', False)
             if force:
-                # If force is True, bypass the cache and call the original function
+                # If force is True, bypass the cache and call the original
+                # function
                 return func(*args, **kwargs)
             else:
                 # Otherwise, use the cached version
