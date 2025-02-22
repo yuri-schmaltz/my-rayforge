@@ -22,7 +22,7 @@ class App(Adw.Application):
             mime_type, _ = mimetypes.guess_type(self.args.filename)
             win.load_file(self.args.filename, mime_type)
         if self.args.dumpsurface:
-            surface = win.doc.save_bitmap(self.args.dumpsurface, 10, 10)
+            win.doc.save_bitmap(self.args.dumpsurface, 10, 10)
 
         win.present()
 
