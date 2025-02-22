@@ -15,7 +15,6 @@ class CanvasElement:
     selected: bool = False
     selectable: bool = True
     visible: bool = True
-    crop_region_mm: tuple[float, float, float, float] = 0, 0, None, None
     surface: cairo.Surface = None
     canvas: object = None
     parent: object = None
@@ -127,32 +126,10 @@ class CanvasElement:
         self.width_mm, self.height_mm = width_mm, height_mm
         self.dirty = True
 
-    def crop(self, x_mm, y_mm, width_mm, height_mm):
-        x_mm = 0 if x_mm is None or x_mm <= 0 else x_mm
-        y_mm = 0 if y_mm is None or y_mm <= 0 else y_mm
-        if width_mm is not None and width_mm >= self.width_mm:
-            width_mm = None
-        if height_mm is not None and height_mm >= self.height_mm:
-            height_mm = None
-        self.crop_region_mm = x_mm, y_mm, width_mm, height_mm
-        width_mm = self.width_mm if width_mm is None else width_mm
-        height_mm = self.height_mm if height_mm is None else height_mm
-        self.dirty = True
-
     def size_px(self):
         pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
         return (int(self.width_mm*pixels_per_mm_x),
                 int(self.height_mm*pixels_per_mm_y))
-
-    def crop_region_px(self):
-        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
-        x_mm, y_mm, width_mm, height_mm = self.crop_region_mm
-        width_mm = width_mm if width_mm is not None else self.width_mm
-        height_mm = height_mm if height_mm is not None else self.height_mm
-        return (int(x_mm*pixels_per_mm_x),
-                int(y_mm*pixels_per_mm_y),
-                int(width_mm*pixels_per_mm_x),
-                int(height_mm*pixels_per_mm_y))
 
     def rect(self):
         return self.x_mm, self.y_mm, self.width_mm, self.height_mm
@@ -175,7 +152,7 @@ class CanvasElement:
         if not self.canvas:
             return  # cannot allocate if i don't know pixels per mm
 
-        _, _, width, height = self.crop_region_px()
+        width, height = self.size_px()
 
         for child in self.children:
             child.allocate(force)
@@ -281,9 +258,7 @@ class CanvasElement:
         print("  "*(indent+1) + "Dirty:", self.dirty)
         print("  "*(indent+1) + "Dirty (recurs.):", self.has_dirty_children())
         print("  "*(indent+1) + "Size:", self.rect())
-        print("  "*(indent+1) + "Crop:", self.crop_region_mm)
         print("  "*(indent+1) + "Size (px):", self.rect_px())
-        print("  "*(indent+1) + "Crop (px):", self.crop_region_px())
         for child in self.children:
             child.dump(indent+1)
 

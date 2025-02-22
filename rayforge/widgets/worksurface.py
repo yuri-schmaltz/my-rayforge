@@ -6,7 +6,7 @@ from ..config import config
 from .canvas import Canvas, CanvasElement
 
 
-def _copy_surface(source, target, width, height, clip, crop_region):
+def _copy_surface(source, target, width, height, clip):
     in_width, in_height = source.get_width(), source.get_height()
     scale_x = width/in_width
     scale_y = height/in_height
@@ -14,11 +14,8 @@ def _copy_surface(source, target, width, height, clip, crop_region):
     clip_x, clip_y, clip_w, clip_h = clip
     ctx.rectangle(0, 0, clip_x+clip_w, clip_y+clip_h)
     ctx.clip()
-    crop_x, crop_y, crop_w, crop_h = crop_region
-    ctx.rectangle(0, 0, crop_x+crop_w, crop_y+crop_h)
-    ctx.clip()
     ctx.scale(scale_x, scale_y)
-    ctx.set_source_surface(source, crop_x, crop_y)
+    ctx.set_source_surface(source, clip_x, clip_y)
     ctx.paint()
     return target
 
@@ -42,8 +39,7 @@ class WorkPieceElement(CanvasElement):
                                      self.surface,
                                      width,
                                      height,
-                                     clip,
-                                     self.crop_region_px())
+                                     clip)
 
 
 @dataclass
@@ -66,8 +62,7 @@ class WorkStepElement(CanvasElement):
                                      self.surface,
                                      width,
                                      height,
-                                     clip,
-                                     self.crop_region_px())
+                                     clip)
 
         # Let the workstep process our surface in-place.
         width, height = self.size_px()
