@@ -28,8 +28,10 @@ class WorkStep:
             MakeTransparent(),
             ToGrayscale(),
         ]
+        self._modifier_ref_for_pyreverse: Modifier
         self.opsproducer: OpsProducer = opsproducer
         self.opstransformers: List[OpsTransformer] = []
+        self._opstransformer_ref_for_pyreverse: OpsTransformer
         self.passes: int = 1
         self.ops: Ops = Ops()
         self.laser: Laser = None
@@ -141,6 +143,7 @@ class WorkPlan:
         self.worksteps: List[WorkStep] = [
             Contour(),
         ]
+        self._workstep_ref_for_pyreverse: WorkStep
         self.changed = Signal()
 
     def __iter__(self):

@@ -12,8 +12,9 @@ class Doc:
     workplan: WorkPlan
 
     def __init__(self):
-        self.workpieces = []
-        self.workplan = WorkPlan("Default plan")
+        self.workpieces: List[WorkPiece] = []
+        self._workpiece_ref_for_pyreverse: WorkPiece
+        self.workplan: WorkPlan = WorkPlan("Default plan")
         self.changed = Signal()
         self.workplan.changed.connect(self.changed.send)
 

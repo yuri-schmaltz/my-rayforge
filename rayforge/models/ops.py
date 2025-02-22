@@ -1,5 +1,6 @@
 import math
 from copy import copy
+from typing import List
 from dataclasses import dataclass
 
 
@@ -31,6 +32,7 @@ class Command:
     def __init__(self, end=None, state=None):
         self.end: tuple = end  # x, y of end position, None for state command
         self.state: State = state  # Intended state during execution
+        self._state_ref_for_pyreverse: State
 
     def __repr__(self):
         return f"<{super().__repr__()} {self.__dict__}"
@@ -129,7 +131,8 @@ class Ops:
     for display.
     """
     def __init__(self):
-        self.commands = []
+        self.commands: List[Command] = []
+        self._commands_ref_for_pyreverse: Command
         self.last_move_to = 0.0, 0.0
 
     def __iter__(self):

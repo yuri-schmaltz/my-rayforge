@@ -56,10 +56,10 @@ class Machine:
         self.air_assist_on = "M8 ; Enable air assist"
         self.air_assist_off = "M9 ; Disable air assist"
         self.heads: List[Laser] = []
+        self._heads_ref_for_pyreverse: Laser
         self.max_travel_speed: int = 3000   # in mm/min
         self.max_cut_speed: int = 1000   # in mm/min
         self.dimensions: tuple[int, int] = 200, 200
-        self.heads = []
         self.changed = Signal()
         self.add_head(Laser())
 
@@ -173,7 +173,8 @@ class MachineManager:
     def __init__(self, base_dir):
         base_dir.mkdir(parents=True, exist_ok=True)
         self.base_dir = base_dir
-        self.machines = dict()
+        self.machines: Dict[Machine] = dict()
+        self._machine_ref_for_pyreverse: Machine
         self.load()
 
     def filename_from_id(self, machine_id: str) -> 'Machine':

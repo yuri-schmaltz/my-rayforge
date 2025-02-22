@@ -1,4 +1,5 @@
 import cairo
+from typing import Optional
 from ..render import Renderer
 
 
@@ -11,7 +12,8 @@ class WorkPiece:
     def __init__(self, name):
         self.name = name
         self.data: bytes = None
-        self.renderer: Renderer = None
+        self.renderer: Optional[Renderer] = None
+        self._renderer_ref_for_pyreverse: Renderer
         self.surface: cairo.Surface = None
 
     def get_natural_size(self):
