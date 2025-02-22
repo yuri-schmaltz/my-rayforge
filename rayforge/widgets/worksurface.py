@@ -100,7 +100,7 @@ class WorkStepElement(CanvasElement):
         width, height = self.size_px()
         pixels_per_mm = self.get_pixels_per_mm()
         workstep = self.data
-        ops = workstep.run(config.machine, self.surface, pixels_per_mm)
+        ops = workstep.run(self.surface, pixels_per_mm)
 
         # Replace the current bitmap by the rendered Ops.
         self.clear_surface()

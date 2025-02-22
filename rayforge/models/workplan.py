@@ -1,8 +1,10 @@
+from __future__ import annotations
 from typing import List
 from ..config import config, getflag
 from ..modifier import Modifier, MakeTransparent, ToGrayscale
 from ..opsproducer import OpsProducer, OutlineTracer, EdgeTracer, Rasterizer
 from ..opstransformer import OpsTransformer, Optimize, Smooth, ArcWeld
+from .renderable import Renderable
 from .machine import Laser
 from .ops import Ops
 from blinker import Signal
@@ -22,6 +24,7 @@ class WorkStep:
     typelabel = None
 
     def __init__(self, opsproducer: OpsProducer, name=None):
+        self.workplan: WorkPlan = None
         self.name: str = name or self.typelabel
         self.visible: bool = True
         self.modifiers: List[Modifier] = [
@@ -67,7 +70,7 @@ class WorkStep:
         self.power = power
         self.changed.send(self)
 
-    def run(self, machine, surface, pixels_per_mm):
+    def run(self, surface, pixels_per_mm):
         """
         surface: the input surface to operate on.
         pixels_per_mm: tuple containing pixels_per_mm_x and pixels_per_mm_y
@@ -84,7 +87,7 @@ class WorkStep:
 
         # Produce an Ops object from the resulting surface.
         ops += self.opsproducer.run(
-            machine,
+            config.machine,
             self.laser,
             surface,
             pixels_per_mm
@@ -138,21 +141,32 @@ class WorkPlan:
     """
     def __init__(self, name):
         self.name: str = name
-        self.worksteps: List[WorkStep] = [
-            Contour(),
-        ]
+        self.renderables: List[Renderable] = []
+        self._renderable_ref_for_pyreverse: Renderable
+        self.worksteps: List[WorkStep] = []
         self._workstep_ref_for_pyreverse: WorkStep
         self.changed = Signal()
+        self.add_workstep(Contour())
 
     def __iter__(self):
         return iter(self.worksteps)
 
+    def add_renderable(self, renderable: Renderable):
+        self.renderables.append(renderable)
+        self.changed.send(self)
+
+    def remove_renderable(self, renderable: Renderable):
+        self.renderables.remove(renderable)
+        self.changed.send(self)
+
     def add_workstep(self, workstep):
         self.worksteps.append(workstep)
+        workstep.workplan = self
         self.changed.send(self)
 
     def remove_workstep(self, workstep):
         self.worksteps.remove(workstep)
+        workstep.workplan = None
         self.changed.send(self)
 
     def set_worksteps(self, worksteps):
@@ -162,17 +176,16 @@ class WorkPlan:
         self.worksteps = worksteps
         self.changed.send(self)
 
-    def execute(self, doc, machine, optimize=True):
+    def execute(self, optimize=True):
         pixels_per_mm = 50
-        surface, _ = doc.render(pixels_per_mm, pixels_per_mm)
-        ops = Ops()
-        for step in self.worksteps:
-            step_ops = step.run(machine,
-                                surface,
-                                (pixels_per_mm, pixels_per_mm))
-            if optimize:
-                Optimize().run(step_ops)
-            ops += step_ops*step.passes
+        for renderable in self.renderables:
+            surface, _ = renderable.render(pixels_per_mm, pixels_per_mm)
+            ops = Ops()
+            for step in self.worksteps:
+                step_ops = step.run(surface, (pixels_per_mm, pixels_per_mm))
+                if optimize:
+                    Optimize().run(step_ops)
+                ops += step_ops*step.passes
         return ops
 
     def has_steps(self):

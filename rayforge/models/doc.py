@@ -2,11 +2,12 @@ import cairo
 from typing import List
 from blinker import Signal
 from ..config import config
+from .renderable import Renderable
 from .workpiece import WorkPiece
 from .workplan import WorkPlan
 
 
-class Doc:
+class Doc(Renderable):
     """
     Represents a loaded Rayforge document.
     """
@@ -19,6 +20,7 @@ class Doc:
         self.workplan: WorkPlan = WorkPlan("Default plan")
         self.surface: cairo.Surface = None
         self.changed = Signal()
+        self.workplan.add_renderable(self)
         self.workplan.changed.connect(self.changed.send)
 
     def __iter__(self):
@@ -26,10 +28,12 @@ class Doc:
 
     def add_workpiece(self, workpiece):
         self.workpieces.append(workpiece)
+        self.changed.send(self)
 
     def remove_workpiece(self, workpiece):
         if workpiece in self.workpieces:
             self.workpieces.remove(workpiece)
+            self.changed.send(self)
 
     def has_workpiece(self):
         return bool(self.workpieces)

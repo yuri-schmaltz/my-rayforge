@@ -1,9 +1,10 @@
 import cairo
 from typing import Optional
 from ..render import Renderer
+from .renderable import Renderable
 
 
-class WorkPiece:
+class WorkPiece(Renderable):
     """
     A WorkPiece represents a real world work piece, It is usually
     loaded from an image file and serves as input for all other

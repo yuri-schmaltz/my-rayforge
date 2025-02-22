@@ -397,7 +397,7 @@ class MainWindow(Adw.ApplicationWindow):
         if not head.frame_power:
             return
 
-        ops = self.doc.workplan.execute(self.doc, config.machine)
+        ops = self.doc.workplan.execute()
         frame = ops.get_frame(
             power=head.frame_power,
             speed=config.machine.max_travel_speed
@@ -406,7 +406,7 @@ class MainWindow(Adw.ApplicationWindow):
         run_async(driver_mgr.driver.run(frame, config.machine))
 
     def on_send_clicked(self, button):
-        ops = self.doc.workplan.execute(self.doc, config.machine)
+        ops = self.doc.workplan.execute()
         run_async(driver_mgr.driver.run(ops, config.machine))
 
     def on_hold_clicked(self, button):
@@ -429,7 +429,7 @@ class MainWindow(Adw.ApplicationWindow):
 
             # Serialize the G-code
             encoder = GcodeEncoder()
-            ops = self.doc.workplan.execute(self.doc, config.machine)
+            ops = self.doc.workplan.execute()
             gcode = encoder.encode(ops, config.machine)
 
             # Write the G-code to the file
