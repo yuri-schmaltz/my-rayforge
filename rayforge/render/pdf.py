@@ -51,8 +51,8 @@ class PDFRenderer(Renderer):
         return width_mm / height_mm
 
     @classmethod
-    def render_workpiece(cls, wp, width=None, height=None):
-        return cls._render_data(wp.data, width, height)
+    def render_workpiece(cls, data, width=None, height=None):
+        return cls._render_data(data, width, height)
 
     @classmethod
     def _render_data(cls, data, width=None, height=None):

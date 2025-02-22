@@ -1,3 +1,4 @@
+import cairo
 from ..render import Renderer
 
 
@@ -11,6 +12,7 @@ class WorkPiece:
         self.name = name
         self.data: bytes = None
         self.renderer: Renderer = None
+        self.surface: cairo.Surface = None
 
     def get_natural_size(self):
         return self.renderer.get_natural_size(self.data)
@@ -25,6 +27,20 @@ class WorkPiece:
             wp.data = renderer.prepare(fp.read())
         wp.renderer = renderer
         return wp
+
+    def render(self, width: int, height: int, force: bool = False):
+        """
+        width/height are in pixels
+        """
+        if self.surface \
+                and self.surface.get_width() == width \
+                and self.surface.get_height() == height \
+                and not force:
+            return self.surface, False
+        self.surface = self.renderer.render_workpiece(self.data,
+                                                      width,
+                                                      height)
+        return self.surface, True
 
     def dump(self, indent=0):
         print("  "*indent, self.name, self.renderer.label)

@@ -223,18 +223,18 @@ class DXFRenderer(Renderer):
         return w/h if h else 1
 
     @classmethod
-    def render_workpiece(cls, wp, width=None, height=None):
-        msp = wp.data.modelspace()
-        factor = get_scale_to_mm(wp.data, 1.0)   # default to 1mm = 1px
+    def render_workpiece(cls, data, width=None, height=None):
+        msp = data.modelspace()
+        factor = get_scale_to_mm(data, 1.0)   # default to 1mm = 1px
 
         # Set up Cairo transformations
         if width is None or height is None:
-            _, _, width, height = get_bounds_px(wp.data)
+            _, _, width, height = get_bounds_px(data)
         surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, width, height)
         ctx = cairo.Context(surface)
 
         # Scale and flip Y-axis due to DXF's coordinate system
-        x, y, w, h = get_bounds_px(wp.data)
+        x, y, w, h = get_bounds_px(data)
         ctx.scale(width/w, -height/h)
         ctx.translate(-x, -y-h)
 
@@ -260,7 +260,7 @@ class DXFRenderer(Renderer):
                 case 'SPLINE':
                     draw_spline(ctx, entity)
                 case 'INSERT':
-                    draw_insert(ctx, entity, wp.data)
+                    draw_insert(ctx, entity, data)
                 case _:
                     print(f"Unsupported entity type: {entity.dxftype()}")
 

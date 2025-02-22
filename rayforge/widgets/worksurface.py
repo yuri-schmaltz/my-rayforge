@@ -35,10 +35,9 @@ class WorkPieceElement(CanvasElement):
         assert self.surface is not None
         width, height = self.size_px()
         workpiece = self.data
-        renderer = workpiece.renderer
-        surface = renderer.render_workpiece(workpiece, width, height)
-        if not surface:
-            return self.surface  # we assume surface was changed in-place
+        surface, changed = workpiece.render(width, height)
+        if not changed:
+            return
         self.surface = _copy_surface(surface,
                                      self.surface,
                                      width,

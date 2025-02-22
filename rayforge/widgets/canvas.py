@@ -221,7 +221,8 @@ class CanvasElement:
         ctx.clip()
         for child in self.children:
             if child.dirty:
-                child.render(self._rect_to_child_coords_px(child, child.rect_px()))
+                rect = self._rect_to_child_coords_px(child, child.rect_px())
+                child.render(rect)
                 child.dirty = False
             if child.visible:
                 ctx.set_source_surface(child.surface, *child.pos_px())
@@ -275,7 +276,7 @@ class CanvasElement:
         print("  "*indent + self.__class__.__name__ + ':')
         print("  "*(indent+1) + "Visible:", self.visible)
         print("  "*(indent+1) + "Dirty:", self.dirty)
-        print("  "*(indent+1) + "Dirty (recursive):", self.has_dirty_children())
+        print("  "*(indent+1) + "Dirty (recurs.):", self.has_dirty_children())
         print("  "*(indent+1) + "Size:", self.rect())
         print("  "*(indent+1) + "Crop:", self.crop_region_mm)
         print("  "*(indent+1) + "Size (px):", self.rect_px())
