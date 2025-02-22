@@ -21,6 +21,9 @@ class App(Adw.Application):
         if self.args.filename:
             mime_type, _ = mimetypes.guess_type(self.args.filename)
             win.load_file(self.args.filename, mime_type)
+        if self.args.dumpsurface:
+            surface = win.doc.save_bitmap(self.args.dumpsurface, 10, 10)
+
         win.present()
 
     def do_shutdown(self):
@@ -30,10 +33,19 @@ class App(Adw.Application):
 
 def main():
     parser = argparse.ArgumentParser(
-            description="A GCode generator for laser cutters.")
-    parser.add_argument("filename",
-                        help="Path to the input SVG or image file.",
-                        nargs='?')
+        description="A GCode generator for laser cutters."
+    )
+    parser.add_argument(
+        "filename",
+        help="Path to the input SVG or image file.",
+        nargs='?'
+    )
+    parser.add_argument(
+        "--dumpsurface",
+        metavar="FILENAME",
+        help="Stores the work surface (no paths) as a PNG image.",
+        nargs='?'
+    )
 
     args = parser.parse_args()
     app = App(args)

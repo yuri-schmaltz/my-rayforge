@@ -42,16 +42,15 @@ class WorkPiece:
                pixels_per_mm_x: int,
                pixels_per_mm_y: int,
                force: bool = False):
-        """
-        width/height are in pixels
-        """
-        width = self.pos[0] * pixels_per_mm_x
-        height = self.pos[1] * pixels_per_mm_y
+        width = self.size[0] * pixels_per_mm_x
+        height = self.size[1] * pixels_per_mm_y
+
         if self.surface \
                 and self.surface.get_width() == width \
                 and self.surface.get_height() == height \
                 and not force:
             return self.surface, False
+
         self.surface = self.renderer.render_workpiece(self.data,
                                                       width,
                                                       height)
