@@ -1,3 +1,4 @@
+from __future__ import annotations
 import math
 from copy import copy
 from typing import List
@@ -317,6 +318,38 @@ class Ops:
 
         if segment:
             yield segment
+
+    def translate(self, dx: float, dy: float) -> Ops:
+        """Translate geometric commands while preserving relative offsets"""
+        for cmd in self.commands:
+            if cmd.end is not None:
+                # Translate endpoint only.
+                # Arcs need no offset adjustment needed because
+                # I/J are relative to start point
+                x, y = cmd.end
+                cmd.end = (x + dx, y + dy)
+
+        # Update last known position
+        last_x, last_y = self.last_move_to
+        self.last_move_to = (last_x + dx, last_y + dy)
+        return self
+
+    def scale(self, sx: float, sy: float) -> Ops:
+        """Scale both absolute positions and relative offsets"""
+        for cmd in self.commands:
+            if cmd.end is not None:
+                x, y = cmd.end
+                cmd.end = (x * sx, y * sy)
+
+            if isinstance(cmd, ArcToCommand):
+                # Scale relative offsets
+                i, j = cmd.center_offset
+                cmd.center_offset = (i * sx, j * sy)
+
+        # Scale last known position
+        last_x, last_y = self.last_move_to
+        self.last_move_to = last_x * sx, last_y * sy
+        return self
 
     def dump(self):
         for segment in self.segments():

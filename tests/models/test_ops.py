@@ -222,3 +222,53 @@ def test_preload_state_application():
         if not cmd.is_state_command():
             assert cmd.state is not None
             assert isinstance(cmd.state, State)
+
+def test_translate():
+    ops = Ops()
+    ops.move_to(10, 20)
+    ops.line_to(30, 40)
+    ops.arc_to(50, 60, 5, 7)
+    ops.translate(5, 10)
+
+    assert ops.commands[0].end == (15, 30)      # MoveTo
+    assert ops.commands[1].end == (35, 50)      # LineTo
+    assert ops.commands[2].end == (55, 70)      # ArcTo endpoint
+    assert ops.commands[2].center_offset == (5, 7)  # ArcTo center offset
+    assert ops.last_move_to == (15, 30)
+
+def test_arc_translation():
+    ops = Ops()
+    ops.move_to(10, 10)
+    ops.arc_to(20, 20, 5, 5)  # Center at (15, 15)
+    ops.translate(5, 5)
+
+    # Endpoint translated
+    assert ops.commands[1].end == (25, 25)
+    # Offset remains same
+    assert ops.commands[1].center_offset == (5, 5)
+    # Implicit center: (10+5+5, 10+5+5) = (20, 20)
+
+def test_scale():
+    ops = Ops()
+    ops.move_to(10, 20)
+    ops.line_to(30, 40)
+    ops.arc_to(50, 60, 5, 7)
+    ops.scale(2, 3)
+
+    assert ops.commands[0].end == (20, 60)      # MoveTo
+    assert ops.commands[1].end == (60, 120)     # LineTo
+    assert ops.commands[2].end == (100, 180)    # ArcTo endpoint
+    assert ops.commands[2].center_offset == (10, 21)  # ArcTo center offset
+    assert ops.last_move_to == (20, 60)
+
+def test_arc_scaling():
+    ops = Ops()
+    ops.move_to(10, 10)
+    ops.arc_to(20, 20, 5, 5)
+    ops.scale(2, 3)
+
+    # Endpoint scaled
+    assert ops.commands[1].end == (40, 60)
+    # Offset scaled
+    assert ops.commands[1].center_offset == (10, 15)
+    # Implicit center: (20 + 10, 30 + 15) = (30, 45)
