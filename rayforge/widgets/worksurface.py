@@ -110,8 +110,8 @@ class WorkSurface(Canvas):
 
     def update(self):
         self.aspect_ratio = self.root.width_mm/self.root.height_mm
-        self.workpiece_elements.width_mm = self.root.width_mm
-        self.workpiece_elements.height_mm = self.root.height_mm
+        self.workpiece_elements.set_size(self.root.width_mm,
+                                         self.root.height_mm)
         self.root.allocate()
         self.queue_draw()
 

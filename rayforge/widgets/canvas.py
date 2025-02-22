@@ -99,6 +99,9 @@ class CanvasElement:
             width_mm = height_mm*aspect_ratio
         return width_mm, height_mm
 
+    def set_pos(self, x_mm, y_mm):
+        self.x_mm, self.y_mm = x_mm, y_mm
+
     def pos(self):
         return self.x_mm, self.y_mm
 
@@ -465,22 +468,21 @@ class Canvas(Gtk.DrawingArea):
         delta_y_mm = y/self.pixels_per_mm_y
 
         if self.moving:
-            self.active_elem.x_mm = start_x_mm+delta_x_mm
-            self.active_elem.y_mm = start_y_mm+delta_y_mm
+            self.active_elem.set_pos(start_x_mm+delta_x_mm,
+                                     start_y_mm+delta_y_mm)
             self.active_elem.parent.dirty = True
 
         if self.resizing:
             new_w_mm = max(self.handle_size, start_w_mm+delta_x_mm)
             new_w_mm = min(new_w_mm, self.active_elem.parent.width_mm)
-            self.active_elem.width_mm = new_w_mm
             if self.shift_pressed:
                 aspect = start_w_mm/start_h_mm
-                self.active_elem.height_mm = new_w_mm/aspect
+                new_h_mm = new_w_mm/aspect
             else:
                 new_h_mm = max(self.handle_size, start_h_mm+delta_y_mm)
                 new_h_mm = min(new_h_mm, self.active_elem.parent.height_mm)
-                self.active_elem.height_mm = new_h_mm
             self.active_elem.parent.dirty = True
+            self.active_elem.set_size(new_w_mm, new_h_mm)
             self.active_elem.allocate()
 
         self.queue_draw()
