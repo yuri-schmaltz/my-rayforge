@@ -67,5 +67,5 @@ class Doc:
         return self.surface, True
 
     def save_bitmap(self, filename, pixels_per_mm_x, pixels_per_mm_y):
-        surface, changed = self.render(pixels_per_mm_x, pixels_per_mm_y, True)
+        surface, changed = self.render(pixels_per_mm_x, pixels_per_mm_y)
         surface.write_to_png(filename)

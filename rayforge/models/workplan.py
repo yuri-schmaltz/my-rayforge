@@ -70,10 +70,8 @@ class WorkStep:
 
     def run(self, machine, surface, pixels_per_mm):
         """
-        surface: the input surface containing an image that the
-        modifiers should modify (or convert to Ops).
+        surface: the input surface to operate on.
         pixels_per_mm: tuple containing pixels_per_mm_x and pixels_per_mm_y
-        ymax: machine max y size (for Z axis inversion)
         """
         self.ops.clear()
         self.ops.set_power(self.power)
@@ -98,6 +96,7 @@ class WorkStep:
             transformer.run(self.ops)
 
         self.ops.disable_air_assist()
+        return self.ops
 
     def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
@@ -164,12 +163,16 @@ class WorkPlan:
         self.worksteps = worksteps
         self.changed.send(self)
 
-    def get_result(self, optimize=True):
+    def execute(self, doc, machine, optimize=True):
+        pixels_per_mm = 50
+        surface, _ = doc.render(pixels_per_mm, pixels_per_mm)
         ops = Ops()
         for step in self.worksteps:
             if optimize:
                 Optimize().run(step.ops)
-            ops += step.ops*step.passes
+            ops += step.run(machine,
+                            surface,
+                            (pixels_per_mm, pixels_per_mm))*step.passes
         return ops
 
     def has_result(self):
