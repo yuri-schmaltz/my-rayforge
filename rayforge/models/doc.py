@@ -35,7 +35,7 @@ class Doc:
         return bool(self.workpieces)
 
     def has_result(self):
-        return self.workplan.has_result()
+        return self.workplan.has_steps() and len(self.workpieces) > 0
 
     def render(self,
                pixels_per_mm_x: int,

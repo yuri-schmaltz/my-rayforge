@@ -86,20 +86,26 @@ class WorkStepElement(CanvasElement):
                                      height,
                                      clip)
 
-        # Let the workstep process our surface in-place.
+        # Run the workstep to create Ops from the current surface.
+        # This sucks a bit because this operation is expensive. But
+        # we cannot cache it because no matter what is being done on
+        # the worksurface, at least the travel move towards the workpiece
+        # changes.
+        # Perhaps in the future it would be better to render one Ops
+        # per workpiece. This would allow for using a cached Ops if only
+        # the position (and not the size) of a workpiece changed.
+        # A small drawback would be that overlapping
+        # workpieces would lead to areas being worked twice. But
+        # overlapping pieces is probably not a useful thing to do anyway...
         width, height = self.size_px()
         pixels_per_mm = self.get_pixels_per_mm()
         workstep = self.data
-        workstep.run(config.machine, self.surface, pixels_per_mm)
+        ops = workstep.run(config.machine, self.surface, pixels_per_mm)
 
-        # If Ops were generated, they replace the current bitmap.
-        if workstep.ops:
-            self.allocate(True)
-            encoder = CairoEncoder()
-            encoder.encode(workstep.ops,
-                           config.machine,
-                           self.surface,
-                           self.get_pixels_per_mm())
+        # Replace the current bitmap by the rendered Ops.
+        self.clear_surface()
+        encoder = CairoEncoder()
+        encoder.encode(ops, config.machine, self.surface, pixels_per_mm)
 
 
 class WorkSurface(Canvas):

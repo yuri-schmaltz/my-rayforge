@@ -33,7 +33,6 @@ class WorkStep:
         self.opstransformers: List[OpsTransformer] = []
         self._opstransformer_ref_for_pyreverse: OpsTransformer
         self.passes: int = 1
-        self.ops: Ops = Ops()
         self.laser: Laser = None
 
         self.changed = Signal()
@@ -73,18 +72,18 @@ class WorkStep:
         surface: the input surface to operate on.
         pixels_per_mm: tuple containing pixels_per_mm_x and pixels_per_mm_y
         """
-        self.ops.clear()
-        self.ops.set_power(self.power)
-        self.ops.set_cut_speed(self.cut_speed)
-        self.ops.set_travel_speed(self.travel_speed)
-        self.ops.enable_air_assist(self.air_assist)
+        ops = Ops()
+        ops.set_power(self.power)
+        ops.set_cut_speed(self.cut_speed)
+        ops.set_travel_speed(self.travel_speed)
+        ops.enable_air_assist(self.air_assist)
 
         # Apply bitmap modifiers.
         for modifier in self.modifiers:
             modifier.run(surface)
 
         # Produce an Ops object from the resulting surface.
-        self.ops += self.opsproducer.run(
+        ops += self.opsproducer.run(
             machine,
             self.laser,
             surface,
@@ -93,10 +92,10 @@ class WorkStep:
 
         # Apply Ops object transformations.
         for transformer in self.opstransformers:
-            transformer.run(self.ops)
+            transformer.run(ops)
 
-        self.ops.disable_air_assist()
-        return self.ops
+        ops.disable_air_assist()
+        return ops
 
     def _on_laser_changed(self, sender, **kwargs):
         self.changed.send(self)
@@ -168,15 +167,13 @@ class WorkPlan:
         surface, _ = doc.render(pixels_per_mm, pixels_per_mm)
         ops = Ops()
         for step in self.worksteps:
+            step_ops = step.run(machine,
+                                surface,
+                                (pixels_per_mm, pixels_per_mm))
             if optimize:
-                Optimize().run(step.ops)
-            ops += step.run(machine,
-                            surface,
-                            (pixels_per_mm, pixels_per_mm))*step.passes
+                Optimize().run(step_ops)
+            ops += step_ops*step.passes
         return ops
 
-    def has_result(self):
-        for step in self.worksteps:
-            if step.ops.cut_distance() > 0:
-                return True
-        return False
+    def has_steps(self):
+        return len(self.worksteps) > 0
