@@ -36,6 +36,11 @@ class CanvasElement:
         elem.canvas = self.canvas
         elem.parent = self
         elem.allocate()
+        self.dirty = True
+
+    def set_visible(self, visible=True):
+        self.visible = visible
+        self.dirty = True
 
     def find_by_data(self, data):
         if data == self.data:
@@ -51,10 +56,12 @@ class CanvasElement:
         self.children = []
         for child in children:
             self.canvas.elem_removed.send(self, child=child)
+        self.dirty = True
 
     def remove(self):
         assert self.parent is not None
         self.parent.remove_child(self)
+        self.dirty = True
 
     def remove_child(self, elem):
         """
@@ -64,6 +71,7 @@ class CanvasElement:
             if child == elem:
                 self.children.remove(child)
                 self.canvas.elem_removed.send(self, child=child)
+        self.dirty = True
 
     def remove_selected(self):
         for child in self.children[:]:
@@ -71,11 +79,13 @@ class CanvasElement:
                 self.children.remove(child)
                 self.canvas.elem_removed.send(self, child=child)
             child.remove_selected()
+        self.dirty = True
 
     def unselect_all(self):
         for child in self.children:
             child.unselect_all()
         self.selected = False
+        self.dirty = True
 
     def get_max_child_size(self, aspect_ratio):
         """
@@ -112,6 +122,7 @@ class CanvasElement:
 
     def set_size(self, width_mm, height_mm):
         self.width_mm, self.height_mm = width_mm, height_mm
+        self.dirty = True
 
     def crop(self, x_mm, y_mm, width_mm, height_mm):
         x_mm = 0 if x_mm is None or x_mm <= 0 else x_mm
@@ -123,6 +134,7 @@ class CanvasElement:
         self.crop_region_mm = x_mm, y_mm, width_mm, height_mm
         width_mm = self.width_mm if width_mm is None else width_mm
         height_mm = self.height_mm if height_mm is None else height_mm
+        self.dirty = True
 
     def size_px(self):
         pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
@@ -180,20 +192,7 @@ class CanvasElement:
         child_x, child_y, child_w, child_h = child.rect_px()
         return x-child_x, y-child_y, w, h
 
-    def render_if_dirty(self, clip=None):
-        if not self.dirty:
-            return
-        if clip is None:
-            clip = self.rect_px()
-        for child in self.children:
-            child.render_if_dirty(clip)
-            child.dirty = False
-        self.render(clip)
-
-    def render(self, clip=None):
-        """
-        clip: x, y, w, h. the region to render
-        """
+    def clear_surface(self, clip=None):
         if clip is None:
             clip = self.rect_px()
 
@@ -206,14 +205,48 @@ class CanvasElement:
         ctx.set_source_rgba(*self.background)
         ctx.set_operator(cairo.OPERATOR_SOURCE)
         ctx.paint()
-        ctx.restore()
+
+    def render(self, clip=None):
+        """
+        clip: x, y, w, h. the region to render
+        """
+        if clip is None:
+            clip = self.rect_px()
+        self.clear_surface(clip)
 
         # Paint children
+        x, y, w, h = clip
+        ctx = cairo.Context(self.surface)
+        ctx.rectangle(0, 0, x+w, y+h)
+        ctx.clip()
         for child in self.children:
-            child.render(self._rect_to_child_coords_px(child, clip))
+            if child.dirty:
+                child.render(self._rect_to_child_coords_px(child, child.rect_px()))
+                child.dirty = False
             if child.visible:
                 ctx.set_source_surface(child.surface, *child.pos_px())
                 ctx.paint()
+
+    def has_dirty_children(self):
+        if self.dirty:
+            return True
+        for child in self.children:
+            if child.has_dirty_children():
+                return True
+        return False
+
+    def render_if_dirty(self, clip=None):
+        if clip is None:
+            clip = self.rect_px()
+
+        if not self.has_dirty_children():
+            return
+        if not self.visible:
+            self.clear_surface(clip)
+            return
+
+        self.render(clip)
+        self.dirty = False
 
     def get_elem_hit(self, x_mm, y_mm, selectable=False):
         """
@@ -239,14 +272,14 @@ class CanvasElement:
         return None
 
     def dump(self, indent=0):
-        print("  "*indent,
-              self.__class__.__name__,
-              "SIZE", self.rect(),
-              "CROP", self.crop_region_mm)
-        print("  "*indent,
-              " "*len(self.__class__.__name__),
-              "SIZEPX", self.rect_px(),
-              "CROPPX", self.crop_region_px())
+        print("  "*indent + self.__class__.__name__ + ':')
+        print("  "*(indent+1) + "Visible:", self.visible)
+        print("  "*(indent+1) + "Dirty:", self.dirty)
+        print("  "*(indent+1) + "Dirty (recursive):", self.has_dirty_children())
+        print("  "*(indent+1) + "Size:", self.rect())
+        print("  "*(indent+1) + "Crop:", self.crop_region_mm)
+        print("  "*(indent+1) + "Size (px):", self.rect_px())
+        print("  "*(indent+1) + "Crop (px):", self.crop_region_px())
         for child in self.children:
             child.dump(indent+1)
 
@@ -433,6 +466,7 @@ class Canvas(Gtk.DrawingArea):
         if self.moving:
             self.active_elem.x_mm = start_x_mm+delta_x_mm
             self.active_elem.y_mm = start_y_mm+delta_y_mm
+            self.active_elem.parent.dirty = True
 
         if self.resizing:
             new_w_mm = max(self.handle_size, start_w_mm+delta_x_mm)
@@ -445,6 +479,7 @@ class Canvas(Gtk.DrawingArea):
                 new_h_mm = max(self.handle_size, start_h_mm+delta_y_mm)
                 new_h_mm = min(new_h_mm, self.active_elem.parent.height_mm)
                 self.active_elem.height_mm = new_h_mm
+            self.active_elem.parent.dirty = True
             self.active_elem.allocate()
 
         self.queue_draw()

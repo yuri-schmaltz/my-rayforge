@@ -45,7 +45,6 @@ class WorkPieceElement(CanvasElement):
                                      height,
                                      clip,
                                      self.crop_region_px())
-        return self.surface
 
 
 @dataclass
@@ -77,8 +76,7 @@ class WorkStepElement(CanvasElement):
         workstep = self.data
         workstep.run(config.machine, self.surface, pixels_per_mm)
 
-        # If Ops were generated, render only it. i.e. clear the current
-        # bitmap.
+        # If Ops were generated, they replace the current bitmap.
         if workstep.ops:
             self.allocate(True)
             encoder = CairoEncoder()
@@ -86,8 +84,6 @@ class WorkStepElement(CanvasElement):
                            config.machine,
                            self.surface,
                            self.get_pixels_per_mm())
-
-        return self.surface
 
 
 class WorkSurface(Canvas):
@@ -139,7 +135,7 @@ class WorkSurface(Canvas):
         elem = self.find_by_data(workstep)
         if not elem:
             return
-        elem.visible = workstep.visible
+        elem.set_visible(workstep.visible)
         self.queue_draw()
 
     def add_workpiece(self, workpiece):
@@ -173,7 +169,7 @@ class WorkSurface(Canvas):
         return [c for c in self.root.children if isinstance(c, thetype)]
 
     def set_workpieces_visible(self, visible=True):
-        self.workpiece_elements.visible = visible
+        self.workpiece_elements.set_visible(visible)
         self.queue_draw()
 
     def do_snapshot(self, snapshot):
@@ -185,6 +181,20 @@ class WorkSurface(Canvas):
         self.pixels_per_mm_x = width/self.root.width_mm
         self.pixels_per_mm_y = height/self.root.height_mm
         self._draw_grid(ctx, width, height)
+
+        # The tree of elements in the canvas looks like this:
+        # root (CanvasElement)
+        #   workpieces (CanvasElement)
+        #     workpiece (WorkPieceElement)
+        #     ...       (WorkPieceElement)
+        #   workstep    (WorkStepElement)
+        #   ...         (WorkStepElement)
+        # When a workpiece moves or is resized, we need to ensure
+        # that the worksteps update in sync with them.
+        # For now, to achieve that we force worksteps to update
+        # always, by marking them dirty.
+        for elem in self.find_by_type(WorkStepElement):
+            elem.dirty = True
 
         super().do_snapshot(snapshot)
 
