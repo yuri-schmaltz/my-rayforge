@@ -2,26 +2,35 @@ from __future__ import annotations
 import cairo
 from gi.repository import Gtk, Gdk, Graphene
 from copy import deepcopy
-from dataclasses import dataclass, field
 from blinker import Signal
 
 
-@dataclass
 class CanvasElement:
-    x_mm: float  # Relative to parent (or canvas if top-level)
-    y_mm: float  # Relative to parent (or canvas if top-level)
-    width_mm: float  # Real-world width in mm
-    height_mm: float  # Real-world height in mm
-    selected: bool = False
-    selectable: bool = True
-    visible: bool = True
-    surface: cairo.Surface = None
-    canvas: object = None
-    parent: object = None
-    children: list = field(default_factory=list)
-    background: (float, float, float, float) = 0, 0, 0, 0
-    data: object = None
-    dirty: bool = False
+    def __init__(self, x_mm, y_mm, width_mm, height_mm,
+                 selected: bool = False,
+                 selectable: bool = True,
+                 visible: bool = True,
+                 background: (float, float, float, float) = (0, 0, 0, 0),
+                 canvas: Canvas = None,
+                 parent: Canvas | CanvasElement = None,
+                 data: object = None):
+        self.x_mm: float = None  # Relative to parent (or canvas if top-level)
+        self.y_mm: float = None  # Relative to parent (or canvas if top-level)
+        self.width_mm: float = None  # Real-world width in mm
+        self.height_mm: float = None  # Real-world height in mm
+        self.selected: bool = selected
+        self.selectable: bool = selectable
+        self.visible: bool = visible
+        self.surface: cairo.Surface = None
+        self.canvas: object = canvas
+        self.parent: object = parent
+        self.children: list = []
+        self.background: (float, float, float, float) = 0, 0, 0, 0
+        self.data: object = data
+        self.dirty: bool = False
+
+        self.set_pos(x_mm, y_mm)
+        self.set_size(width_mm, height_mm)
 
     def get_pixels_per_mm(self):
         return self.canvas.pixels_per_mm_x, \

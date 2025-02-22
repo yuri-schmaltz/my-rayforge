@@ -1,6 +1,5 @@
 from gi.repository import Graphene
 import cairo
-from dataclasses import dataclass
 from ..opsencoder.cairoencoder import CairoEncoder
 from ..config import config
 from .canvas import Canvas, CanvasElement
@@ -20,7 +19,6 @@ def _copy_surface(source, target, width, height, clip):
     return target
 
 
-@dataclass
 class WorkPieceElement(CanvasElement):
     """
     WorkPieceElements display WorkPiece objects on the WorkSurface.
@@ -28,13 +26,30 @@ class WorkPieceElement(CanvasElement):
     WorkSurface.
     """
 
+    def __init__(self, workpiece, x_mm, y_mm, width_mm, height_mm, **kwargs):
+        super().__init__(x_mm,
+                         y_mm,
+                         width_mm,
+                         height_mm,
+                         data=workpiece,
+                         **kwargs)
+
+    def set_pos(self, x_mm, y_mm):
+        super().set_pos(x_mm, y_mm)
+        self.data.set_pos(x_mm, y_mm)
+
+    def set_size(self, width_mm, height_mm):
+        super().set_size(width_mm, height_mm)
+        self.data.set_size(width_mm, height_mm)
+
     def render(self, clip):
         assert self.surface is not None
-        width, height = self.size_px()
+        pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
         workpiece = self.data
-        surface, changed = workpiece.render(width, height)
+        surface, changed = workpiece.render(pixels_per_mm_x, pixels_per_mm_y)
         if not changed:
             return
+        width, height = self.size_px()
         self.surface = _copy_surface(surface,
                                      self.surface,
                                      width,
@@ -42,7 +57,6 @@ class WorkPieceElement(CanvasElement):
                                      clip)
 
 
-@dataclass
 class WorkStepElement(CanvasElement):
     """
     WorkStepElements display the result of a WorkStep on the
@@ -50,6 +64,14 @@ class WorkStepElement(CanvasElement):
     but can also include bitmap modifiers such as converting from color
     to grayscale.
     """
+    def __init__(self, workstep, x_mm, y_mm, width_mm, height_mm, **kwargs):
+        super().__init__(x_mm,
+                         y_mm,
+                         width_mm,
+                         height_mm,
+                         data=workstep,
+                         selectable=False,
+                         **kwargs)
 
     def render(self, clip):
         # Make a copy of the Cairo surface that contains all workpieces.
@@ -118,9 +140,7 @@ class WorkSurface(Canvas):
         """
         # Add or find the WorkStep.
         if not self.find_by_data(workstep):
-            elem = WorkStepElement(*self.root.rect(),
-                                   data=workstep,
-                                   selectable=False)
+            elem = WorkStepElement(workstep, *self.root.rect())
             self.add(elem)
             workstep.changed.connect(self.on_workstep_changed)
         self.queue_draw()
@@ -143,11 +163,11 @@ class WorkSurface(Canvas):
         if width_mm is None or height_mm is None:
             aspect_ratio = workpiece.get_aspect_ratio()
             width_mm, height_mm = self.root.get_max_child_size(aspect_ratio)
-        elem = WorkPieceElement(self.root.width_mm/2-width_mm/2,
+        elem = WorkPieceElement(workpiece,
+                                self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,
                                 width_mm,
-                                height_mm,
-                                data=workpiece)
+                                height_mm)
         self.workpiece_elements.add(elem)
         self.queue_draw()
 

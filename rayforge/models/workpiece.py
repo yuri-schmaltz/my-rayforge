@@ -13,8 +13,16 @@ class WorkPiece:
         self.name = name
         self.data: bytes = None
         self.renderer: Optional[Renderer] = None
+        self.pos: tuple(float, float) = None, None   # in mm
+        self.size: tuple(float, float) = None, None  # in mm
         self._renderer_ref_for_pyreverse: Renderer
         self.surface: cairo.Surface = None
+
+    def set_pos(self, x_mm: float, y_mm: float):
+        self.pos = float(x_mm), float(y_mm)
+
+    def set_size(self, width_mm: float, height_mm: float):
+        self.size = float(width_mm), float(height_mm)
 
     def get_natural_size(self):
         return self.renderer.get_natural_size(self.data)
@@ -30,10 +38,15 @@ class WorkPiece:
         wp.renderer = renderer
         return wp
 
-    def render(self, width: int, height: int, force: bool = False):
+    def render(self,
+               pixels_per_mm_x: int,
+               pixels_per_mm_y: int,
+               force: bool = False):
         """
         width/height are in pixels
         """
+        width = self.pos[0] * pixels_per_mm_x
+        height = self.pos[1] * pixels_per_mm_y
         if self.surface \
                 and self.surface.get_width() == width \
                 and self.surface.get_height() == height \
