@@ -21,10 +21,12 @@
 
   <description>
     <p>
-      Rayforge is a desktop application designed for laser cutting
-      and engraving. It provides an intuitive interface for users
-      to create and manage their laser cutting projects.
-      Rayforge supports import SVG, DXF, PDF, and PNGs.
+      Rayforge is a desktop application for laser cutting and engraving.
+      It provides an intuitive interface to create and manage laser
+      cutting projects.
+      Rayforge supports importing SVG, DXF, PDF, and PNGs, and provides
+      advanced features such as multi step jobs, automatic path
+      optimization, interpolation based on laser dot size, and much more.
     </p>
   </description>
   
