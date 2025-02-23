@@ -88,9 +88,11 @@ class WorkPieceOpsElement(CanvasElement):
             return
 
         # Replace the current bitmap by the rendered Ops.
+        self.clear_surface()
         workstep = self.parent.data
         ops = workstep.get_ops(self.data)
-        self.clear_surface()
+        if ops is None:
+            return
         pixels_per_mm = self.get_pixels_per_mm()
         encoder = CairoEncoder()
         encoder.encode(ops, config.machine, self.surface, pixels_per_mm)
@@ -109,7 +111,7 @@ class WorkStepElement(CanvasElement):
                          data=workstep,
                          selectable=False,
                          **kwargs)
-        workstep.workplan.changed.connect(self._on_workstep_changed)
+        workstep.changed.connect(self._on_workstep_changed)
         workstep.ops_changed.connect(self._on_ops_changed)
         for workpiece in workstep.workpieces():
             self.add_workpiece(workpiece)
@@ -127,9 +129,9 @@ class WorkStepElement(CanvasElement):
         self.add(elem)
         return elem
 
-    def _on_workstep_changed(self, sender: WorkStep):
+    def _on_workstep_changed(self, step: WorkStep):
         for elem in self.children:
-            if elem.data not in sender.workpieces:
+            if elem.data not in step.workpieces():
                 elem.remove()
         # We do not need to add new workpieces here, because they are
         # dynamically added once the Ops is ready in _on_ops_changed()

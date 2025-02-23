@@ -37,9 +37,12 @@ class WorkStep:
         self.opsproducer: OpsProducer = opsproducer
         self.opstransformers: List[OpsTransformer] = []
         self._opstransformer_ref_for_pyreverse: OpsTransformer
+
         # Map WorkPieces to Ops and size
-        self.ops: Dict[WorkPiece, [Ops, [float, float]]] = {}
+        self.workpiece_to_ops: Dict[WorkPiece, [Ops, [float, float]]] = {}
         self._workpiece_ref_for_pyreverse: WorkPiece
+        self._ops_ref_for_pyreverse: Ops
+
         self.passes: int = 1
         self.pixels_per_mm = 25, 25
         self.laser: Laser = None
@@ -62,23 +65,60 @@ class WorkStep:
 
     def set_passes(self, passes=True):
         self.passes = int(passes)
-        self._on_changed()
+        self.changed.send(self)
 
     def set_visible(self, visible=True):
         self.visible = visible
-        self._on_changed()
+        self.changed.send(self)
 
     def set_laser(self, laser):
+        if laser == self.laser:
+            return
+        if self.laser:
+            self.laser.changed.disconnect(self._on_laser_changed)
         self.laser = laser
         laser.changed.connect(self._on_laser_changed)
-        self._on_changed()
+        self.update_all_workpieces()
+        self.changed.send(self)
+
+    def _on_laser_changed(self, sender, **kwargs):
+        self.update_all_workpieces()
+        self.changed.send(self)
 
     def set_power(self, power):
         self.power = power
-        self._on_changed()
+        self.update_all_workpieces()
+        self.changed.send(self)
+
+    def set_workpieces(self, workpieces: List[WorkPiece]):
+        for workpiece in list(self.workpiece_to_ops.keys()):
+            if workpiece in workpieces:
+                continue
+            workpiece.size_changed.disconnect(self._on_workpiece_size_changed)
+            del self.workpiece_to_ops[workpiece]
+        for workpiece in workpieces:
+            self.add_workpiece(workpiece)
+        self.changed.send(self)
+
+    def add_workpiece(self, workpiece: WorkPiece):
+        if workpiece in self.workpiece_to_ops:
+            return
+        self.workpiece_to_ops[workpiece] = None, None
+        workpiece.size_changed.connect(self._on_workpiece_size_changed)
+        self.update_workpiece(workpiece)
+        self.changed.send(self)
+
+    def remove_workpiece(self, workpiece: WorkPiece):
+        workpiece.size_changed.disconnect(self._on_workpiece_size_changed)
+        del self.workpiece_to_ops[workpiece]
+        self.changed.send(self)
+
+    def _on_workpiece_size_changed(self, workpiece):
+        if not self.can_scale():
+            self.update_workpiece(workpiece)
 
     def workpieces(self):
-        return self.ops.keys()
+        return self.workpiece_to_ops.keys()
 
     def execute(self, workpiece) -> [Ops, [float, float]]:
         """
@@ -126,7 +166,7 @@ class WorkStep:
             transformer.run(ops)
 
         ops.disable_air_assist()
-        self.ops[workpiece] = ops, size
+        self.workpiece_to_ops[workpiece] = ops, size
         return ops, size
 
     async def execute_async(self, workpiece: WorkPiece) -> [
@@ -134,23 +174,20 @@ class WorkStep:
         ops, size = self.execute(workpiece)
         return workpiece, ops, size
 
-    def _on_changed(self):
-        if not self.workplan:
-            return
-        for workpiece in self.workplan.workpieces:
-            key = id(self), id(workpiece)
-            run_async(self.execute_async(workpiece),
-                      self._on_ops_created,
-                      key=key)
-        self.changed.send(self)
+    def update_workpiece(self, workpiece):
+        key = id(self), id(workpiece)
+        run_async(self.execute_async(workpiece),
+                  self._on_ops_created,
+                  key=key)
+
+    def update_all_workpieces(self):
+        for workpiece in self.workpiece_to_ops.keys():
+            self.update_workpiece()
 
     def _on_ops_created(self, result):
         workpiece, ops, size = result
         self.ops_changed.send(self, workpiece=workpiece)
         return False
-
-    def trigger_changed(self):
-        self.changed.send(self)
 
     def get_ops(self, workpiece):
         """
@@ -158,7 +195,7 @@ class WorkStep:
         the workpiece.
         Returns None if no Ops were made yet.
         """
-        ops, size = self.ops.get(workpiece, (None, None))
+        ops, size = self.workpiece_to_ops.get(workpiece, (None, None))
         if ops is None:
             return None
         orig_width_mm, orig_height_mm = size
@@ -166,9 +203,6 @@ class WorkStep:
         ops = deepcopy(ops)
         ops.scale(width_mm/orig_width_mm, height_mm/orig_height_mm)
         return ops
-
-    def _on_laser_changed(self, sender, **kwargs):
-        self._on_changed()
 
     def get_summary(self):
         power = int(self.power/self.laser.max_power*100)
@@ -209,10 +243,9 @@ class WorkPlan:
     """
     Represents a sequence of worksteps.
     """
-    def __init__(self, name):
+    def __init__(self, doc, name):
+        self.doc = doc
         self.name: str = name
-        self.workpieces: List[WorkPiece] = []
-        self._workpiece_ref_for_pyreverse: WorkPiece
         self.worksteps: List[WorkStep] = []
         self._workstep_ref_for_pyreverse: WorkStep
         self.changed = Signal()
@@ -221,24 +254,14 @@ class WorkPlan:
     def __iter__(self):
         return iter(self.worksteps)
 
-    def add_workpiece(self, workpiece: WorkPiece):
-        self.workpieces.append(workpiece)
-        workpiece.size_changed.connect(self._on_workpiece_size_changed)
-        self.changed.send(self)
-
-    def remove_workpiece(self, workpiece: WorkPiece):
-        workpiece.size_changed.disconnect(self._on_workpiece_size_changed)
-        self.workpieces.remove(workpiece)
-        self.changed.send(self)
-
-    def _on_workpiece_size_changed(self, workpiece):
+    def set_workpieces(self, workpieces):
         for step in self.worksteps:
-            if not step.can_scale():
-                step._on_changed()
+            step.set_workpieces(workpieces)
 
-    def add_workstep(self, workstep):
-        workstep.workplan = self
-        self.worksteps.append(workstep)
+    def add_workstep(self, step):
+        step.workplan = self
+        self.worksteps.append(step)
+        step.set_workpieces(self.doc.workpieces)
         self.changed.send(self)
 
     def remove_workstep(self, workstep):
@@ -260,8 +283,8 @@ class WorkPlan:
 
     def execute(self, optimize=True):
         ops = Ops()
-        for workpiece in self.workpieces:
-            for step in self.worksteps:
+        for step in self.worksteps:
+            for workpiece in step.workpieces():
                 step.execute(workpiece)
                 step_ops = step.get_ops(workpiece)
                 x, y = workpiece.pos
