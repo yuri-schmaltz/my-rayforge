@@ -330,7 +330,6 @@ class MainWindow(Adw.ApplicationWindow):
         if state and None not in state.machine_pos:
             self.workbench.set_laser_dot_position(*state.machine_pos[:2])
 
-
     def on_status_bar_clicked(self, gesture, n_press, x, y, box):
         dialog = MachineView()
         dialog.present(self)
