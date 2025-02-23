@@ -296,10 +296,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.frame_button.set_sensitive(can_frame)
 
         # Send button
+        conn_status = self.connection_status.get_status()
         if driver_mgr.driver.__class__ is NoDeviceDriver:
             text = "Send to machine (select driver to enable)"
             sensitive = False
-        elif self.connection_status.get_status() != TransportStatus.CONNECTED:
+        elif conn_status != TransportStatus.CONNECTED:
             text = "Send to machine (connect to enable)"
             sensitive = False
         else:
@@ -321,6 +322,14 @@ class MainWindow(Adw.ApplicationWindow):
             DeviceStatus.CYCLE,
         )
         self.cancel_button.set_sensitive(sensitive)
+
+        # Laser dot
+        connected = conn_status == TransportStatus.CONNECTED
+        self.workbench.set_laser_dot_visible(connected)
+        state = self.machine_status.state
+        if state and None not in state.machine_pos:
+            self.workbench.set_laser_dot_position(*state.machine_pos[:2])
+
 
     def on_status_bar_clicked(self, gesture, n_press, x, y, box):
         dialog = MachineView()

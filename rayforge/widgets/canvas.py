@@ -305,6 +305,9 @@ class Canvas(Gtk.DrawingArea):
         """
         return self.root.find_by_data(data)
 
+    def size(self):
+        return self.root.size()
+
     def _setup_interactions(self):
         self.click_gesture = Gtk.GestureClick()
         self.click_gesture.connect("pressed", self.on_button_press)

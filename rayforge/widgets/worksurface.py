@@ -1,3 +1,4 @@
+import math
 from gi.repository import Graphene
 import cairo
 from ..opsencoder.cairoencoder import CairoEncoder
@@ -145,6 +146,35 @@ class WorkStepElement(CanvasElement):
         self.canvas.queue_draw()
 
 
+class LaserDotElement(CanvasElement):
+    """
+    Draws a simple red dot.
+    """
+    def __init__(self, radius_mm, **kwargs):
+        self.radius_mm = radius_mm
+        super().__init__(0,
+                         0,
+                         2*radius_mm,
+                         2*radius_mm,
+                         visible=True,
+                         selectable=False,
+                         **kwargs)
+
+    def render(self, clip):
+        super().render(clip)
+        if not self.parent:
+            return
+
+        self.clear_surface()
+        pixels_per_mm_x, _ = self.get_pixels_per_mm()
+        ctx = cairo.Context(self.surface)
+        ctx.set_hairline(True)
+        ctx.set_source_rgb(.9, 0, 0)
+        radius = self.width_mm/2*pixels_per_mm_x
+        ctx.arc(radius, radius, radius-1, 0., 2*math.pi)
+        ctx.fill()
+
+
 class WorkSurface(Canvas):
     """
     The WorkSurface displays a grid area with WorkPieces and
@@ -157,6 +187,9 @@ class WorkSurface(Canvas):
             selectable=False
         )
         self.root.add(self.workpiece_elements)
+        self.laser_dot = LaserDotElement(1)
+        self.set_laser_dot_position(0, 0)
+        self.root.add(self.laser_dot)
         self.grid_size = 10  # in mm
         self.update()
 
@@ -187,6 +220,17 @@ class WorkSurface(Canvas):
                                    parent=self.root)
             self.add(elem)
             workstep.changed.connect(self.on_workstep_changed)
+        self.queue_draw()
+
+    def set_laser_dot_visible(self, visible=True):
+        self.laser_dot.set_visible(visible)
+        self.queue_draw()
+
+    def set_laser_dot_position(self, x_mm, y_mm):
+        height_mm = self.size()[1]
+        dot_radius_mm = self.laser_dot.radius_mm
+        self.laser_dot.set_pos(x_mm-dot_radius_mm,
+                               height_mm-y_mm-dot_radius_mm)
         self.queue_draw()
 
     def on_workstep_changed(self, workstep, **kwargs):

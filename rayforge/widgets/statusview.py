@@ -164,6 +164,7 @@ class MachineStatusMonitor(StatusWidget):
     def __init__(self):
         self.changed = Signal()
         self.status = DeviceStatus.UNKNOWN
+        self.state = None
         super().__init__(MachineStatusIconWidget(), self.status)
 
         driver_mgr.changed.connect(self.on_driver_changed)
@@ -183,6 +184,7 @@ class MachineStatusMonitor(StatusWidget):
     def on_driver_state_changed(self,
                                 driver,
                                 state: DeviceState):
+        self.state = state
         nodriver = driver_mgr.driver.__class__ == NoDeviceDriver
         self.set_status(None if nodriver else state.status)
 

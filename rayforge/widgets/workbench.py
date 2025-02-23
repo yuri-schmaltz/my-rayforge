@@ -120,6 +120,12 @@ class WorkBench(Gtk.Grid):
     def set_workpieces_visible(self, visible=True):
         self.surface.set_workpieces_visible(visible)
 
+    def set_laser_dot_visible(self, visible):
+        self.surface.set_laser_dot_visible(visible)
+
+    def set_laser_dot_position(self, x_mm, y_mm):
+        self.surface.set_laser_dot_position(x_mm, y_mm)
+
     def clear(self):
         self.surface.clear_workpieces()
 
