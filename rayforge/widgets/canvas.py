@@ -287,7 +287,7 @@ class Canvas(Gtk.DrawingArea):
                                   parent=self)
         self.pixels_per_mm_x = 1  # Updated in do_size_allocate()
         self.pixels_per_mm_y = 1  # Updated in do_size_allocate()
-        self.handle_size = 10   # Resize handle size
+        self.handle_size = 12   # Resize handle size
         self.active_elem = None
         self.active_rect = None, None, None, None
         self._setup_interactions()
@@ -397,10 +397,12 @@ class Canvas(Gtk.DrawingArea):
             return
         if not elem.selected:
             return None
-        handle_x1 = elem.x_mm+elem.width_mm-self.handle_size/2
-        handle_x2 = handle_x1+self.handle_size
-        handle_y1 = elem.y_mm+elem.height_mm-self.handle_size/2
-        handle_y2 = handle_y1+self.handle_size
+        handle_size_mm_x = self.handle_size/self.pixels_per_mm_x
+        handle_size_mm_y = self.handle_size/self.pixels_per_mm_y
+        handle_x1 = elem.x_mm+elem.width_mm-handle_size_mm_x/2
+        handle_x2 = handle_x1+handle_size_mm_x
+        handle_y1 = elem.y_mm+elem.height_mm-handle_size_mm_y/2
+        handle_y2 = handle_y1+handle_size_mm_y
         if handle_x1 <= x_mm <= handle_x2 and handle_y1 <= y_mm <= handle_y2:
             return elem
         return None
