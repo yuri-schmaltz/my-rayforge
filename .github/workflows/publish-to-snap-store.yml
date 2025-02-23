@@ -1,6 +1,11 @@
+name: Publish to Snapcraft.io
+on: push
+
 jobs:
-  build:
+  build-and-publish:
+    name: Build and publish Rayforge to Snapcraft.io
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v4
 
