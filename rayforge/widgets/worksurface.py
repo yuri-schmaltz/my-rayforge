@@ -2,6 +2,8 @@ from gi.repository import Graphene
 import cairo
 from ..opsencoder.cairoencoder import CairoEncoder
 from ..config import config
+from ..models.workpiece import WorkPiece
+from ..models.workplan import WorkStep
 from .canvas import Canvas, CanvasElement
 
 
@@ -41,12 +43,16 @@ class WorkPieceElement(CanvasElement):
     def set_size(self, width_mm, height_mm):
         super().set_size(width_mm, height_mm)
         self.data.set_size(width_mm, height_mm)
+        self.allocate()
+        self.dirty = True
 
     def render(self, clip):
         assert self.surface is not None
         pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()
         workpiece = self.data
-        surface, changed = workpiece.render(pixels_per_mm_x, pixels_per_mm_y)
+        surface, changed = workpiece.render(pixels_per_mm_x,
+                                            pixels_per_mm_y,
+                                            workpiece.size)
         if not changed:
             return
         width, height = self.size_px()
@@ -57,12 +63,43 @@ class WorkPieceElement(CanvasElement):
                                      clip)
 
 
+class WorkPieceOpsElement(CanvasElement):
+    def __init__(self, workpiece, x_mm, y_mm, width_mm, height_mm,
+                 **kwargs):
+        super().__init__(x_mm,
+                         y_mm,
+                         width_mm,
+                         height_mm,
+                         data=workpiece,
+                         selectable=False,
+                         **kwargs)
+        workpiece.changed.connect(self._on_workpiece_changed)
+        self.ops = None
+
+    def _on_workpiece_changed(self, workpiece: WorkPiece):
+        self.set_pos(*workpiece.pos)
+        self.set_size(*workpiece.size)
+        self.allocate()
+        self.canvas.queue_draw()
+
+    def render(self, clip):
+        super().render(clip)
+        if not self.parent:
+            return
+
+        # Replace the current bitmap by the rendered Ops.
+        workstep = self.parent.data
+        ops = workstep.get_ops(self.data)
+        self.clear_surface()
+        pixels_per_mm = self.get_pixels_per_mm()
+        encoder = CairoEncoder()
+        encoder.encode(ops, config.machine, self.surface, pixels_per_mm)
+
+
 class WorkStepElement(CanvasElement):
     """
     WorkStepElements display the result of a WorkStep on the
-    WorkSurface. WorkSteps produce output such as the laser path,
-    but can also include bitmap modifiers such as converting from color
-    to grayscale.
+    WorkSurface. The output represents the laser path.
     """
     def __init__(self, workstep, x_mm, y_mm, width_mm, height_mm, **kwargs):
         super().__init__(x_mm,
@@ -72,47 +109,44 @@ class WorkStepElement(CanvasElement):
                          data=workstep,
                          selectable=False,
                          **kwargs)
+        workstep.workplan.changed.connect(self._on_workstep_changed)
+        workstep.ops_changed.connect(self._on_ops_changed)
+        for workpiece in workstep.workpieces():
+            self.add_workpiece(workpiece)
 
-    def render(self, clip):
-        # Make a copy of the Cairo surface that contains all workpieces.
-        super().render(clip)
-        width, height = self.size_px()
-        workpiece_surface = self.canvas.workpiece_elements.surface
-        assert width == workpiece_surface.get_width()
-        assert height == workpiece_surface.get_height()
-        self.surface = _copy_surface(workpiece_surface,
-                                     self.surface,
-                                     width,
-                                     height,
-                                     clip)
+    def add_workpiece(self, workpiece):
+        elem = self.find_by_data(workpiece)
+        if elem:
+            elem.dirty = True
+            return elem
+        elem = WorkPieceOpsElement(workpiece,
+                                   *workpiece.pos,
+                                   *workpiece.size,
+                                   canvas=self.canvas,
+                                   parent=self)
+        self.add(elem)
+        return elem
 
-        # Run the workstep to create Ops from the current surface.
-        # This sucks a bit because this operation is expensive. But
-        # we cannot cache it because no matter what is being done on
-        # the worksurface, at least the travel move towards the workpiece
-        # changes.
-        # Perhaps in the future it would be better to render one Ops
-        # per workpiece. This would allow for using a cached Ops if only
-        # the position (and not the size) of a workpiece changed.
-        # A small drawback would be that overlapping
-        # workpieces would lead to areas being worked twice. But
-        # overlapping pieces is probably not a useful thing to do anyway...
-        width, height = self.size_px()
-        pixels_per_mm = self.get_pixels_per_mm()
-        workstep = self.data
-        ops = workstep.run(self.surface, pixels_per_mm)
+    def _on_workstep_changed(self, sender: WorkStep):
+        for elem in self.children:
+            if elem.data not in sender.workpieces:
+                elem.remove()
+        # We do not need to add new workpieces here, because they are
+        # dynamically added once the Ops is ready in _on_ops_changed()
 
-        # Replace the current bitmap by the rendered Ops.
-        self.clear_surface()
-        encoder = CairoEncoder()
-        encoder.encode(ops, config.machine, self.surface, pixels_per_mm)
+    def _on_ops_changed(self, sender: WorkStep, workpiece: WorkPiece):
+        ops = self.data.get_ops(workpiece)
+        if not ops:
+            return None
+        self.add_workpiece(workpiece)
+        self.dirty = True
+        self.canvas.queue_draw()
 
 
 class WorkSurface(Canvas):
     """
-    The WorkSurface displays a grid area with
-    WorkPieces and WorkStep results according to real world
-    dimensions.
+    The WorkSurface displays a grid area with WorkPieces and
+    WorkPieceOpsElements according to real world dimensions.
     """
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -126,9 +160,8 @@ class WorkSurface(Canvas):
 
     def set_size(self, width_mm, height_mm):
         self.root.set_size(width_mm, height_mm)
-        for elem in self.root.children:
-            if isinstance(elem, WorkStepElement):
-                elem.set_size(width_mm, height_mm)
+        for elem in self.find_by_type(WorkStepElement):
+            elem.set_size(width_mm, height_mm)
         self.update()
 
     def update(self):
@@ -146,7 +179,10 @@ class WorkSurface(Canvas):
         """
         # Add or find the WorkStep.
         if not self.find_by_data(workstep):
-            elem = WorkStepElement(workstep, *self.root.rect())
+            elem = WorkStepElement(workstep,
+                                   *self.root.rect(),
+                                   canvas=self,
+                                   parent=self.root)
             self.add(elem)
             workstep.changed.connect(self.on_workstep_changed)
         self.queue_draw()

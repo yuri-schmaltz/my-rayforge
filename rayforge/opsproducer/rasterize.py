@@ -115,9 +115,13 @@ class Rasterizer(OpsProducer):
     across filled pixels in the surface.
     """
     def run(self, machine, laser, surface, pixels_per_mm):
+        ymax = surface.get_height()/pixels_per_mm[1]
         return rasterize_horizontally(
             surface,
-            machine.dimensions[1],  # y max for axis inversion
+            ymax,  # y max for axis inversion
             pixels_per_mm,
             laser.spot_size_mm[1]
         )
+
+    def can_scale(self) -> bool:
+        return False

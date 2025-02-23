@@ -70,7 +70,7 @@ class OutlineTracer(OpsProducer):
         contours, _ = cv2.findContours(binary,
                                        cv2.RETR_EXTERNAL,
                                        cv2.CHAIN_APPROX_NONE)
-        ymax = machine.dimensions[1]
+        ymax = surface.get_height()/pixels_per_mm[1]
         return contours2ops(contours, pixels_per_mm, ymax)
 
 
@@ -92,5 +92,5 @@ class EdgeTracer(OpsProducer):
         contours, _ = cv2.findContours(edges,
                                        cv2.RETR_LIST,
                                        cv2.CHAIN_APPROX_NONE)
-        ymax = machine.dimensions[1]
+        ymax = surface.get_height()/pixels_per_mm[1]
         return contours2ops(contours, pixels_per_mm, ymax)

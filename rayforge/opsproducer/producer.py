@@ -13,3 +13,11 @@ class OpsProducer(ABC):
     @abstractmethod
     def run(self, machine, laser, surface, pixels_per_mm) -> Ops:
         pass
+
+    def can_scale(self) -> bool:
+        """
+        Returns True if the produced Ops object is scalable. This allows
+        the consumer to cache the Ops object more often, as it does not
+        need to be re-made just because the input image was resized.
+        """
+        return True

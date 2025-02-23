@@ -1,10 +1,11 @@
 import cairo
 from typing import Optional
+from blinker import Signal
+from ..config import config
 from ..render import Renderer
-from .renderable import Renderable
 
 
-class WorkPiece(Renderable):
+class WorkPiece:
     """
     A WorkPiece represents a real world work piece, It is usually
     loaded from an image file and serves as input for all other
@@ -14,19 +15,35 @@ class WorkPiece(Renderable):
         self.name = name
         self.data: bytes = None
         self.renderer: Optional[Renderer] = None
-        self.pos: tuple(float, float) = None, None   # in mm
-        self.size: tuple(float, float) = None, None  # in mm
         self._renderer_ref_for_pyreverse: Renderer
+        self.pos: tuple[float, float] = None, None   # in mm
+        self.size: tuple[float, float] = None, None  # in mm
         self.surface: cairo.Surface = None
+        self.changed: Signal = Signal()
+        self.size_changed: Signal = Signal()
 
     def set_pos(self, x_mm: float, y_mm: float):
         self.pos = float(x_mm), float(y_mm)
+        self.changed.send(self)
 
     def set_size(self, width_mm: float, height_mm: float):
         self.size = float(width_mm), float(height_mm)
+        self.changed.send(self)
+        self.size_changed.send(self)
 
     def get_natural_size(self):
-        return self.renderer.get_natural_size(self.data)
+        size = self.renderer.get_natural_size(self.data)
+        if size:
+            return size
+
+        aspect = self.get_aspect_ratio()
+        width_mm = config.machine.dimensions[0]
+        height_mm = width_mm/aspect
+        if height_mm > config.machine.dimensions[1]:
+            height_mm = config.machine.dimensions[1]
+            width_mm = height_mm*aspect
+
+        return width_mm, height_mm
 
     def get_aspect_ratio(self):
         return self.renderer.get_aspect_ratio(self.data)
@@ -37,14 +54,17 @@ class WorkPiece(Renderable):
         with open(filename, 'rb') as fp:
             wp.data = renderer.prepare(fp.read())
         wp.renderer = renderer
+        wp.size = wp.get_natural_size()
         return wp
 
     def render(self,
                pixels_per_mm_x: int,
                pixels_per_mm_y: int,
+               size: tuple[float, float] = None,
                force: bool = False):
-        width = self.size[0] * pixels_per_mm_x
-        height = self.size[1] * pixels_per_mm_y
+        size = self.get_natural_size() if size is None else size
+        width = size[0] * pixels_per_mm_x
+        height = size[1] * pixels_per_mm_y
 
         if self.surface \
                 and self.surface.get_width() == width \
@@ -55,6 +75,7 @@ class WorkPiece(Renderable):
         self.surface = self.renderer.render_workpiece(self.data,
                                                       width,
                                                       height)
+
         return self.surface, True
 
     def dump(self, indent=0):

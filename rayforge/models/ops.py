@@ -224,11 +224,10 @@ class Ops:
     def disable_air_assist(self):
         self.commands.append(DisableAirAssistCommand())
 
-    def get_frame(self, power=None, speed=None):
+    def rect(self):
         """
-        Returns a new Ops object containing four move_to operations forming
-        a frame around the occupied area of the original Ops. The occupied
-        area includes all points from line_to and close_path commands.
+        Returns a rectangle (x1, y1, x2, y2) that encloses the
+        occupied area.
         """
         occupied_points = []
         last_point = None
@@ -241,12 +240,23 @@ class Ops:
                 last_point = cmd.end
 
         if not occupied_points:
-            return Ops()
+            return 0, 0, 0, 0
 
         xs = [p[0] for p in occupied_points]
         ys = [p[1] for p in occupied_points]
         min_x, max_x = min(xs), max(xs)
         min_y, max_y = min(ys), max(ys)
+        return min_x, min_y, max_x, max_y
+
+    def get_frame(self, power=None, speed=None):
+        """
+        Returns a new Ops object containing four move_to operations forming
+        a frame around the occupied area of the original Ops. The occupied
+        area includes all points from line_to and close_path commands.
+        """
+        min_x, min_y, max_x, max_y = self.rect()
+        if (min_x, min_y, max_x, max_y) == (0, 0, 0, 0):
+            return Ops()
 
         frame_ops = Ops()
         if power is not None:

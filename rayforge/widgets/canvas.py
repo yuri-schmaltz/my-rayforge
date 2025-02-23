@@ -27,7 +27,7 @@ class CanvasElement:
         self.children: list = []
         self.background: (float, float, float, float) = 0, 0, 0, 0
         self.data: object = data
-        self.dirty: bool = False
+        self.dirty: bool = True
 
         self.set_pos(x_mm, y_mm)
         self.set_size(width_mm, height_mm)
@@ -109,6 +109,8 @@ class CanvasElement:
 
     def set_pos(self, x_mm, y_mm):
         self.x_mm, self.y_mm = x_mm, y_mm
+        if self.parent:
+            self.parent.dirty = True
 
     def pos(self):
         return self.x_mm, self.y_mm
@@ -134,6 +136,8 @@ class CanvasElement:
     def set_size(self, width_mm, height_mm):
         self.width_mm, self.height_mm = width_mm, height_mm
         self.dirty = True
+        if self.canvas:
+            self.canvas.queue_draw()
 
     def size_px(self):
         pixels_per_mm_x, pixels_per_mm_y = self.get_pixels_per_mm()

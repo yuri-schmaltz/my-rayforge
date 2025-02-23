@@ -29,8 +29,7 @@ class CairoEncoder(OpsEncoder):
         # Since Cairo coordinates put the zero point at the top left, we must
         # subtract Y from the machine's Y axis maximum.
         scale_x, scale_y = scale
-        machine_width, machine_height = machine.dimensions
-        ymax = machine_height  # For Y-axis inversion
+        ymax = surface.get_height()/scale_y  # For Y-axis inversion
 
         # Apply coordinate scaling and line width
         ctx.scale(scale_x, scale_y)
