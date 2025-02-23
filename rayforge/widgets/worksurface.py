@@ -201,10 +201,7 @@ class WorkSurface(Canvas):
         if self.workpiece_elements.find_by_data(workpiece):
             self.queue_draw()
             return
-        width_mm, height_mm = workpiece.get_natural_size()
-        if width_mm is None or height_mm is None:
-            aspect_ratio = workpiece.get_aspect_ratio()
-            width_mm, height_mm = self.root.get_max_child_size(aspect_ratio)
+        width_mm, height_mm = workpiece.get_default_size()
         elem = WorkPieceElement(workpiece,
                                 self.root.width_mm/2-width_mm/2,
                                 self.root.height_mm/2-height_mm/2,

@@ -31,9 +31,9 @@ class WorkPiece:
         self.changed.send(self)
         self.size_changed.send(self)
 
-    def get_natural_size(self):
+    def get_default_size(self):
         size = self.renderer.get_natural_size(self.data)
-        if size:
+        if not None in size:
             return size
 
         aspect = self.get_aspect_ratio()
@@ -54,7 +54,7 @@ class WorkPiece:
         with open(filename, 'rb') as fp:
             wp.data = renderer.prepare(fp.read())
         wp.renderer = renderer
-        wp.size = wp.get_natural_size()
+        wp.size = wp.get_default_size()
         return wp
 
     def render(self,
