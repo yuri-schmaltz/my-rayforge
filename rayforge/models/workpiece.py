@@ -33,7 +33,7 @@ class WorkPiece:
 
     def get_default_size(self):
         size = self.renderer.get_natural_size(self.data)
-        if not None in size:
+        if None not in size:
             return size
 
         aspect = self.get_aspect_ratio()
