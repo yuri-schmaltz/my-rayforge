@@ -138,7 +138,10 @@ class WorkStep:
         if not self.workplan:
             return
         for workpiece in self.workplan.workpieces:
-            run_async(self.execute_async(workpiece), self._on_ops_created)
+            key = id(self), id(workpiece)
+            run_async(self.execute_async(workpiece),
+                      self._on_ops_created,
+                      key=key)
         self.changed.send(self)
 
     def _on_ops_created(self, result):
