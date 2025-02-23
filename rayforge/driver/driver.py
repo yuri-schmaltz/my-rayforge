@@ -178,13 +178,13 @@ class DriverManager:
 
     async def _assign_driver(self, driver, **args):
         self.driver = driver
-        self.changed.send(self, driver=self.driver)
+        self._on_driver_changed()
         self.driver.setup(**args)
         await self.driver.connect()
 
     async def _reconfigure_driver(self, **args):
         await self.driver.cleanup()
-        self.changed.send(self, driver=self.driver)
+        self._on_driver_changed()
         self.driver.setup(**args)
         await self.driver.connect()
 
@@ -192,6 +192,13 @@ class DriverManager:
         await self.driver.cleanup()
         del self.driver
         await self._assign_driver(driver, **args)
+
+    def _on_driver_changed(self):
+        GLib.idle_add(lambda: _falsify(
+            self.changed.send,
+            self,
+            driver=self.driver
+        ))
 
     async def select_by_cls(self, driver_cls, **args):
         if self.driver and self.driver.__class__ == driver_cls:
