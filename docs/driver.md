@@ -46,7 +46,7 @@ by using the `DeviceStatus` and `DeviceState` classes:
 
 ```mermaid
 graph TD;
-    Driver-->Status-->State;
+    Driver-->State-->Status;
 ```
 
 
