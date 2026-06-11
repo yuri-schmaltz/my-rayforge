@@ -68,8 +68,9 @@ ADDON_REGISTRY_URL = (
     "main/registry.yaml"
 )
 
-PATREON_CLIENT_ID = (
-    "nx7wTdFBp5Cc3NtMU4xYK7mkzlaqLg5hXgLlY6WAtAMq62je5WDE_x8ewrrCvJ34"
+PATREON_CLIENT_ID = os.environ.get(
+    "RAYFORGE_PATREON_CLIENT_ID",
+    "nx7wTdFBp5Cc3NtMU4xYK7mkzlaqLg5hXgLlY6WAtAMq62je5WDE_x8ewrrCvJ34",
 )
 
 UMAMI_URL = "https://analytics.barebaric.com/api/send"

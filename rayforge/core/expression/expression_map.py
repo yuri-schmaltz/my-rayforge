@@ -2,7 +2,7 @@ import logging
 import re
 from typing import Any, Dict, Optional
 
-from .evaluator import MATH_CONTEXT
+from .evaluator import MATH_CONTEXT, _ast_evaluate
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +35,6 @@ class ExpressionMap:
         self._namespace: Dict[str, Any] = MATH_CONTEXT.copy()
         if values:
             self._namespace.update(values)
-        self._namespace["__builtins__"] = {}
 
     def format(self, template: str) -> str:
         """Resolve all ``{expression}`` placeholders in *template*."""
@@ -44,9 +43,14 @@ class ExpressionMap:
             key = match.group(1)
             expr, _, fmt = key.partition(":")
             try:
-                result = eval(expr.strip(), self._namespace)
+                result = _ast_evaluate(
+                    expr.strip(), self._namespace
+                )
             except Exception as e:
-                logger.debug(f"Failed to evaluate expression '{expr}': {e}")
+                logger.debug(
+                    "Failed to evaluate expression '%s': %s",
+                    expr, e,
+                )
                 return match.group(0)
             if fmt:
                 try:

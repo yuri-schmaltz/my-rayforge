@@ -74,18 +74,100 @@ logger = logging.getLogger(__name__)
 
 
 css = """
+@define-color blender_bg #2b2b2b;
+@define-color blender_bg_alt #313131;
+@define-color blender_bg_soft #3a3a3a;
+@define-color blender_panel #252525;
+@define-color blender_border #4a4a4a;
+@define-color blender_text #d6d6d6;
+@define-color blender_text_dim #a9a9a9;
+@define-color blender_accent #4f84c4;
+
+.blender-theme,
+.blender-theme window,
+.blender-theme box,
+.blender-theme viewport,
+.blender-theme scrolledwindow,
+.blender-theme stack,
+.blender-theme paned {
+    background-color: @blender_bg;
+    color: @blender_text;
+}
+
+.blender-theme headerbar {
+    min-height: 34px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    background: linear-gradient(to bottom, #3a3a3a, #323232);
+    border-bottom: 1px solid @blender_border;
+    color: @blender_text;
+}
+
+.blender-theme .main-toolbar {
+    min-height: 38px;
+    margin: 0;
+    padding: 4px 8px;
+    background: linear-gradient(to bottom, #3b3b3b, #303030);
+    border-bottom: 1px solid @blender_border;
+}
+
+.blender-theme button,
+.blender-theme menubutton > button,
+.blender-theme splitbutton > button,
+.blender-theme togglebutton {
+    border-radius: 3px;
+    border: 1px solid #5a5a5a;
+    background: linear-gradient(to bottom, #595959, #474747);
+    color: @blender_text;
+    box-shadow: none;
+}
+
+.blender-theme button:hover,
+.blender-theme menubutton > button:hover,
+.blender-theme splitbutton > button:hover,
+.blender-theme togglebutton:hover {
+    background: linear-gradient(to bottom, #666666, #535353);
+}
+
+.blender-theme button:checked,
+.blender-theme button:active,
+.blender-theme togglebutton:checked,
+.blender-theme splitbutton > button:checked,
+.blender-theme menubutton > button:checked {
+    background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
+    border-color: #78a3d4;
+    color: #f2f6fb;
+}
+
+.blender-theme separator {
+    background-color: @blender_border;
+    min-width: 1px;
+    min-height: 1px;
+}
+
+.blender-theme popover,
+.blender-theme menu,
+.blender-theme .menu {
+    background-color: #2c2c2c;
+    color: @blender_text;
+    border: 1px solid @blender_border;
+}
+
 .right-panel-overlay {
-    background-color: transparent;
-    border-radius: 8px;
+    background-color: alpha(@blender_panel, 0.94);
+    border-radius: 4px;
+    border: 1px solid @blender_border;
     margin: 6px 12px 12px 6px;
-    box-shadow: 0 2px 12px alpha(black, 0.2);
+    box-shadow: 0 2px 12px alpha(black, 0.35);
 }
 
 .status-message-overlay {
-    background-color: @theme_bg_color;
-    border-radius: 6px;
+    background-color: #202020;
+    border: 1px solid @blender_border;
+    border-radius: 3px;
+    color: @blender_text;
     padding: 4px 10px;
-    box-shadow: 0 2px 6px alpha(black, 0.15);
+    box-shadow: 0 2px 6px alpha(black, 0.25);
 }
 
 .in-header-menubar {
@@ -94,11 +176,17 @@ css = """
 }
 
 .in-header-menubar item {
-    padding: 6px 12px 6px 12px;
+    border-radius: 3px;
+    color: @blender_text;
+    padding: 6px 10px;
+}
+
+.in-header-menubar item:hover {
+    background: alpha(white, 0.08);
 }
 
 .menu separator {
-    border-top: 1px solid @borders;
+    border-top: 1px solid @blender_border;
     margin-top: 5px;
     margin-bottom: 5px;
 }
@@ -109,6 +197,7 @@ css = """
 }
 
 dropdown.machine-dropdown button {
+    min-height: 28px;
     padding-top: 2px;
     padding-bottom: 2px;
 }
@@ -118,6 +207,7 @@ dropdown.machine-dropdown button {
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.add_css_class("blender-theme")
         self.set_title(const.APP_NAME)
         self._current_machine: Optional[Machine] = None  # For signal handling
         self._last_bottom_panel_height = 200
@@ -1543,13 +1633,7 @@ class MainWindow(Adw.ApplicationWindow):
     def apply_theme(self):
         """Reads the theme from config and applies it to the UI."""
         style_manager = Adw.StyleManager.get_default()
-        config = get_context().config
-        if config.theme == "light":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_LIGHT)
-        elif config.theme == "dark":
-            style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
-        else:  # "system" or any other invalid value
-            style_manager.set_color_scheme(Adw.ColorScheme.DEFAULT)
+        style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()

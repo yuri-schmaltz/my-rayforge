@@ -22,18 +22,20 @@ css = """
     min-height: 36px;
     padding: 0px 3px;
     margin-bottom: 3px;
-    background-color: alpha(@theme_fg_color, 0.04);
-    border-bottom: 1px solid @borders;
+    background-color: #343434;
+    border-bottom: 1px solid #4a4a4a;
 }
 .workflow-step-button {
     min-width: 28px;
     min-height: 28px;
     padding: 0px;
     margin: 2px;
-    border-radius: 6px;
+    border-radius: 3px;
+    border: 1px solid #5a5a5a;
+    background: linear-gradient(to bottom, #595959, #474747);
 }
 .workflow-step-button:hover {
-    background-color: alpha(@theme_fg_color, 0.08);
+    background: linear-gradient(to bottom, #666666, #535353);
 }
 .workflow-arrow {
     margin: 0 -1px;
@@ -41,7 +43,7 @@ css = """
 .workflow-drop-indicator {
     min-width: 2px;
     min-height: 24px;
-    background-color: @accent_color;
+    background-color: #4f84c4;
     border-radius: 1px;
 }
 """

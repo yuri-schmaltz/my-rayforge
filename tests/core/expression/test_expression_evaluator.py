@@ -62,3 +62,124 @@ def test_evaluate_prevents_builtin_access():
 
     with pytest.raises(ValueError, match="Invalid expression"):
         evaluator.safe_evaluate("open('file.txt')", {})
+
+
+class TestASTSecurityHardening:
+    """
+    Security regression tests for the AST-whitelist evaluator.
+
+    Each test verifies that a known attack vector raises ``ValueError``
+    instead of executing arbitrary code.  These tests MUST all raise
+    (i.e. the attack must be BLOCKED).
+    """
+
+    def _blocked(self, expr: str, ctx: dict = None):
+        """Assert that *expr* is blocked by the evaluator."""
+        with pytest.raises(
+            (ValueError, KeyError),
+            match=".*",
+        ):
+            evaluator.safe_evaluate(expr, ctx or {})
+
+    def test_attribute_access_blocked(self):
+        self._blocked("a.__class__", {"a": 1})
+
+    def test_dunder_mro_blocked(self):
+        self._blocked("().__class__.__mro__")
+
+    def test_import_via_builtin_blocked(self):
+        self._blocked("__import__('os')")
+
+    def test_open_function_blocked(self):
+        self._blocked("open('/etc/passwd')")
+
+    def test_getattr_blocked(self):
+        self._blocked("getattr(a, '__class__')", {"a": 1})
+
+    def test_lambda_blocked(self):
+        self._blocked("(lambda: 1)()")
+
+    def test_list_comprehension_blocked(self):
+        self._blocked("[x for x in range(10)]")
+
+    def test_generator_blocked(self):
+        self._blocked("(x for x in range(10))")
+
+    def test_dict_comprehension_blocked(self):
+        self._blocked("{k: v for k, v in items}", {"items": []})
+
+    def test_subscript_blocked(self):
+        self._blocked("a[0]", {"a": [1, 2, 3]})
+
+    def test_augmented_assignment_blocked(self):
+        self._blocked("x += 1")
+
+    def test_walrus_operator_blocked(self):
+        self._blocked("(y := 5)")
+
+    def test_starred_blocked(self):
+        self._blocked("*a", {"a": [1, 2]})
+
+    def test_non_math_function_call_blocked(self):
+        self._blocked("print('hello')")
+
+    def test_exec_string_blocked(self):
+        self._blocked("exec('import os')")
+
+    def test_eval_string_blocked(self):
+        self._blocked("eval('1+1')")
+
+
+class TestASTLegitimateExpressions:
+    """
+    Regression tests ensuring that legitimate math expressions that
+    were valid before the AST hardening continue to work correctly.
+    """
+
+    def test_basic_arithmetic(self):
+        assert evaluator.safe_evaluate("1 + 2 * 3", {}) == 7.0
+
+    def test_parentheses(self):
+        assert evaluator.safe_evaluate("(1 + 2) * 3", {}) == 9.0
+
+    def test_float_division(self):
+        assert evaluator.safe_evaluate("10 / 4", {}) == 2.5
+
+    def test_floor_division(self):
+        assert evaluator.safe_evaluate("10 // 3", {}) == 3.0
+
+    def test_modulo(self):
+        assert evaluator.safe_evaluate("10 % 3", {}) == 1.0
+
+    def test_power(self):
+        assert evaluator.safe_evaluate("2 ** 8", {}) == 256.0
+
+    def test_unary_minus(self):
+        assert evaluator.safe_evaluate("-width", {"width": 5}) == -5.0
+
+    def test_context_variable(self):
+        assert evaluator.safe_evaluate(
+            "width * height", {"width": 4, "height": 5}
+        ) == 20.0
+
+    def test_math_function_sqrt(self):
+        assert evaluator.safe_evaluate("sqrt(25)", {}) == pytest.approx(5.0)
+
+    def test_math_function_abs(self):
+        assert evaluator.safe_evaluate("fabs(-3)", {}) == pytest.approx(3.0)
+
+    def test_math_constant_pi(self):
+        result = evaluator.safe_evaluate("pi", {})
+        assert result == pytest.approx(math.pi)
+
+    def test_ternary_if(self):
+        assert evaluator.safe_evaluate(
+            "1 if x > 0 else -1", {"x": 5}
+        ) == 1.0
+
+    def test_comparison(self):
+        assert evaluator.safe_evaluate("x > 0", {"x": 5}) == 1.0
+
+    def test_nested_math_calls(self):
+        result = evaluator.safe_evaluate("sqrt(pow(3, 2) + pow(4, 2))", {})
+        assert result == pytest.approx(5.0)

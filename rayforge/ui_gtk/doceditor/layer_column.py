@@ -30,23 +30,23 @@ logger = logging.getLogger(__name__)
 
 css = """
 .layer-column {
-    background-color: alpha(@theme_fg_color, 0.03);
-    border-radius: 8px;
-    border: 1px solid @borders;
+    background-color: #2f2f2f;
+    border-radius: 4px;
+    border: 1px solid #4a4a4a;
     min-width: 160px;
 }
 .layer-column.active-layer-column {
-    border-color: @accent_bg_color;
-    background-color: alpha(@accent_bg_color, 0.05);
+    border-color: #4f84c4;
+    background-color: alpha(#4f84c4, 0.1);
 }
 .layer-column-header {
     padding: 6px 8px;
-    border-bottom: 1px solid @borders;
-    border-radius: 8px 8px 0 0;
-    background-color: alpha(@theme_fg_color, 0.05);
+    border-bottom: 1px solid #4a4a4a;
+    border-radius: 4px 4px 0 0;
+    background-color: #383838;
 }
 .layer-column.active-layer-column .layer-column-header {
-    background-color: alpha(@accent_bg_color, 0.1);
+    background-color: alpha(#4f84c4, 0.18);
 }
 .layer-column-header button.flat {
     min-width: 28px;
@@ -76,19 +76,19 @@ css = """
     outline: none;
 }
 .layer-workpiece-list > row.drop-above {
-    box-shadow: inset 0 2px 0 0 @accent_bg_color;
+    box-shadow: inset 0 2px 0 0 #4f84c4;
 }
 .layer-workpiece-list > row.drop-below {
-    box-shadow: inset 0 -2px 0 0 @accent_bg_color;
+    box-shadow: inset 0 -2px 0 0 #4f84c4;
 }
 .layer-workpiece-list > row.selected-row {
-    background-color: alpha(@accent_bg_color, 0.2);
+    background-color: alpha(#4f84c4, 0.2);
 }
 .layer-column.drop-left {
-    box-shadow: inset 3px 0 0 0 @accent_bg_color;
+    box-shadow: inset 3px 0 0 0 #4f84c4;
 }
 .layer-column.drop-right {
-    box-shadow: inset -3px 0 0 0 @accent_bg_color;
+    box-shadow: inset -3px 0 0 0 #4f84c4;
 }
 """
 

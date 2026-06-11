@@ -23,6 +23,7 @@ class MainToolbar(Gtk.Box):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL, spacing=6, **kwargs
         )
+        self.add_css_class("main-toolbar")
         # Signals for View-State controls (not app actions)
         self.machine_warning_clicked = Signal()
 

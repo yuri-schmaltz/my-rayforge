@@ -10,28 +10,30 @@ box.icon-tab-strip button {
     min-height: 36px;
     padding: 4px;
     margin: 2px;
-    border-radius: 6px;
-    border: none;
-    background: transparent;
+    border-radius: 3px;
+    border: 1px solid #555555;
+    background: linear-gradient(to bottom, #595959, #474747);
+    color: #d6d6d6;
 }
 
 box.icon-tab-strip button:hover {
-    background: alpha(@theme_fg_color, 0.1);
+    background: linear-gradient(to bottom, #666666, #535353);
 }
 
 box.icon-tab-strip button.active-tab {
-    background: alpha(@theme_selected_bg_color, 0.2);
-    color: @theme_selected_bg_color;
+    background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
+    border-color: #78a3d4;
+    color: #f2f6fb;
 }
 
 box.icon-tab-strip button.drag-highlight-top {
-    border-top: 3px solid @theme_selected_bg_color;
+    border-top: 3px solid #4f84c4;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
 
 box.icon-tab-strip button.drag-highlight-bottom {
-    border-bottom: 3px solid @theme_selected_bg_color;
+    border-bottom: 3px solid #4f84c4;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
