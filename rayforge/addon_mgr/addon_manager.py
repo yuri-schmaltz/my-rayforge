@@ -6,7 +6,6 @@ import os
 import shutil
 import sys
 import tempfile
-import urllib.request
 import zipfile
 from enum import Enum, auto
 from pathlib import Path
@@ -35,6 +34,7 @@ from ..core.addon_config import AddonState as ConfigAddonState
 from ..core.hooks import PLUGIN_API_VERSION
 from ..core.registration import call_registration_hooks
 from ..license import LicenseValidator
+from ..shared.util.http import resilient_get
 from ..shared.util.po_compiler import compile_po_to_mo, needs_compilation
 from ..shared.util.versioning import (
     UnknownVersion,
@@ -374,20 +374,15 @@ class AddonManager:
             logger.error("PyYAML is required to fetch the registry.")
             return []
 
+        logger.info(f"Fetching registry from {ADDON_REGISTRY_URL}")
+        raw = resilient_get(ADDON_REGISTRY_URL)
+        if raw is None:
+            logger.error("Registry fetch failed.")
+            return []
         try:
-            logger.info(f"Fetching registry from {ADDON_REGISTRY_URL}")
-            with urllib.request.urlopen(
-                ADDON_REGISTRY_URL, timeout=10
-            ) as response:
-                if response.status != 200:
-                    logger.error(
-                        f"Registry fetch failed: HTTP {response.status}"
-                    )
-                    return []
-                data = response.read()
-                parsed = yaml.safe_load(data)
+            parsed = yaml.safe_load(raw)
         except Exception as e:
-            logger.error(f"Failed to fetch or parse registry: {e}")
+            logger.error("Failed to parse registry YAML: %s", e)
             return []
 
         result: List[AddonMetadata] = []
@@ -785,9 +780,19 @@ class AddonManager:
                 self.loaded_addons[name] = addon
                 if name in self._load_errors:
                     del self._load_errors[name]
+        except ImportError as e:
+            error_msg = f"Missing dependency: {e}"
+            logger.error(
+                "Addon %s import failed (missing dependency): %s",
+                name, e,
+            )
+            self._load_errors[name] = error_msg
         except Exception as e:
             error_msg = str(e)
-            logger.error(f"Error importing addon {name}: {e}")
+            logger.error(
+                "Addon %s import failed (unexpected error): %s",
+                name, e, exc_info=True,
+            )
             self._load_errors[name] = error_msg
 
     def _ensure_parent_modules(
@@ -946,7 +951,7 @@ class AddonManager:
             logger.info(f"Successfully cloned {git_url}")
             return True
         except Exception as e:
-            logger.error(f"Git clone failed: {e}")
+            logger.error("Git clone of %s failed: %s", git_url, e)
             return False
 
     def _resolve_addon_version(
@@ -1203,16 +1208,19 @@ class AddonManager:
             api_url = GITLAB_TAGS_URL.format(encoded=encoded)
         else:
             api_url = GITEA_TAGS_URL.format(host=host, owner=owner, repo=repo)
+        raw = resilient_get(
+            api_url, headers={"Accept": "application/json"}
+        )
+        if raw is None:
+            logger.debug("Remote tag lookup failed for %s", git_url)
+            return None
         try:
-            req = urllib.request.Request(
-                api_url, headers={"Accept": "application/json"}
-            )
-            with urllib.request.urlopen(req, timeout=10) as resp:
-                if resp.status != 200:
-                    return None
-                tags = json.loads(resp.read())
+            tags = json.loads(raw)
         except Exception as e:
-            logger.debug(f"Remote tag lookup failed for {git_url}: {e}")
+            logger.debug(
+                "Remote tag response not valid JSON for %s: %s",
+                git_url, e,
+            )
             return None
         if not tags or not isinstance(tags, list):
             return None
@@ -1250,15 +1258,13 @@ class AddonManager:
     @staticmethod
     def _fetch_zip_data(zip_url: str) -> Optional[io.BytesIO]:
         """Download a zip archive from a URL. Returns None on failure."""
-        try:
-            with urllib.request.urlopen(zip_url, timeout=30) as resp:
-                if resp.status != 200:
-                    logger.error(f"Zip download failed: HTTP {resp.status}")
-                    return None
-                return io.BytesIO(resp.read())
-        except Exception as e:
-            logger.error(f"Zip download failed: {e}")
+        raw = resilient_get(
+            zip_url, timeout=30, max_attempts=1
+        )
+        if raw is None:
+            logger.error("Zip download failed for %s", zip_url)
             return None
+        return io.BytesIO(raw)
 
     @staticmethod
     def _extract_zip_archive(data: io.BytesIO, dest: Path) -> bool:

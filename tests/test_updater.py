@@ -1,8 +1,41 @@
 from unittest.mock import MagicMock, patch
 
+import aiohttp
 import pytest
 
 from rayforge.updater import AppUpdateChecker
+
+
+class _DummyResponse:
+    def __init__(self, status, payload=None):
+        self.status = status
+        self._payload = payload or {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def json(self, content_type=None):
+        return self._payload
+
+
+class _DummySession:
+    def __init__(self, items):
+        self._items = list(items)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def get(self, *args, **kwargs):
+        item = self._items.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
 
 
 @pytest.fixture
@@ -121,3 +154,48 @@ class TestCheckWorker:
             await checker._check_worker(ctx)
 
         checker._task_mgr.schedule_on_main_thread.assert_not_called()
+
+
+@pytest.mark.asyncio
+class TestFetchLatestRelease:
+    async def test_retries_on_transient_status(self, checker):
+        checker.FETCH_BACKOFF_SECONDS = 0
+        sessions = [
+            _DummySession([_DummyResponse(503)]),
+            _DummySession([
+                _DummyResponse(200, {"tag_name": "1.2.3"})
+            ]),
+        ]
+        with patch(
+            "rayforge.updater.aiohttp.ClientSession",
+            side_effect=sessions,
+        ):
+            result = await checker._fetch_latest_release()
+
+        assert result == {"tag_name": "1.2.3"}
+
+    async def test_retries_on_client_error_then_succeeds(self, checker):
+        checker.FETCH_BACKOFF_SECONDS = 0
+        sessions = [
+            _DummySession([aiohttp.ClientError("boom")]),
+            _DummySession([
+                _DummyResponse(200, {"tag_name": "2.0.0"})
+            ]),
+        ]
+        with patch(
+            "rayforge.updater.aiohttp.ClientSession",
+            side_effect=sessions,
+        ):
+            result = await checker._fetch_latest_release()
+
+        assert result == {"tag_name": "2.0.0"}
+
+    async def test_non_retryable_status_returns_none(self, checker):
+        sessions = [_DummySession([_DummyResponse(404)])]
+        with patch(
+            "rayforge.updater.aiohttp.ClientSession",
+            side_effect=sessions,
+        ):
+            result = await checker._fetch_latest_release()
+
+        assert result is None

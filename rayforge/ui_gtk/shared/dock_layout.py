@@ -10,16 +10,16 @@ logger = logging.getLogger(__name__)
 
 divider_css = """
 .dock-divider {
-    background: transparent;
+    background: #353535;
     transition: background 100ms ease;
 }
 .dock-divider:hover {
-    background: alpha(@theme_fg_color, 0.08);
+    background: #4a4a4a;
 }
 .dock-divider.drop-highlight {
-    background: alpha(@theme_selected_bg_color, 0.25);
-    border-left: 2px solid @theme_selected_bg_color;
-    border-right: 2px solid @theme_selected_bg_color;
+    background: alpha(#4f84c4, 0.24);
+    border-left: 2px solid #4f84c4;
+    border-right: 2px solid #4f84c4;
 }
 """
 

@@ -25,6 +25,9 @@ class AppUpdateChecker:
     """
 
     notification_requested = Signal()
+    RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
+    MAX_FETCH_ATTEMPTS = 3
+    FETCH_BACKOFF_SECONDS = 0.75
 
     def __init__(self, task_mgr: "TaskManager", context: "RayforgeContext"):
         self._task_mgr = task_mgr
@@ -80,18 +83,60 @@ class AppUpdateChecker:
             ctx.set_message(_("Rayforge is up to date."))
 
     async def _fetch_latest_release(self) -> Optional[dict]:
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    GITHUB_RELEASES_API,
-                    timeout=aiohttp.ClientTimeout(total=15),
-                ) as response:
-                    if response.status == 200:
-                        return await response.json()
+        headers = {
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "rayforge-updater",
+        }
+        timeout = aiohttp.ClientTimeout(total=15)
+
+        for attempt in range(1, self.MAX_FETCH_ATTEMPTS + 1):
+            try:
+                async with aiohttp.ClientSession(headers=headers) as session:
+                    async with session.get(
+                        GITHUB_RELEASES_API,
+                        timeout=timeout,
+                    ) as response:
+                        if response.status == 200:
+                            payload = await response.json(
+                                content_type=None
+                            )
+                            if isinstance(payload, dict):
+                                return payload
+                            logger.warning(
+                                "GitHub API payload is not an object"
+                            )
+                            return None
+
+                        should_retry = (
+                            response.status in self.RETRYABLE_HTTP_STATUSES
+                            and attempt < self.MAX_FETCH_ATTEMPTS
+                        )
+                        if should_retry:
+                            logger.warning(
+                                "GitHub API returned status %s "
+                                "(attempt %s/%s)",
+                                response.status,
+                                attempt,
+                                self.MAX_FETCH_ATTEMPTS,
+                            )
+                            await asyncio.sleep(self.FETCH_BACKOFF_SECONDS)
+                            continue
+
+                        logger.warning(
+                            f"GitHub API returned status {response.status}"
+                        )
+                        return None
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                if attempt < self.MAX_FETCH_ATTEMPTS:
                     logger.warning(
-                        f"GitHub API returned status {response.status}"
+                        "Error fetching release info (attempt %s/%s): %s",
+                        attempt,
+                        self.MAX_FETCH_ATTEMPTS,
+                        e,
                     )
-                    return None
-        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-            logger.error(f"Error fetching release info: {e}")
-            return None
+                    await asyncio.sleep(self.FETCH_BACKOFF_SECONDS)
+                    continue
+                logger.error(f"Error fetching release info: {e}")
+                return None
+
+        return None

@@ -5,7 +5,8 @@ from .gtk import apply_css
 
 dock_area_css = """
 box.dock-area {
-    background: @theme_bg_color;
+    background: #2b2b2b;
+    border: 1px solid #4a4a4a;
 }
 
 box.dock-area > box.dock-icon-strip button {
@@ -13,36 +14,39 @@ box.dock-area > box.dock-icon-strip button {
     min-height: 28px;
     padding: 2px;
     margin: 1px;
-    border-radius: 4px;
-    border: none;
-    background: transparent;
+    border-radius: 3px;
+    border: 1px solid transparent;
+    background: #383838;
+    color: #d6d6d6;
 }
 
 box.dock-area > box.dock-icon-strip button:hover {
-    background: alpha(@theme_fg_color, 0.1);
+    background: #4a4a4a;
+    border-color: #626262;
 }
 
 box.dock-area > box.dock-icon-strip button.active-tab {
-    background: alpha(@theme_selected_bg_color, 0.2);
-    color: @theme_selected_bg_color;
+    background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
+    border-color: #78a3d4;
+    color: #f2f6fb;
 }
 
 box.dock-area > box.dock-icon-strip button.drag-highlight-top {
-    border-top: 3px solid @theme_selected_bg_color;
+    border-top: 3px solid #4f84c4;
     border-top-left-radius: 0;
     border-top-right-radius: 0;
 }
 
 box.dock-area > box.dock-icon-strip button.drag-highlight-bottom {
-    border-bottom: 3px solid @theme_selected_bg_color;
+    border-bottom: 3px solid #4f84c4;
     border-bottom-left-radius: 0;
     border-bottom-right-radius: 0;
 }
 
 box.dock-area.drag-active {
-    background: alpha(@theme_selected_bg_color, 0.06);
-    border: 1px dashed alpha(@theme_selected_bg_color, 0.4);
-    border-radius: 6px;
+    background: alpha(#4f84c4, 0.12);
+    border: 1px dashed alpha(#8db4df, 0.65);
+    border-radius: 4px;
 }
 """
 

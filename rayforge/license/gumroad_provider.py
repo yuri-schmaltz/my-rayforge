@@ -1,14 +1,13 @@
 import json
 import logging
-import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 import yaml
 
+from ..shared.util.http import resilient_post
 from .provider import (
     LicenseProvider,
     LicenseResult,
@@ -117,11 +116,30 @@ class GumroadProvider(LicenseProvider):
                 }
             ).encode()
 
-            req = urllib.request.Request(
-                self.API_URL, data=data, method="POST"
+            raw = resilient_post(
+                self.API_URL,
+                data=data,
+                headers={
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                max_attempts=2,
             )
-            with urllib.request.urlopen(req, timeout=10) as response:
-                result = json.loads(response.read().decode())
+
+            if raw is None:
+                cached = self._get_valid_cache(product_id)
+                if cached:
+                    logger.warning(
+                        "Network error during validation, using cache."
+                    )
+                    return LicenseResult(**cached)
+                return LicenseResult(
+                    status=LicenseStatus.ERROR,
+                    message=(
+                        "Network error: could not reach Gumroad API"
+                    ),
+                )
+
+            result = json.loads(raw.decode())
 
             if not result.get("success"):
                 return LicenseResult(
@@ -169,19 +187,8 @@ class GumroadProvider(LicenseProvider):
             self._cache_result(product_id, result_obj)
             return result_obj
 
-        except urllib.error.URLError as e:
-            cached = self._get_valid_cache(product_id)
-            if cached:
-                logger.warning(
-                    f"Network error during validation, using cache: {e.reason}"
-                )
-                return LicenseResult(**cached)
-            return LicenseResult(
-                status=LicenseStatus.ERROR,
-                message=f"Network error: {e.reason}",
-            )
         except Exception as e:
-            logger.error(f"Gumroad validation failed: {e}")
+            logger.error("Gumroad validation failed: %s", e)
             return LicenseResult(
                 status=LicenseStatus.ERROR,
                 message=f"Validation failed: {str(e)}",

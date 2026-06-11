@@ -1,6 +1,5 @@
 import json
 import logging
-import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -11,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 import yaml
 
+from ..shared.util.http import resilient_get
 from .provider import (
     LicenseProvider,
     LicenseResult,
@@ -108,21 +108,44 @@ class PatreonProvider(LicenseProvider):
         if cached:
             return LicenseResult(**cached)
 
+        url = (
+            f"{self.API_BASE}/identity"
+            f"?include=memberships"
+            f"&fields[member]=patron_status,last_charge_date"
+            f"&fields[tier]=title"
+        )
+
+        raw = resilient_get(
+            url,
+            headers={
+                "Authorization": f"Bearer {self._access_token}"
+            },
+            max_attempts=2,
+        )
+
+        if raw is None:
+            cached = self._get_valid_cache(tier_ids)
+            if cached:
+                logger.warning(
+                    "Network error during Patreon validation, "
+                    "using cache."
+                )
+                return LicenseResult(**cached)
+            return LicenseResult(
+                status=LicenseStatus.ERROR,
+                message="Network error: could not reach Patreon API",
+            )
+
         try:
-            url = (
-                f"{self.API_BASE}/identity"
-                f"?include=memberships"
-                f"&fields[member]=patron_status,last_charge_date"
-                f"&fields[tier]=title"
+            result = json.loads(raw.decode())
+        except Exception as e:
+            logger.error("Failed to parse Patreon response: %s", e)
+            return LicenseResult(
+                status=LicenseStatus.ERROR,
+                message="Validation failed: invalid response",
             )
 
-            req = urllib.request.Request(
-                url, headers={"Authorization": f"Bearer {self._access_token}"}
-            )
-
-            with urllib.request.urlopen(req, timeout=10) as response:
-                result = json.loads(response.read().decode())
-
+        try:
             included = result.get("included", [])
             tier_map = {}
             for item in included:
@@ -170,20 +193,8 @@ class PatreonProvider(LicenseProvider):
                 message="Not a patron at required tier",
             )
 
-        except urllib.error.URLError as e:
-            cached = self._get_valid_cache(tier_ids)
-            if cached:
-                logger.warning(
-                    f"Network error during Patreon validation, using cache: "
-                    f"{e.reason}"
-                )
-                return LicenseResult(**cached)
-            return LicenseResult(
-                status=LicenseStatus.ERROR,
-                message=f"Network error: {e.reason}",
-            )
         except Exception as e:
-            logger.error(f"Patreon validation failed: {e}")
+            logger.error("Patreon validation failed: %s", e)
             return LicenseResult(
                 status=LicenseStatus.ERROR,
                 message=f"Validation failed: {str(e)}",
@@ -286,7 +297,9 @@ class PatreonProvider(LicenseProvider):
                 self._save_config()
                 return True
         except Exception as e:
-            logger.error(f"Failed to exchange Patreon OAuth code: {e}")
+            logger.error(
+                "Failed to exchange Patreon OAuth code: %s", e
+            )
 
         return False
 
