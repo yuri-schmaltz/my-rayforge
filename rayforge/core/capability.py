@@ -28,7 +28,7 @@ class LaserHeadVar(ChoiceVar):
     def __init__(
         self,
         key: str = "selected_laser_uid",
-        label: str = "Laser Head",
+        label: str = _("Laser Head"),
         description: Optional[str] = None,
         default: Optional[str] = None,
         value: Optional[str] = None,
@@ -325,7 +325,15 @@ class MaterialTestCapability(Capability):
 
     @property
     def varset(self) -> VarSet:
-        return VarSet(vars=[])
+        return VarSet(
+            vars=[
+                BoolVar(
+                    key="air_assist",
+                    label=_("Air Assist"),
+                    default=False,
+                ),
+            ]
+        )
 
 
 class PWMCapability(Capability):

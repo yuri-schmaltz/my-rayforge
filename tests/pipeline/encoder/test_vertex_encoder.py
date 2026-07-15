@@ -2,7 +2,9 @@ import math
 
 import numpy as np
 import pytest
+from raygeo.geo.algo.cylindrical import transform_to_cylinder
 from raygeo.ops import Ops
+from raygeo.ops.state import AirAssistMode
 from raygeo.ops.types import SectionType
 
 from rayforge.pipeline.encoder.vertexencoder import VertexEncoder
@@ -235,10 +237,10 @@ class TestVertexEncoder:
             combined_ops.workpiece_start(wp_uid)
 
             combined_ops.set_power(1.0)
-            combined_ops.set_cut_speed(1000)
-            combined_ops.set_travel_speed(3000)
-            combined_ops.enable_air_assist(True)
-            combined_ops.set_laser("laser-1")
+            combined_ops.set_feed_rate(1000)
+            combined_ops.set_rapid_rate(3000)
+            combined_ops.set_air_assist(AirAssistMode.ON)
+            combined_ops.set_head("laser-1")
 
             combined_ops.ops_section_start(SectionType.VECTOR_OUTLINE, wp_uid)
             for c_idx in range(num_contours):
@@ -253,7 +255,7 @@ class TestVertexEncoder:
                 combined_ops.line_to(cx, cy, 0.0)
 
             combined_ops.ops_section_end(SectionType.VECTOR_OUTLINE)
-            combined_ops.disable_air_assist()
+            combined_ops.set_air_assist(AirAssistMode.OFF)
 
             combined_ops.workpiece_end(wp_uid)
 
@@ -342,10 +344,6 @@ class TestTransformToCylinder:
 
     def test_surface_z_zero(self):
         """At Z=0 (surface) vertices sit on the cylinder surface."""
-        from rayforge.pipeline.encoder.vertexencoder import (
-            transform_to_cylinder,
-        )
-
         diameter = 10.0
         radius = diameter / 2.0
         verts = np.array(
@@ -363,10 +361,6 @@ class TestTransformToCylinder:
 
     def test_negative_z_smaller_radius(self):
         """Negative Z (step-down) produces smaller effective radius."""
-        from rayforge.pipeline.encoder.vertexencoder import (
-            transform_to_cylinder,
-        )
-
         diameter = 10.0
         z = -1.0
         verts = np.array(
@@ -383,10 +377,6 @@ class TestTransformToCylinder:
 
     def test_mixed_z_different_radii(self):
         """Vertices with different Z depths produce different radii."""
-        from rayforge.pipeline.encoder.vertexencoder import (
-            transform_to_cylinder,
-        )
-
         diameter = 20.0
         z1, z2 = 0.0, -1.0
         verts = np.array(

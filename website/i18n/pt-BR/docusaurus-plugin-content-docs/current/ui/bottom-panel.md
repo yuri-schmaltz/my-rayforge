@@ -175,6 +175,7 @@ Defina onde a origem do WCS ativo deve ser:
 | Botão                | Função       | Descrição                                                        |
 | -------------------- | ------------ | ---------------------------------------------------------------- |
 | Clique para Zero     | Define X,Y=0 | Clique no ícone de mira, depois clique na tela para definir zero |
+| Ir ao Zero WCS       | Mover        | Mover a cabeça do laser para X0 Y0 do WCS ativo                  |
 | Editar Deslocamentos | Editar       | Editar manualmente os valores de deslocamento WCS                |
 | Zero X               | Define X=0   | Torna posição X atual a origem X para WCS ativo                  |
 | Zero Y               | Define Y=0   | Torna posição Y atual a origem Y para WCS ativo                  |
@@ -367,8 +368,8 @@ Quando limites de software estão habilitados no seu perfil de máquina:
 
 **Páginas Relacionadas:**
 
-- [Sistemas de Coordenadas de Trabalho (WCS)](../general-info/coordinate-systems) - Gerenciando WCS
-- [Configuração da Máquina](../machine/general) - Configure sua máquina
-- [Atalhos de Teclado](../reference/shortcuts) - Referência completa de atalhos
+- [Sistemas de Coordenadas de Trabalho (WCS)](../general-info/coordinate-systems.md) - Gerenciando WCS
+- [Configuração da Máquina](../machine/general.md) - Configure sua máquina
+- [Atalhos de Teclado](../reference/shortcuts.md) - Referência completa de atalhos
 - [Janela Principal](main-window) - Visão geral da interface principal
-- [Configurações Gerais](../machine/general) - Configuração do dispositivo
+- [Configurações Gerais](../machine/general.md) - Configuração do dispositivo

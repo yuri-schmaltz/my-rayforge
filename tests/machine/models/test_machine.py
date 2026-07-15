@@ -4,14 +4,13 @@ from typing import Generator, Tuple
 from unittest.mock import MagicMock
 
 import pytest
-from raygeo import Geometry
+from raygeo.geo import Geometry, Matrix
 from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
 
 import rayforge.machine.driver as driver_module
 from rayforge.context import get_context
 from rayforge.core.doc import Doc
-from rayforge.core.matrix import Matrix
 from rayforge.core.source_asset import SourceAsset
 from rayforge.core.source_asset_segment import SourceAssetSegment
 from rayforge.core.step_registry import step_registry
@@ -691,7 +690,7 @@ class TestMachine:
 
         # --- Assert ---
         run_spy.assert_called_once()
-        encoded, received_doc = run_spy.call_args.args
+        encoded, received_doc, received_ops = run_spy.call_args.args
         assert isinstance(encoded, EncodedOutput)
         assert received_doc is doc
 
@@ -738,7 +737,7 @@ class TestMachine:
 
         # --- Assert ---
         run_spy.assert_called_once()
-        encoded, received_doc = run_spy.call_args.args
+        encoded, received_doc, received_ops = run_spy.call_args.args
         from rayforge.pipeline.encoder.base import EncodedOutput
 
         assert isinstance(encoded, EncodedOutput)

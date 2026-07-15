@@ -6,7 +6,7 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from blinker import Signal
-from raygeo import Geometry
+from raygeo.geo import Geometry
 from raygeo.ops import Ops
 
 from ...shared.tasker.task import Task
@@ -20,7 +20,8 @@ from ..dag.node import NodeState
 from .base import PipelineStage
 
 if TYPE_CHECKING:
-    from ...core.matrix import Matrix
+    from raygeo.geo import Matrix
+
     from ...core.step import Step
     from ...core.workpiece import WorkPiece
     from ...machine.models.machine import Machine
@@ -113,10 +114,14 @@ class WorkPiecePipelineStage(PipelineStage):
             logger.error("Cannot generate ops: No machine is configured.")
             return None
 
-        settings = step.get_settings()
+        settings = step.to_dict()
         settings["machine_supports_arcs"] = self._machine.supports_arcs
         settings["machine_supports_curves"] = self._machine.supports_curves
         settings["arc_tolerance"] = self._machine.arc_tolerance
+        settings["driver_native_overscan"] = (
+            self._machine.driver.native_overscan
+        )
+        settings.setdefault("bidir_x_offset_mm", 0.0)
 
         try:
             selected_laser = step.get_selected_laser(self._machine)
@@ -205,12 +210,19 @@ class WorkPiecePipelineStage(PipelineStage):
             context.task_did_finish(key)
 
         task_status = task.get_status()
-        logger.debug(f"[{key}] Task status is '{task_status}'.")
+        is_current = self._artifact_manager.is_generation_current(
+            key, generation_id
+        )
+        logger.debug(
+            f"[{key}] Task status is '{task_status}', is_current={is_current}."
+        )
 
         if task_status == "canceled":
             with self._artifact_manager.report_cancellation(
                 key, generation_id
             ) as handle:
+                if is_current:
+                    self._emit_node_state(key, NodeState.DIRTY)
                 self.generation_finished.send(
                     self,
                     step=step,
@@ -247,7 +259,8 @@ class WorkPiecePipelineStage(PipelineStage):
                 f"Ops generation for '{step.name}' on '{wp_name}' failed."
             )
             logger.warning(f"[{key}] {error_msg}")
-            self._emit_node_state(key, NodeState.ERROR)
+            if is_current:
+                self._emit_node_state(key, NodeState.ERROR)
             with self._artifact_manager.report_failure(
                 key, generation_id
             ) as handle:
@@ -295,8 +308,6 @@ class WorkPiecePipelineStage(PipelineStage):
 
         workpiece_dict = self.prepare_workpiece_dict(workpiece)
 
-        self._emit_node_state(key, NodeState.PROCESSING)
-
         if context is not None:
             context.add_task(key)
 
@@ -311,6 +322,8 @@ class WorkPiecePipelineStage(PipelineStage):
             workpiece.size,
             context,
         )
+
+        self._emit_node_state(key, NodeState.PROCESSING)
 
     def _create_and_register_task(
         self,
@@ -351,7 +364,6 @@ class WorkPiecePipelineStage(PipelineStage):
             make_workpiece_artifact_in_subprocess,
             self._artifact_manager.get_store(),
             workpiece_dict,
-            step.opsproducer_dict,
             step.per_workpiece_transformers_dicts,
             laser_dict,
             settings,

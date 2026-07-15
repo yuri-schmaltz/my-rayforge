@@ -2,7 +2,7 @@
 name = "rayforge"
 version = "0.1.0"
 channels = ["conda-forge", "bioconda", "msys2", "coastline"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 
 [environments]
 default = { features = ["app", "test"], solve-group = "default" }
@@ -19,12 +19,14 @@ gettext = "*"
 gobject-introspection = "*"
 gtk4 = "*"
 libheif = "*"
+libvips = "*"
 openslide = "*"
 poppler = "*"
 python = ">=3.11"
 librsvg = ">=2.58.4,<3"
 svgelements = ">=1.9.6,<2"
-scipy = "*"
+scipy = "==1.17.1"
+numpy = "~=2.4.3"
 pycairo = "==1.28.0"
 PyOpenGL = "==3.1.10"
 PyOpenGL-accelerate = "==3.1.10"
@@ -34,9 +36,9 @@ rust = "*"
 patchelf = "*"
 
 [feature.app.pypi-dependencies]
-raygeo = { path = "external/raygeo", editable = true }
+raygeo = "==1.21.2"
 rayforge = { editable = true, path = "." }
-aiohttp = "==3.13.5"
+aiohttp = "==3.14.1"
 asyncudp = "==0.11.0"
 blinker = "==1.9.0"
 build = "*"
@@ -45,8 +47,7 @@ ezdxf = "==1.4.4b3"
 GitPython = "==3.1.50"
 platformdirs = "==4.3.6"
 pluggy = "==1.6.0"
-pyclipper = "==1.3.0.post6"
-pypdf = "~=6.10.0"
+pypdf = "==6.12.2"
 pymupdf = "==1.27.2.2"
 pyserial = "~=3.5"
 pyvips = "==3.0.0"
@@ -57,7 +58,6 @@ vtracer = "==0.6.11"
 websockets = "==14.2"
 
 [feature.app.target.linux-64.dependencies]
-libvips = "*"
 xorg-xproto = "*"
 xorg-libx11 = "*"
 xorg-kbproto = "*"
@@ -145,9 +145,6 @@ cmd = "scripts/with_gdk.sh scripts/screenshot/cli.py"
 cmd = "python3 -m build"
 depends-on = ["compile-translations"]
 
-[tasks.reinstall-raygeo]
-cmd = "rm -Rf .pixi/envs/default/lib/python3.12/site-packages/raygeo* && pixi clean cache -y && pixi install"
-
 [tasks.build-deb]
 # Builds a binary .deb package for local installation and testing.
 cmd = "bash scripts/build-deb.sh"
@@ -159,9 +156,10 @@ cmd = "bash scripts/build-deb.sh --source"
 depends-on = ["compile-translations"]
 
 [dependencies]
-libglvnd = ">=1.7.0,<2"
 libadwaita = ">=1.8.4,<2"
-pyright = ">=1.1.409,<2"
+
+[target.linux-64.dependencies]
+libglvnd = ">=1.7.0,<2"
 
 # Tasks for developing and generating the website
 [feature.website.tasks]

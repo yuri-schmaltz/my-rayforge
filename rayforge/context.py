@@ -130,11 +130,13 @@ class RayforgeContext:
                 BUILTIN_ADDONS_DIR,
                 PRIVATE_ADDONS_DIR,
             )
+            from .shared.tasker import task_mgr
 
             self._addon_mgr = AddonManager(
                 [BUILTIN_ADDONS_DIR, PRIVATE_ADDONS_DIR, ADDONS_DIR],
                 ADDONS_DIR,
                 self.plugin_mgr,
+                task_mgr,
                 self.addon_config,
                 license_validator=self.license_validator,
             )
@@ -226,6 +228,11 @@ class RayforgeContext:
                     )
                 )[0]
                 self._config.set_machine(machine)
+            # Sync the context language with the configured preference.
+            # This overrides the system-detected language if the user has
+            # explicitly chosen one in settings.
+            if self._config.language:
+                self.language = self._config.language
         return self._config_mgr
 
     @property

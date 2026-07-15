@@ -17,19 +17,20 @@ description: "在 Rayforge 中管理机器——为您的项目添加、配置�
 
 ![添加机器](/screenshots/app-settings-machines-add.png)
 
-3. [机器设置对话框](../machine/general) 将打开，您可以在其中调整配置
+3. [机器设置对话框](../machine/general.md) 将打开，您可以在其中调整配置
 
 或者：
 
 - 点击 **Other Device…** 启动
-  [配置向导](../machine/config-wizard)，自动检测已连接设备的设置
-- 在配置文件选择器中点击 **Import from File...**，从先前导出的
-  配置文件中添加机器
+  [配置向导](../machine/config-wizard.md)，自动检测已连接设备的设置
+- 点击 **Import from File…** 从之前导出的配置文件或 LightBurn
+  设备配置文件 (.lbdev) 中添加机器。LightBurn 配置文件包含相机
+  校准和激光设置，这些设置将应用到新机器上。
 
 ## 编辑机器
 
 点击机器旁边的编辑图标以打开
-[机器设置对话框](../machine/general)。
+[机器设置对话框](../machine/general.md)。
 
 ## 切换活动机器
 

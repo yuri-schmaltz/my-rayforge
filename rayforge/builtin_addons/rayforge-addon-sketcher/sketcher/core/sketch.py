@@ -9,12 +9,17 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, List, Optional, Set, Tuple, Union
 
 from blinker import Signal
-from raygeo import Geometry
-
 from raygeo.geo import (
     Arc as GeoArc,
+)
+from raygeo.geo import (
     Bezier as GeoBezier,
+)
+from raygeo.geo import Geometry
+from raygeo.geo import (
     Line as GeoLine,
+)
+from raygeo.geo import (
     Move as GeoMove,
 )
 from raygeo.geo.shape.polygon import is_point_inside_polygon
@@ -492,7 +497,7 @@ class Sketch(IAsset, IGeometryProvider):
                     current_pid = get_or_add_point(current_x, current_y)
                 end_pid = get_or_add_point(end_x, end_y)
 
-                i_offset, j_offset = cmd.center_offset
+                i_offset, j_offset, _ = cmd.center_offset
                 clockwise = cmd.clockwise
 
                 center_x = current_x + i_offset
@@ -508,8 +513,8 @@ class Sketch(IAsset, IGeometryProvider):
                 if current_pid is None:
                     current_pid = get_or_add_point(current_x, current_y)
 
-                cp1_x, cp1_y = cmd.control1
-                cp2_x, cp2_y = cmd.control2
+                cp1_x, cp1_y, _ = cmd.control1
+                cp2_x, cp2_y, _ = cmd.control2
 
                 start_pt = sketch.registry.get_point(current_pid)
                 if start_pt:

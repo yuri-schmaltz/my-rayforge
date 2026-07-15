@@ -19,7 +19,7 @@ from urllib.parse import quote
 import aiohttp
 
 from ....context import RayforgeContext
-from ....core.varset import HostnameVar, PortVar, Var, VarSet
+from ....core.varset import ChoiceVar, HostnameVar, PortVar, Var, VarSet
 from ....core.varset.hostnamevar import is_valid_hostname_or_ip
 from ....pipeline.encoder.base import EncodedOutput, OpsEncoder
 from ....pipeline.encoder.gcode import GcodeEncoder
@@ -53,6 +53,8 @@ from .grbl_util import (
 )
 
 if TYPE_CHECKING:
+    from raygeo.ops import Ops
+
     from ....core.doc import Doc
     from ...device.profile import DeviceProfile
     from ...models.laser import Laser
@@ -79,9 +81,11 @@ class GrblNetworkDriver(Driver):
         self.host = None
         self.port = None
         self.ws_port = None
+        self.protocol = None
         self.http = None
         self.websocket = None
         self.keep_running = False
+        self._is_cancelled = False
         self._connection_task: Optional[asyncio.Task] = None
         self._current_request: Optional[CommandRequest] = None
         self._cmd_lock = asyncio.Lock()
@@ -137,6 +141,13 @@ class GrblNetworkDriver(Driver):
                     description=_("The WebSocket port for the device"),
                     default=81,
                 ),
+                ChoiceVar(
+                    key="protocol",
+                    label=_("Protocol variant"),
+                    description=_("ESP3D or Longer GRBL variant"),
+                    default="EPS3D",
+                    choices=["ESP3D", "Longer"],
+                ),
             ]
         )
 
@@ -150,12 +161,14 @@ class GrblNetworkDriver(Driver):
         host = cast(str, kwargs.get("host", ""))
         port = cast(int, kwargs.get("port", 80))
         ws_port = cast(int, kwargs.get("ws_port", 81))
+        protocol = cast(str, kwargs.get("protocol", "ESP3D"))
         if not host:
             raise DriverSetupError(_("Hostname must be configured."))
 
         self.host = host
         self.port = port
         self.ws_port = ws_port
+        self.protocol = protocol
 
         self.http_base = f"http://{host}:{port}"
         self.http = HttpTransport(
@@ -256,9 +269,19 @@ class GrblNetworkDriver(Driver):
         multipart/form-data POST request.
         """
         form = aiohttp.FormData()
-        form.add_field(
-            "file", gcode, filename=filename, content_type="text/plain"
-        )
+        if self.protocol == "Longer":
+            form.add_field("path", "/")
+            form.add_field("size", str(len(gcode)))
+            form.add_field(
+                "file",
+                gcode,
+                filename=filename,
+                content_type="application/octet-stream",
+            )
+        else:
+            form.add_field(
+                "file", gcode, filename=filename, content_type="text/plain"
+            )
         url = f"{self.http_base}{upload_url}?path=/"
 
         log_data = f"POST to {url} with file '{filename}' size {len(gcode)}"
@@ -355,6 +378,7 @@ class GrblNetworkDriver(Driver):
         self,
         encoded: EncodedOutput,
         doc: "Doc",
+        ops: "Ops",
         on_command_done: Optional[
             Callable[[int], Union[None, Awaitable[None]]]
         ] = None,
@@ -366,6 +390,8 @@ class GrblNetworkDriver(Driver):
         op_map = encoded.op_map
 
         try:
+            self._is_cancelled = False
+
             # For GRBL driver, we don't track individual commands
             # since we upload the entire file at once
             if on_command_done is not None:
@@ -380,12 +406,14 @@ class GrblNetworkDriver(Driver):
                         await result
 
             await self._upload(gcode, "rayforge.gcode")
-            await self._execute("rayforge.gcode")
+            if not self._is_cancelled:
+                await self._execute("rayforge.gcode")
         except Exception as e:
             self._update_connection_status(TransportStatus.ERROR, str(e))
             raise
         finally:
-            self.job_finished.send(self)
+            if not self._is_cancelled:
+                self.job_finished.send(self)
 
     async def run_raw(self, machine_code: str) -> None:
         """
@@ -404,13 +432,16 @@ class GrblNetworkDriver(Driver):
             logger.info(line, extra=self._log_extra("USER_COMMAND"))
 
         try:
+            self._is_cancelled = False
             await self._upload(machine_code, "rayforge_raw.gcode")
-            await self._execute("rayforge_raw.gcode")
+            if not self._is_cancelled:
+                await self._execute("rayforge_raw.gcode")
         except Exception as e:
             self._update_connection_status(TransportStatus.ERROR, str(e))
             raise
         finally:
-            self.job_finished.send(self)
+            if not self._is_cancelled:
+                self.job_finished.send(self)
 
     async def execute_interactive_command(self, command: str) -> List[str]:
         """
@@ -440,6 +471,7 @@ class GrblNetworkDriver(Driver):
         await self._send_command("!" if hold else "~")
 
     async def cancel(self) -> None:
+        self._is_cancelled = True
         # Soft reset: send Ctrl-X (0x18) as a raw byte.  _send_command
         # URL-encodes the argument, so '\x18' becomes '%18' on the wire —
         # which is what the ESP3D/FluidNC web interface interprets as the
@@ -681,15 +713,16 @@ class GrblNetworkDriver(Driver):
                     target_varset[key] = value_str
                 else:
                     # This setting is not defined in our known VarSets
-                    unknown_vars.add(
-                        Var(
-                            key=key,
-                            label=f"${key}",
-                            var_type=str,
-                            value=value_str,
-                            description=_("Unknown setting from device"),
+                    if unknown_vars.get(key) is None:
+                        unknown_vars.add(
+                            Var(
+                                key=key,
+                                label=f"${key}",
+                                var_type=str,
+                                value=value_str,
+                                description=_("Unknown setting from device"),
+                            )
                         )
-                    )
 
         # The result is the list of known VarSets (now populated)
         result = known_varsets

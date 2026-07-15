@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-10 23:41+0200\n"
+"POT-Creation-Date: 2026-07-15 21:39+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -61,6 +61,10 @@ msgstr ""
 
 #: post_processors/widgets/lead_in_out_widget.py
 msgid "Change Lead-Out Distance"
+msgstr ""
+
+#: post_processors/widgets/overscan_widget.py
+msgid "This machine adds overscan automatically; the setting has no effect."
 msgstr ""
 
 #: post_processors/widgets/overscan_widget.py
@@ -200,48 +204,16 @@ msgid "Minimizes travel distance by reordering segments."
 msgstr ""
 
 #: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing workpieces..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Optimizing workpiece order..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Applying 2-opt refinement..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized workpieces..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Workpiece optimization complete"
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Preprocessing for optimization..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing and bucketing path segments..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-#, python-brace-format
-msgid "Optimizing segment {i}/{total}..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Finding nearest paths..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized paths..."
-msgstr ""
-
-#: post_processors/transformers/optimize_transformer.py
 msgid "Optimization complete"
+msgstr ""
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid "Bidirectional Scan Offset"
+msgstr ""
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid ""
+"Shifts right-to-left raster passes along X to correct scan-direction skew."
 msgstr ""
 
 #: post_processors/transformers/smooth_transformer.py

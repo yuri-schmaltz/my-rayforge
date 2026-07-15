@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from raygeo import Geometry
+from raygeo.geo import Geometry
 
 from rayforge.core.asset_registry import asset_type_registry
 from rayforge.core.vectorization_spec import LayerImportMode, PassthroughSpec
@@ -157,7 +157,7 @@ class TestGeometrySvgExporterRealWorld:
         assert f'height="{height + 2:.3f}mm"' in svg_str
 
         for i, cmd in enumerate(geo.iter_commands()):
-            x = cmd[1]
+            x = cmd.end[0]
             tx = x - min_x
             if i == 0:
                 assert f"M {tx:.6f}" in svg_str

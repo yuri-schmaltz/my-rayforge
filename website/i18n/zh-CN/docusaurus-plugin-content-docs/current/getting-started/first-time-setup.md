@@ -17,7 +17,11 @@
 ![添加机器](/screenshots/app-settings-machines-add.png)
 
 如果您的设备已连接并开机，可以点击 **Other Device…** 使用
-[配置向导](../machine/config-wizard)自动检测和配置您的机器。
+[配置向导](../machine/config-wizard.md)自动检测和配置您的机器。
+
+如果你有包含相机校准和设备设置的 LightBurn 设备配置文件 (.lbdev)，
+可以点击 **Import from File…** 并选择 .lbdev 文件。你 LightBurn
+设置中的相机校准和激光设置将应用到新机器上。
 
 选择后，机器设置对话框将打开您的新机器。
 
@@ -106,7 +110,7 @@ Rayforge 在应用程序启动时自动连接到您的机器（如果机器已�
 
 ![激光设置](/screenshots/machine-laser.png)
 
-有关详细信息，请参阅[激光配置](../machine/laser)。
+有关详细信息，请参阅[激光配置](../machine/laser.md)。
 
 ### 相机设置
 
@@ -114,7 +118,7 @@ Rayforge 在应用程序启动时自动连接到您的机器（如果机器已�
 
 ![相机设置](/screenshots/machine-camera.png)
 
-有关详细信息，请参阅[相机集成](../machine/camera)。
+有关详细信息，请参阅[相机集成](../machine/camera.md)。
 
 ### 设备设置
 
@@ -157,7 +161,7 @@ Rayforge 在应用程序启动时自动连接到您的机器（如果机器已�
 - 检查电缆是否松动或连接不良
 - 重启激光切割机并重试
 
-有关更多帮助，请参阅[连接问题](../troubleshooting/connection)。
+有关更多帮助，请参阅[连接问题](../troubleshooting/connection.md)。
 
 ---
 

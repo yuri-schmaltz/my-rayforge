@@ -240,7 +240,7 @@ class LaserPreferencesPage(DebounceMixin, TrackedPreferencesPage):
         self.laserhead_config_group.add(self.name_row)
 
         tool_number_adjustment = Gtk.Adjustment(
-            lower=0, upper=255, step_increment=1, page_increment=1
+            lower=-32768, upper=65535, step_increment=1, page_increment=1
         )
         self.tool_number_row = Adw.SpinRow(
             title=_("Tool Number"),
@@ -625,6 +625,13 @@ class LaserPreferencesPage(DebounceMixin, TrackedPreferencesPage):
         initial_row = self.laser_list_editor.list_box.get_selected_row()
         self.on_laserhead_selected(
             self.laser_list_editor.list_box, initial_row
+        )
+
+        self.connect("destroy", self._on_destroy)
+
+    def _on_destroy(self, *args):
+        self.machine.changed.disconnect(
+            self.laser_list_editor._on_machine_changed
         )
 
     def on_laserhead_selected(self, listbox, row):

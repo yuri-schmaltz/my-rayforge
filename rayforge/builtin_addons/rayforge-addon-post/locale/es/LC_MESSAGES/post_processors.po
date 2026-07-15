@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-10 23:41+0200\n"
+"POT-Creation-Date: 2026-07-15 21:39+0200\n"
 "PO-Revision-Date: 2026-03-18 23:38+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -63,6 +63,12 @@ msgstr "Cambiar distancia de entrada"
 #: post_processors/widgets/lead_in_out_widget.py
 msgid "Change Lead-Out Distance"
 msgstr "Cambiar distancia de salida"
+
+#: post_processors/widgets/overscan_widget.py
+msgid "This machine adds overscan automatically; the setting has no effect."
+msgstr ""
+"Esta máquina agrega sobrecorrido automáticamente; la configuración no tiene "
+"efecto."
 
 #: post_processors/widgets/overscan_widget.py
 msgid "Overscan Distance"
@@ -206,49 +212,19 @@ msgid "Minimizes travel distance by reordering segments."
 msgstr "Minimiza la distancia de viaje reordenando segmentos."
 
 #: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing workpieces..."
-msgstr "Analizando piezas..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Optimizing workpiece order..."
-msgstr "Optimizando orden de piezas..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Applying 2-opt refinement..."
-msgstr "Aplicando refinamiento 2-opt..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized workpieces..."
-msgstr "Reensamblando piezas optimizadas..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Workpiece optimization complete"
-msgstr "Optimización de pieza completada"
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Preprocessing for optimization..."
-msgstr "Preprocesando para optimización..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing and bucketing path segments..."
-msgstr "Analizando y agrupando segmentos de trayectoria..."
-
-#: post_processors/transformers/optimize_transformer.py
-#, python-brace-format
-msgid "Optimizing segment {i}/{total}..."
-msgstr "Optimizando segmento {i}/{total}..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Finding nearest paths..."
-msgstr "Buscando trayectorias más cercanas..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized paths..."
-msgstr "Reensamblando trayectorias optimizadas..."
-
-#: post_processors/transformers/optimize_transformer.py
 msgid "Optimization complete"
 msgstr "Optimización completada"
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid "Bidirectional Scan Offset"
+msgstr "Desplazamiento de escaneo bidireccional"
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid ""
+"Shifts right-to-left raster passes along X to correct scan-direction skew."
+msgstr ""
+"Desplaza los barridos de rasterizado de derecha a izquierda a lo largo de X "
+"para corregir la desviación de la dirección de escaneo."
 
 #: post_processors/transformers/smooth_transformer.py
 msgid "Smooth Path"

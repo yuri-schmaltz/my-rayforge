@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 from raygeo.geo.types import Point3D
 from raygeo.ops import Ops
 from raygeo.ops.axis import Axis
+from raygeo.ops.state import AirAssistMode, CoolantMode
 from raygeo.ops.types import CommandCategory, CommandType
 
 from ...core.layer import Layer
@@ -52,6 +53,8 @@ class GcodeEncoder(OpsEncoder):
         self.active_laser_uid: Optional[str] = None
         self.frequency: Optional[int] = None
         self.pulse_width: Optional[float] = None
+        self.spindle_rpm: int = 0
+        self.coolant_mode: Optional[CoolantMode] = None
         self.current_pos: Dict[Axis, float] = {
             Axis.X: 0.0,
             Axis.Y: 0.0,
@@ -217,6 +220,8 @@ class GcodeEncoder(OpsEncoder):
         self._emitted_cut_feed = None
         self.frequency = None
         self.pulse_width = None
+        self.spindle_rpm = 0
+        self.coolant_mode = None
 
         context = GcodeContext(
             machine=machine, doc=doc, job=JobInfo(extents=ops.rect())
@@ -303,24 +308,26 @@ class GcodeEncoder(OpsEncoder):
 
         if ct == CommandType.SET_POWER:
             self._update_power(context, gcode, ops.power(idx))
-        elif ct == CommandType.SET_CUT_SPEED:
+        elif ct == CommandType.SET_FEED_RATE:
             # Cut speed limits are the responsibility of the Ops
             # producer. The encoder trusts the value it receives.
-            self.cut_speed = ops.speed(idx)
-        elif ct == CommandType.SET_TRAVEL_SPEED:
+            self.cut_speed = ops.rate(idx)
+        elif ct == CommandType.SET_RAPID_RATE:
             self.travel_speed = min(
-                ops.speed(idx), context.machine.max_travel_speed
+                ops.rate(idx), context.machine.max_travel_speed
             )
         elif ct == CommandType.SET_FREQUENCY:
             self.frequency = ops.frequency(idx)
         elif ct == CommandType.SET_PULSE_WIDTH:
             self.pulse_width = ops.pulse_width(idx)
-        elif ct == CommandType.ENABLE_AIR_ASSIST:
-            self._set_air_assist(context, gcode, True)
-        elif ct == CommandType.DISABLE_AIR_ASSIST:
-            self._set_air_assist(context, gcode, False)
-        elif ct == CommandType.SET_LASER:
-            self._handle_set_laser(context, gcode, ops.laser_uid(idx))
+        elif ct == CommandType.SET_AIR_ASSIST:
+            self._handle_air_assist(context, gcode, ops.air_assist(idx))
+        elif ct == CommandType.SET_COOLANT:
+            self._handle_coolant(context, gcode, ops.coolant(idx))
+        elif ct == CommandType.SET_SPINDLE_RPM:
+            self._handle_spindle(context, gcode, ops.spindle_rpm(idx))
+        elif ct == CommandType.SET_HEAD:
+            self._handle_set_laser(context, gcode, ops.head_uid(idx))
         elif cat == CommandCategory.MOVING:
             self._handle_moving(gcode, ops, idx, ct, context)
         elif ct == CommandType.DWELL:
@@ -352,7 +359,13 @@ class GcodeEncoder(OpsEncoder):
             # first M5 and updates the internal state.
             self._laser_off(context, gcode)
             if self.air_assist:
-                self._set_air_assist(context, gcode, False)
+                self._handle_air_assist(context, gcode, AirAssistMode.OFF)
+            if self.spindle_rpm > 0:
+                self._handle_spindle(context, gcode, 0)
+            if self.coolant_mode is not None and (
+                self.coolant_mode != CoolantMode.OFF
+            ):
+                self._handle_coolant(context, gcode, CoolantMode.OFF)
             gcode.extend(
                 self._format_script_lines(self.dialect.postscript, context)
             )
@@ -504,20 +517,56 @@ class GcodeEncoder(OpsEncoder):
             else:  # power <= 0
                 self._laser_off(context, gcode)
 
-    def _set_air_assist(
-        self, context: GcodeContext, gcode: List[str], state: bool
+    def _handle_air_assist(
+        self, context: GcodeContext, gcode: List[str], mode: AirAssistMode
     ) -> None:
         """Update air assist state with dialect commands"""
-        if self.air_assist == state:
+        coolant_on = mode == AirAssistMode.ON
+        if self.air_assist == coolant_on:
             return
-        self.air_assist = state
+        self.air_assist = coolant_on
         cmd = (
             self.dialect.air_assist_on
-            if state
+            if coolant_on
             else self.dialect.air_assist_off
         )
         if cmd:
             gcode.append(cmd)
+
+    def _handle_coolant(
+        self, context: GcodeContext, gcode: List[str], mode: CoolantMode
+    ) -> None:
+        """Handle coolant commands for CNC milling operations."""
+        if mode == self.coolant_mode:
+            return
+        if mode == CoolantMode.FLOOD:
+            cmd = self.dialect.coolant_flood
+        elif mode == CoolantMode.MIST:
+            cmd = self.dialect.coolant_mist
+        else:
+            cmd = self.dialect.coolant_off
+        if cmd:
+            gcode.append(cmd)
+        self.coolant_mode = mode
+
+    def _handle_spindle(
+        self, context: GcodeContext, gcode: List[str], rpm: int
+    ) -> None:
+        """Handle spindle RPM commands for CNC milling operations."""
+        if rpm and rpm > 0:
+            if self.spindle_rpm > 0 and rpm != self.spindle_rpm:
+                off = self.dialect.spindle_off
+                if off:
+                    gcode.append(off)
+            on = self.dialect.spindle_on_cw.format(rpm=rpm)
+            if on:
+                gcode.append(on)
+        else:
+            if self.spindle_rpm > 0:
+                off = self.dialect.spindle_off
+                if off:
+                    gcode.append(off)
+        self.spindle_rpm = rpm
 
     def _handle_move_to(
         self,

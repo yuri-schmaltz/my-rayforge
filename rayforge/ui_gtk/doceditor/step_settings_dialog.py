@@ -9,8 +9,7 @@ from ...context import get_context
 from ...core.capability import Capability, LaserHeadVar
 from ...core.step import Step
 from ...core.undo import ChangePropertyCommand, HistoryManager
-from ...pipeline.producer import OpsProducer
-from ...pipeline.producer.placeholder import PlaceholderProducer
+from ...core.varset import VarSet
 from ...pipeline.transformer import OpsTransformer
 from ...pipeline.transformer.placeholder import PlaceholderTransformer
 from ..icons import get_icon
@@ -18,6 +17,7 @@ from ..shared.patched_dialog_window import PatchedDialogWindow
 from ..shared.preferences_page import TrackedPreferencesPage
 from ..varset.varsetwidget import VarSetWidget
 from .recipe_control_widget import RecipeControlWidget
+from .step_settings.base import StepComponentSettingsWidget
 from .step_settings.placeholder import PlaceholderSettingsWidget
 
 if TYPE_CHECKING:
@@ -34,47 +34,28 @@ class GeneralStepSettingsView(TrackedPreferencesPage):
         self.editor = editor
         self.doc = editor.doc
         self.step = step
-        producer_type = (
-            step.opsproducer_dict.get("type", "unknown")
-            if step.opsproducer_dict
-            else "unknown"
-        )
-        self.key = producer_type.lower().replace("producer", "")
+        producer_type = step.ASSEMBLER_NAME or "unknown"
+        self.key = producer_type.lower()
         self.path_prefix = "/step-settings/"
         self.history_manager: HistoryManager = self.doc.history_manager
 
-        # 1. Producer Settings
-        producer_dict = self.step.opsproducer_dict
+        # 1. Producer Settings (no longer deserialized — widgets read step
+        #    attributes directly via set_step_property)
         producer = None
-        if producer_dict:
-            producer_name = producer_dict.get("type")
-            if producer_name:
-                producer = OpsProducer.from_dict(producer_dict)
 
         context = get_context()
         if context:
             context.plugin_mgr.hook.step_settings_loaded(
-                dialog=self, step=self.step, producer=producer
-            )
-
-        # Add placeholder widget if producer is not available
-        if isinstance(producer, PlaceholderProducer) and producer_dict:
-            self.add(
-                PlaceholderSettingsWidget(
-                    self.editor,
-                    producer.label,
-                    producer,
-                    self,
-                    self.step,
-                )
+                dialog=self, step=self.step, producer=None
             )
 
         # Build settings UI from capability VarSet.
         # VarSetWidget IS the general group — no visual split.
-        varset = reduce(
-            Capability.__or__,
-            step.get_effective_capabilities(get_context().machine),
-        ).varset
+        caps = step.get_effective_capabilities(get_context().machine)
+        if caps:
+            varset = reduce(Capability.__or__, caps).varset
+        else:
+            varset = VarSet(vars=[])
         self.varset_widget = VarSetWidget(
             title=_("General Settings"),
             description=_(
@@ -220,12 +201,8 @@ class PostProcessingSettingsView(TrackedPreferencesPage):
         super().__init__()
         self.editor = editor
         self.step = step
-        producer_type = (
-            step.opsproducer_dict.get("type", "unknown")
-            if step.opsproducer_dict
-            else "unknown"
-        )
-        producer_key = producer_type.lower().replace("producer", "")
+        producer_type = step.ASSEMBLER_NAME or "unknown"
+        producer_key = producer_type.lower()
         self.key = f"{producer_key}/post-processing"
         self.path_prefix = "/step-settings/"
 
@@ -290,6 +267,17 @@ class PostProcessingSettingsView(TrackedPreferencesPage):
             expander.set_subtitle(subtitle)
         expander.set_expanded(False)
 
+        warning_icon = get_icon("warning-symbolic")
+        warning_icon.set_valign(Gtk.Align.CENTER)
+        expander.add_prefix(warning_icon)
+
+        def _update_warning_icon(grp=group, ico=warning_icon):
+            unsupported = (
+                isinstance(grp, StepComponentSettingsWidget)
+                and grp.is_unsupported()
+            )
+            ico.set_visible(unsupported)
+
         enable_switch_row = None
         for row in rows:
             if isinstance(row, Adw.SwitchRow) and enable_switch_row is None:
@@ -310,9 +298,18 @@ class PostProcessingSettingsView(TrackedPreferencesPage):
                         sw.set_active(r.get_active())
 
                 row.connect("notify::active", _on_orig_toggled)
+                row.connect(
+                    "notify::active",
+                    lambda *_: _update_warning_icon(),
+                )
             else:
                 expander.add_row(row)
 
+        machine = get_context().machine
+        if machine:
+            machine.changed.connect(lambda *_: _update_warning_icon())
+
+        _update_warning_icon()
         self._main_group.add(expander)
         self._has_expanders = True
 

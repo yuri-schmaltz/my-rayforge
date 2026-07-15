@@ -3,13 +3,35 @@ import pluggy
 hookspec = pluggy.HookspecMarker("rayforge")
 hookimpl = pluggy.HookimplMarker("rayforge")
 
-MINIMUM_API_VERSION = 13
-PLUGIN_API_VERSION = 14
+MINIMUM_API_VERSION = 16
+PLUGIN_API_VERSION = 17
 
 
 """
 API Changelog
 ============
+
+Version 17
+----------
+Raygeo 0.15: adaptive_entry, generate_helix_spiral, EntryMethod,
+AdaptiveEntryOptions removed (use Workplan). ToroidOptions: renamed
+step_distance -> step_over, z -> target_z. Assembler option structs:
+renamed radius -> tool_radius, cut_z -> target_z.
+
+Version 16
+----------
+Raygeo 0.14: CoolantMode::Air split into AirAssistMode and
+HeadCoolantMode. Module raygeo.ops.assembly.entry moved to
+raygeo.cnc.machining.entry. adaptive_entry/adaptive_wavefronts
+return AssemblyResult. Various geo functions renamed with verb
+prefixes (any_overlap -> does_any_overlap, point_line_distance
+-> get_point_line_distance, etc.).
+
+Version 15
+----------
+Raygeo 0.6 adds tab operations, merge overlapping lines, overscan,
+lead-in/out, concave hull (shrink-wrap), and full-sweep raster scan
+mode. Image processing delegated to raygeo.image.
 
 Version 14
 ----------
@@ -105,7 +127,7 @@ resource registration, and UI integration:
 - ``on_unload``: Called when addon is disabled or unloaded
 - ``register_machines``: Register new machine drivers
 - ``register_steps``: Register custom step types
-- ``register_producers``: Register custom ops producers
+- ``register_producers``: Register custom ops producers (removed v18)
 - ``register_step_widgets``: Register step settings widgets (removed v5)
 - ``register_menu_items``: Register menu items (removed in v4)
 - ``register_commands``: Register editor commands
@@ -164,14 +186,14 @@ class RayforgeSpecs:
         """
 
     @hookspec
-    def register_producers(self, producer_registry):
+    def register_assemblers(self, assembler_registry):
         """
-        Called to allow addons to register custom ops producers.
+        Called to allow addons to register assembler functions.
 
-        .. versionadded:: 1
+        .. versionadded:: 9
 
         Args:
-            producer_registry: The global ProducerRegistry instance.
+            assembler_registry: The global AssemblerRegistry instance.
         """
 
     @hookspec
