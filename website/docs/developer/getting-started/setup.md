@@ -10,7 +10,7 @@ This guide covers setting up your development environment for Rayforge.
 
 ### Prerequisites
 
-See the [Installation Guide](../../getting-started/installation#linux-pixi) for Pixi installation instructions.
+See the [Installation Guide](../../getting-started/installation.mdx#linux-pixi) for Pixi installation instructions.
 
 ### Pre-commit Hooks (Optional)
 
@@ -30,11 +30,27 @@ All commands are run via `pixi run`:
 -   `pixi run format`: Format all code using `ruff`.
 -   `pixi run lint`: Run all linters (`flake8`, `pyflakes`, `pyright`).
 
+## macOS
+
+### Prerequisites
+
+See the [Installation Guide](../../getting-started/installation.mdx#linux-pixi) for Pixi installation instructions. Pixi supports macOS on Apple Silicon (`osx-arm64`).
+
+### Useful Commands
+
+All commands are run via `pixi run`, same as on Linux:
+
+-   `pixi run rayforge`: Run the application.
+    -   Add `--loglevel=DEBUG` for more verbose output.
+-   `pixi run test`: Run the full test suite with `pytest`.
+-   `pixi run format`: Format all code using `ruff`.
+-   `pixi run lint`: Run all linters (`flake8`, `pyflakes`, `pyright`).
+
 ## Windows
 
 ### Prerequisites
 
-See the [Installation Guide](../../getting-started/installation#windows-developer) for detailed MSYS2 developer setup instructions.
+See the [Installation Guide](../../getting-started/installation.mdx#windows-developer) for detailed MSYS2 developer setup instructions.
 
 ### Quick Start
 

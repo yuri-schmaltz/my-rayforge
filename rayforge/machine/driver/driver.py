@@ -21,6 +21,8 @@ from raygeo.ops.axis import Axis
 from ...context import RayforgeContext
 
 if TYPE_CHECKING:
+    from raygeo.ops import Ops
+
     from ...core.capability import Capability
     from ...core.doc import Doc
     from ...core.varset import VarSet
@@ -187,6 +189,9 @@ class Driver(ABC):
     uses_gcode: bool = True
     maturity: DriverMaturity = DriverMaturity.STABLE
     supports_probing: bool = False
+    # When True, the firmware applies its own overscan, so Rayforge's
+    # OverscanTransformer would double it up and should be skipped.
+    native_overscan: bool = False
 
     @property
     @abstractmethod
@@ -390,6 +395,7 @@ class Driver(ABC):
         self,
         encoded: "EncodedOutput",
         doc: "Doc",
+        ops: "Ops",
         on_command_done: Optional[
             Callable[[int], Union[None, Awaitable[None]]]
         ] = None,
@@ -400,6 +406,7 @@ class Driver(ABC):
         Args:
             encoded: The encoded output containing machine code and op map
             doc: The document context
+            ops: The Ops object used to generate the encoded output.
             on_command_done: Optional sync or async callback called when each
                            command is done. Called with the op_index.
         """

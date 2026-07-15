@@ -1,6 +1,6 @@
 import cv2
 import numpy as np
-from raygeo import Geometry
+from raygeo.geo import Geometry
 
 from rayforge.image.hull import (
     get_concave_hull,
@@ -159,7 +159,7 @@ def test_concave_hull_creates_valid_indentation():
     # 3. Check that shrinking the hull did not create new intersections
     convex_geo.grow(1)  # grow to avoid touching due to floating point errors
     assert not concave_geo.intersects_with(convex_geo), (
-       f"Intersects with convex hull: {concave_geo.dump()}"
+       f"Intersects with convex hull: {concave_geo.to_dict()}"
     )
 
     # 4. Check that the hull encloses all points of the original shape.
@@ -185,4 +185,9 @@ def test_get_concave_hull_zero_gravity():
     assert len(convex_geo) == len(concave_geo)
 
     # Check if the command points are identical
-    np.testing.assert_array_equal(convex_geo.data, concave_geo.data)
+    convex_data = convex_geo.data
+    concave_data = concave_geo.data
+    assert len(convex_data) == len(concave_data)
+    for c1, c2 in zip(convex_data, concave_data):
+        assert type(c1) is type(c2)
+        assert c1.end == c2.end

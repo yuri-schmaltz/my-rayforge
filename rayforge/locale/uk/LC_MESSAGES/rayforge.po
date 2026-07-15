@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rayforge\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-14 16:35+0200\n"
+"POT-Creation-Date: 2026-07-16 00:05+0200\n"
 "PO-Revision-Date: 2026-02-23 01:17+0100\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Ukrainian\n"
@@ -217,6 +217,31 @@ msgstr "Послідовний порт не може бути порожнім.
 #: rayforge/core/varset/serialportvar.py
 msgid "Serial Port"
 msgstr "Послідовний порт"
+
+#: rayforge/core/cut_side.py
+msgid "Centerline"
+msgstr "Центральна лінія"
+
+#: rayforge/core/cut_side.py
+msgid "Inside"
+msgstr "Всередині"
+
+#: rayforge/core/cut_side.py
+msgid "Outside"
+msgstr "Ззовні"
+
+#: rayforge/core/cut_side.py
+msgid "Inside-Outside"
+msgstr "Всередині-Ззовні"
+
+#: rayforge/core/cut_side.py
+msgid "Outside-Inside"
+msgstr "Ззовні-Всередині"
+
+#: rayforge/core/capability.py rayforge/machine/models/laser.py
+#: rayforge/ui_gtk/machine/laser_control_widget.py
+msgid "Laser Head"
+msgstr "Лазерна головка"
 
 #: rayforge/core/capability.py rayforge/ui_gtk/main_menu.py
 #: rayforge/ui_gtk/doceditor/asset_browser.py
@@ -466,6 +491,7 @@ msgstr "Smoothieware через Telnet-з'єднання"
 #: rayforge/machine/driver/smoothie.py
 #: rayforge/machine/driver/octoprint/octoprint_driver.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Machine Coordinates (G53)"
 msgstr "Машинні координати (G53)"
@@ -498,6 +524,7 @@ msgstr "IP-адреса або ім'я хоста пристрою"
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port"
 msgstr "Порт"
 
@@ -679,12 +706,14 @@ msgstr "Прошивка Marlin через послідовне з'єднанн�
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Serial port for the device"
 msgstr "Послідовний порт для пристрою"
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port must be configured."
 msgstr "Порт має бути налаштований."
 
@@ -735,6 +764,22 @@ msgstr ""
 "Періодично запитувати пристрій про позицію та статус під час виконання "
 "завдання. Попередження: Деякі пристрої мають проблеми з підтримкою "
 "стабільного з'єднання, якщо це використовується!"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid "Deadlock detection"
+msgstr "Виявлення взаємоблокування"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid ""
+"Detect and recover from serial communication deadlocks during jobs. If "
+"disabled, the driver will simply wait for the machine to respond. Disable if "
+"you experience false ALARM:3 errors."
+msgstr ""
+"Виявляє та відновлює після взаємоблокувань послідовної комунікації під час "
+"завдань. Якщо вимкнено, драйвер просто чекатиме відповіді машини. Вимкніть, "
+"якщо отримуєте помилкові помилки ALARM:3."
 
 #: rayforge/machine/driver/grbl/grbl_util.py
 msgid "Missing Command Letter"
@@ -1381,16 +1426,19 @@ msgstr ""
 "автоматичного визначення з пристрою."
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown Settings"
 msgstr "Невідомі налаштування"
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Settings reported by the device not in the standard list."
 msgstr "Налаштування, повідомлені пристроєм, відсутні в стандартному списку."
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown setting from device"
 msgstr "Невідоме налаштування від пристрою"
@@ -1410,6 +1458,19 @@ msgid ""
 msgstr ""
 "Лазерний режим не увімкнено ($32=0). Увімкніть його для найкращих "
 "результатів з лазерними різаками."
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL (Serial Simple)"
+msgstr "GRBL (Serial Simple)"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL serial with simple ping-pong protocol (no buffer counting)"
+msgstr ""
+"GRBL послідовний з простим протоколом ping-pong (без підрахунку буфера)"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "Baudrate must be configured."
+msgstr "Швидкість передачі має бути налаштована."
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "GRBL (Network)"
@@ -1434,6 +1495,14 @@ msgstr "WebSocket-порт"
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "The WebSocket port for the device"
 msgstr "WebSocket-порт для пристрою"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "Protocol variant"
+msgstr "Варіант протоколу"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "ESP3D or Longer GRBL variant"
+msgstr "Варіант ESP3D або Longer GRBL"
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Host is not configured. Please set a valid IP address or hostname."
@@ -1466,16 +1535,63 @@ msgstr "Межі машини"
 msgid "{name} (device dialect)"
 msgstr "{name} (діалект пристрою)"
 
+#: rayforge/machine/device/lightburn_importer.py
+msgid "• Camera calibration: matrix + distortion found"
+msgstr "• Калібрування камери: матрицю + спотворення знайдено"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "(no fields mapped)"
+msgstr "(не зіставлено жодного поля)"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Device name"
+msgstr "Назва пристрою"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Work area"
+msgstr "Робоча область"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Driver"
+msgstr "Драйвер"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Baud rate"
+msgstr "Швидкість передачі"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Home on start"
+msgstr "Пошук дому при запуску"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Max travel speed"
+msgstr "Максимальна швидкість переміщення"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Origin"
+msgstr "Початок координат"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror X"
+msgstr "Дзеркало X"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror Y"
+msgstr "Дзеркало Y"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Camera calibration"
+msgstr "Калібрування камери"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "matrix + distortion imported"
+msgstr "матрицю + спотворення імпортовано"
+
 #: rayforge/machine/models/dialect_manager.py
 #: rayforge/machine/models/machine.py
 #, python-brace-format
 msgid "{label} (for {machine_name})"
 msgstr "{label} (для {machine_name})"
-
-#: rayforge/machine/models/laser.py
-#: rayforge/ui_gtk/machine/laser_control_widget.py
-msgid "Laser Head"
-msgstr "Лазерна головка"
 
 #: rayforge/machine/models/machine.py
 msgid "Default Machine"
@@ -1706,6 +1822,30 @@ msgid "Dwell"
 msgstr "Затримка"
 
 #: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CW)"
+msgstr "Шпиндель увімкнено (CW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CCW)"
+msgstr "Шпиндель увімкнено (CCW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle Off"
+msgstr "Шпиндель вимкнено"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Flood"
+msgstr "Охолоджувач заливний"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Mist"
+msgstr "Охолоджувач туманний"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Off"
+msgstr "Охолоджувач вимкнено"
+
+#: rayforge/machine/models/dialect/base.py
 msgid "Scripts"
 msgstr "Скрипти"
 
@@ -1899,6 +2039,7 @@ msgstr ""
 #: rayforge/ui_gtk/machine/hook_list.py rayforge/ui_gtk/machine/gcode_editor.py
 #: rayforge/ui_gtk/machine/wcs_dialog.py
 #: rayforge/ui_gtk/machine/maintenance_page.py
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
 #: rayforge/ui_gtk/machine/dialect_list.py
 #: rayforge/ui_gtk/machine/profile_selector.py
 #: rayforge/ui_gtk/machine/template_selector.py
@@ -2183,6 +2324,34 @@ msgid "Categories"
 msgstr "Категорії"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "English"
+msgstr "Англійська"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "German"
+msgstr "Німецька"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Spanish"
+msgstr "Іспанська"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "French"
+msgstr "Французька"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Portuguese"
+msgstr "Португальська"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Ukrainian"
+msgstr "Українська"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Chinese (Simplified)"
+msgstr "Китайська (спрощена)"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/about.py
 msgid "System"
 msgstr "Система"
@@ -2217,6 +2386,10 @@ msgid "Layer Color"
 msgstr "Колір шару"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "System Default"
+msgstr "Системна за замовчуванням"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/machine/rotary_module_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
 #: rayforge/ui_gtk/machine/general_preferences_page.py
@@ -2236,6 +2409,14 @@ msgstr "Налаштування, пов'язані з виглядом прог
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Theme"
 msgstr "Тема"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Language"
+msgstr "Мова"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "The application language. Changes require a restart."
+msgstr "Мова програми. Зміни потребують перезапуску."
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Operation Colors"
@@ -2339,6 +2520,26 @@ msgstr ""
 "<a href=\"https://rayforge.org/docs/general-info/usage-tracking\">Дізнатися "
 "більше</a> про відстеження використання та приватність."
 
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Restart required"
+msgstr "Потрібен перезапуск"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid ""
+"The language will take effect after restarting Rayforge. Would you like to "
+"restart now?"
+msgstr ""
+"Мова набуде чинності після перезапуску Rayforge. Бажаєте перезапустити зараз?"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
+msgid "_Cancel"
+msgstr "_Скасувати"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "_Restart"
+msgstr "_Перезапустити"
+
 #: rayforge/ui_gtk/canvas2d/elements/tab_handle.py
 msgid "Move Tab"
 msgstr "Перемістити вкладку"
@@ -2420,6 +2621,72 @@ msgstr "Додати матеріал"
 #: rayforge/ui_gtk/actions.py
 msgid "Auto Layout (Simple)"
 msgstr "Автоматичне компонування (Просте)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#, python-brace-format
+msgid "{camera_name} - Lens Calibration"
+msgstr "{camera_name} - Калібрування об'єктива"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens Calibration"
+msgstr "Калібрування об'єктива"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid ""
+"Correct lens distortion for straighter lines. Use the wizard for automatic "
+"calibration or adjust manually."
+msgstr ""
+"Виправляє дисторсію об'єктива для пряміших ліній. Використовуйте майстер для "
+"автоматичного калібрування або налаштуйте вручну."
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Wizard"
+msgstr "Майстер"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 1 (k1)"
+msgstr "Радіальний 1 (k1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order radial distortion"
+msgstr "Радіальна дисторсія першого порядку"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 2 (k2)"
+msgstr "Радіальний 2 (k2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order radial distortion"
+msgstr "Радіальна дисторсія другого порядку"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Radial 3 (k3)"
+msgstr "Радіальна 3 (k3)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Third order radial distortion"
+msgstr "Радіальна дисторсія третього порядку"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 1 (p1)"
+msgstr "Тангенціальний 1 (p1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order tangential distortion"
+msgstr "Тангенціальна дисторсія першого порядку"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 2 (p2)"
+msgstr "Тангенціальний 2 (p2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order tangential distortion"
+msgstr "Тангенціальна дисторсія другого порядку"
 
 #: rayforge/ui_gtk/camera/selection_dialog.py
 msgid "Please select an available camera device"
@@ -2511,12 +2778,38 @@ msgid "Adjust brightness, contrast, white balance, and noise"
 msgstr "Налаштувати яскравість, контраст, баланс білого та шум"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Correct lens distortion for straighter lines"
+msgstr "Виправити спотворення об'єктива для пряміших ліній"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Image Alignment"
 msgstr "Вирівнювання зображення"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Calibrate camera position and perspective"
 msgstr "Калібрувати положення та перспективу камери"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration completed"
+msgstr "Калібрування об'єктива завершено"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration not yet performed"
+msgstr "Калібрування об'єктива ще не виконано"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment completed"
+msgstr "Вирівнювання зображення завершено"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment must be redone after lens calibration was updated"
+msgstr ""
+"Вирівнювання зображення потрібно повторити після оновлення калібрування "
+"об'єктива"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment not yet performed"
+msgstr "Вирівнювання зображення ще не виконано"
 
 #: rayforge/ui_gtk/camera/calibration_wizard.py
 msgid "Waiting for camera..."
@@ -2868,66 +3161,6 @@ msgstr "Прозорість"
 #: rayforge/ui_gtk/camera/image_settings_dialog.py
 msgid "Transparency on the worksurface"
 msgstr "Прозорість на робочій поверхні"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Lens Calibration"
-msgstr "Калібрування об'єктива"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid ""
-"Correct lens distortion for straighter lines. Use the wizard for automatic "
-"calibration or adjust manually."
-msgstr ""
-"Виправляє дисторсію об'єктива для пряміших ліній. Використовуйте майстер для "
-"автоматичного калібрування або налаштуйте вручну."
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Wizard"
-msgstr "Майстер"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 1 (k1)"
-msgstr "Радіальний 1 (k1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order radial distortion"
-msgstr "Радіальна дисторсія першого порядку"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 2 (k2)"
-msgstr "Радіальний 2 (k2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order radial distortion"
-msgstr "Радіальна дисторсія другого порядку"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Radial 3 (k3)"
-msgstr "Радіальна 3 (k3)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Third order radial distortion"
-msgstr "Радіальна дисторсія третього порядку"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 1 (p1)"
-msgstr "Тангенціальний 1 (p1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order tangential distortion"
-msgstr "Тангенціальна дисторсія першого порядку"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 2 (p2)"
-msgstr "Тангенціальний 2 (p2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order tangential distortion"
-msgstr "Тангенціальна дисторсія другого порядку"
 
 #: rayforge/ui_gtk/camera/camera_preferences_page.py
 #, python-brace-format
@@ -3333,6 +3566,10 @@ msgid "Device Profile archives"
 msgstr "Архіви профілів пристроїв"
 
 #: rayforge/ui_gtk/machine/profile_importer.py
+msgid "LightBurn device profiles"
+msgstr "Профілі пристроїв LightBurn"
+
+#: rayforge/ui_gtk/machine/profile_importer.py
 msgid "All files"
 msgstr "Усі файли"
 
@@ -3570,6 +3807,30 @@ msgstr "Не вдалося підключитися: Використовуєт
 #: rayforge/ui_gtk/machine/device_settings_page.py
 msgid "Machine activated."
 msgstr "Верстат активовано."
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import LightBurn profile?"
+msgstr "Імпортувати профіль LightBurn?"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid ""
+"LightBurn device profiles contain only basic machine settings. The imported "
+"profile may be incomplete. After import, please review and configure any "
+"additional settings such as laser heads, homing, end stops, G-code dialect, "
+"macros, and rotary modules."
+msgstr ""
+"Профілі пристроїв LightBurn містять лише основні налаштування машини. "
+"Імпортований профіль може бути неповним. Після імпорту перегляньте та "
+"налаштуйте додаткові параметри, такі як лазерні головки, пошук дому, кінцеві "
+"вимикачі, діалект G-code, макроси та поворотні модулі."
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import Anyway"
+msgstr "Все одно імпортувати"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "The following values will be imported:"
+msgstr "Наступні значення буде імпортовано:"
 
 #: rayforge/ui_gtk/machine/hooks_macros_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
@@ -5093,10 +5354,6 @@ msgstr "Вибрати"
 msgid "Job Sanity Check"
 msgstr "Перевірка завдання"
 
-#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
-msgid "_Cancel"
-msgstr "_Скасувати"
-
 #: rayforge/ui_gtk/shared/sanity_check_dialog.py
 msgid "_Proceed"
 msgstr "_Продовжити"
@@ -5765,6 +6022,12 @@ msgstr "Увімкнути {}"
 msgid "Toggle {}"
 msgstr "Перемкнути {}"
 
+#: rayforge/ui_gtk/doceditor/step_settings/base.py
+#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
+#, python-brace-format
+msgid "Change {key}"
+msgstr "Змінити {key}"
+
 #: rayforge/ui_gtk/doceditor/material_library_list.py
 msgid "1 material"
 msgstr "1 матеріал"
@@ -5837,11 +6100,6 @@ msgstr "Потужність, швидкість та вибір лазерно�
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "Change Laser"
 msgstr "Змінити лазер"
-
-#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
-#, python-brace-format
-msgid "Change {key}"
-msgstr "Змінити {key}"
 
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "No post-processing options available for this step."
@@ -6101,6 +6359,10 @@ msgstr "Перемістити в центр вибраного або робо�
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Move to Upper-Right of Selection or Workarea"
 msgstr "Перемістити у верхній правий кут вибраного або робочої області"
+
+#: rayforge/ui_gtk/doceditor/bottom_panel.py
+msgid "Move to Origin of Active WCS"
+msgstr "Перемістити до початку активного WCS"
 
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Zero Axes"
@@ -6601,6 +6863,10 @@ msgid "Graphics & Imaging"
 msgstr "Графіка та зображення"
 
 #: rayforge/ui_gtk/about.py
+msgid "Geometry"
+msgstr "Геометрія"
+
+#: rayforge/ui_gtk/about.py
 msgid "File Formats & Communication"
 msgstr "Формати файлів та комунікація"
 
@@ -6874,27 +7140,6 @@ msgstr ""
 "Шлях до каталогу користувацької конфігурації. Корисно для тестування з "
 "ізольованими конфігураціями."
 
-#: rayforge/pipeline/producer/placeholder.py
-msgid "Missing Producer"
-msgstr "Відсутній виробник"
-
-#: rayforge/pipeline/producer/placeholder.py
-#: rayforge/pipeline/transformer/placeholder.py
-msgid "Missing: {}"
-msgstr "Відсутнє: {}"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Centerline"
-msgstr "Центральна лінія"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Inside"
-msgstr "Всередині"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Outside"
-msgstr "Ззовні"
-
 #: rayforge/pipeline/stage/step_runner.py
 msgid "Assembling step..."
 msgstr "Збирання кроку..."
@@ -6914,6 +7159,34 @@ msgstr "Збереження фінального артефакту завда�
 #: rayforge/pipeline/stage/job_runner.py rayforge/pipeline/stage/job_compute.py
 msgid "Job finalization complete"
 msgstr "Завершення завдання виконано"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable Power"
+msgstr "Змінна потужність"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant Power"
+msgstr "Постійна потужність"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Dither"
+msgstr "Дизеринг"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multiple Depths"
+msgstr "Множинні глибини"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable"
+msgstr "Змінне"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant"
+msgstr "Постійне"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multi-Pass"
+msgstr "Багатопрохідний"
 
 #: rayforge/pipeline/stage/workpiece_compute.py
 #, python-brace-format
@@ -6967,6 +7240,10 @@ msgstr "Рендеринг текстури..."
 #: rayforge/pipeline/view/view_compute.py
 msgid "Rendering complete."
 msgstr "Рендеринг завершено."
+
+#: rayforge/pipeline/transformer/placeholder.py
+msgid "Missing: {}"
+msgstr "Відсутнє: {}"
 
 #: rayforge/pipeline/transformer/placeholder.py
 msgid "This transformer is not available."
@@ -7396,3 +7673,19 @@ msgstr "Неприпустимі або непідтримувані дані BM
 #: rayforge/image/ruida/importer.py
 msgid "File contains no vector commands."
 msgstr "Файл не містить векторних команд."
+
+#: rayforge/image/dither.py
+msgid "Floyd Steinberg"
+msgstr "Floyd Steinberg"
+
+#: rayforge/image/dither.py
+msgid "Bayer 2"
+msgstr "Bayer 2"
+
+#: rayforge/image/dither.py
+msgid "Bayer 4"
+msgstr "Bayer 4"
+
+#: rayforge/image/dither.py
+msgid "Bayer 8"
+msgstr "Bayer 8"

@@ -504,8 +504,8 @@ function LinuxPixiInstall() {
         </Translate>
       </p>
 
-      <Admonition type="info" title={translate({ id: 'install.linuxOnly', message: 'Linux Only' })}>
-        <Translate id="install.pixi.linuxOnly">Pixi installation is currently only available on Linux.</Translate>
+      <Admonition type="info" title={translate({ id: 'install.pixiPlatforms', message: 'Supported Platforms' })}>
+        <Translate id="install.pixi.platforms">Pixi installation is supported on Linux and macOS (Apple Silicon / osx-arm64). Windows is not yet supported.</Translate>
       </Admonition>
 
       <div className="install-step">
@@ -781,6 +781,9 @@ function WindowsDeveloperInstall() {
           <Admonition type="tip">
             <Translate id="install.msys2.defaultPath">
               Use the default installation path (C:\msys64) for best compatibility.
+              After installation, MSYS2 provides several shell shortcuts in the
+              Start Menu — always use the MINGW64 shell for
+              Rayforge development. The other shells (MSYS2, UCRT64) will not work.
             </Translate>
           </Admonition>
         </div>

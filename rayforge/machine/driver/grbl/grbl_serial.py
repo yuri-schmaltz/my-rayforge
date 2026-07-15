@@ -63,6 +63,8 @@ from .grbl_util import (
 )
 
 if TYPE_CHECKING:
+    from raygeo.ops import Ops
+
     from ....core.doc import Doc
     from ...device.profile import DeviceProfile
     from ...models.laser import Laser
@@ -102,6 +104,7 @@ class GrblSerialDriver(Driver):
         self._last_reported_op_index = -1
         self._job_exception: Optional[Exception] = None
         self._poll_status_while_running: bool = False
+        self._deadlock_detection: bool = False
         self._rx_buffer_size_override: int = 0
         self._handshake_received = asyncio.Event()
         self._loop: Optional[asyncio.AbstractEventLoop] = None
@@ -154,6 +157,18 @@ class GrblSerialDriver(Driver):
                     var_type=bool,
                     default=False,
                 ),
+                Var(
+                    key="deadlock_detection",
+                    label=_("Deadlock detection"),
+                    description=_(
+                        "Detect and recover from serial communication "
+                        "deadlocks during jobs. If disabled, the driver "
+                        "will simply wait for the machine to respond. "
+                        "Disable if you experience false ALARM:3 errors."
+                    ),
+                    var_type=bool,
+                    default=False,
+                ),
                 IntVar(
                     key="rx_buffer_size_override",
                     label=_("RX Buffer Size Override"),
@@ -185,6 +200,9 @@ class GrblSerialDriver(Driver):
         baudrate = kwargs.get("baudrate", 115200)
         self._poll_status_while_running = bool(
             kwargs.get("poll_status_while_running", False)
+        )
+        self._deadlock_detection = bool(
+            kwargs.get("deadlock_detection", False)
         )
         self._rx_buffer_size_override = int(
             kwargs.get("rx_buffer_size_override", 0) or 0
@@ -647,7 +665,18 @@ class GrblSerialDriver(Driver):
         driver's ``_cmd_lock``, so poll and recovery must skip the
         lock.  pyserial serializes concurrent writes, making this
         safe.
+
+        Returns True to retry the wait, False to abort the job.
         """
+        if self._is_cancelled:
+            return False
+        if not self._deadlock_detection:
+            logger.debug(
+                "Buffer stall timed out (deadlock detection disabled). "
+                "Retrying."
+            )
+            return True
+
         if await self._poll_and_check_idle(transport, hold_lock=False):
             if not transport.needs_space(command_len):
                 logger.info(
@@ -663,10 +692,11 @@ class GrblSerialDriver(Driver):
                 return True
             logger.error("Recovery failed: buffer still full.")
             return False
-        logger.warning(
-            "Timeout waiting for buffer space (machine not IDLE). Retrying."
+        logger.info(
+            "Timeout waiting for buffer space (machine not IDLE). "
+            "This is normal during slow moves. Retrying."
         )
-        return False
+        return True
 
     async def _send_gcode_line(
         self,
@@ -728,6 +758,7 @@ class GrblSerialDriver(Driver):
         self,
         gcode_lines: List[str],
         machine_code_to_op_map: Optional[Dict[int, int]] = None,
+        command_times: Optional[List[float]] = None,
     ):
         """
         The core G-code streaming logic using character-counting protocol.
@@ -739,7 +770,10 @@ class GrblSerialDriver(Driver):
         if not transport:
             raise ConnectionError("Transport not initialized")
         job_completed_successfully = False
-        deadlock_timeout = 10.0 if not self._poll_status_while_running else 2.0
+        min_timeout = 5.0
+        max_timeout = 120.0
+        safety_factor = 3.0
+        default_timeout = 30.0
         sent_count = 0
         try:
             for line_idx, line in enumerate(gcode_lines):
@@ -770,13 +804,26 @@ class GrblSerialDriver(Driver):
                 )
                 command_bytes = (line + "\n").encode("utf-8")
 
+                if (
+                    command_times is not None
+                    and op_index is not None
+                    and op_index < len(command_times)
+                ):
+                    estimated = command_times[op_index]
+                    timeout = min(
+                        max_timeout,
+                        max(min_timeout, estimated * safety_factor),
+                    )
+                else:
+                    timeout = default_timeout
+
                 try:
                     await self._send_gcode_line(
                         transport,
                         line,
                         command_bytes,
                         op_index,
-                        deadlock_timeout,
+                        timeout,
                     )
                 except BufferStallError:
                     if not self._job_exception:
@@ -800,7 +847,7 @@ class GrblSerialDriver(Driver):
                 logger.debug(
                     "All G-code sent. Waiting for all 'ok' responses."
                 )
-                await self._drain_pending_acks(transport, deadlock_timeout)
+                await self._drain_pending_acks(transport, default_timeout)
 
             if self._job_exception:
                 raise self._job_exception
@@ -856,6 +903,7 @@ class GrblSerialDriver(Driver):
         self,
         encoded: EncodedOutput,
         doc: "Doc",
+        ops: "Ops",
         on_command_done: Optional[
             Callable[[int], Union[None, Awaitable[None]]]
         ] = None,
@@ -865,8 +913,14 @@ class GrblSerialDriver(Driver):
         mapping = encoded.op_map.machine_code_to_op if encoded.op_map else None
         gcode_lines = encoded.text.splitlines()
 
+        command_times = ops.estimate_command_times(
+            default_feed_rate=self._machine.max_cut_speed,
+            default_rapid_rate=self._machine.max_travel_speed,
+            acceleration=self._machine.acceleration,
+        )
+
         try:
-            await self._stream_gcode(gcode_lines, mapping)
+            await self._stream_gcode(gcode_lines, mapping, command_times)
         except DeviceConnectionError as e:
             # Catch the device error here to prevent it from propagating
             # up and tearing down the connection task. The error has

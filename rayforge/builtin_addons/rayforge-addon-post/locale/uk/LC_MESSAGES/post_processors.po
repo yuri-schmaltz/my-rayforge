@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-10 23:41+0200\n"
+"POT-Creation-Date: 2026-07-15 21:39+0200\n"
 "PO-Revision-Date: 2026-03-18 23:38+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -64,6 +64,10 @@ msgstr "Змінити відстань в'їзду"
 #: post_processors/widgets/lead_in_out_widget.py
 msgid "Change Lead-Out Distance"
 msgstr "Змінити відстань виїзду"
+
+#: post_processors/widgets/overscan_widget.py
+msgid "This machine adds overscan automatically; the setting has no effect."
+msgstr "Ця машина додає перебіг автоматично; налаштування не має ефекту."
 
 #: post_processors/widgets/overscan_widget.py
 msgid "Overscan Distance"
@@ -204,49 +208,19 @@ msgid "Minimizes travel distance by reordering segments."
 msgstr "Мінімізує відстань переміщення шляхом зміни порядку сегментів."
 
 #: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing workpieces..."
-msgstr "Аналіз деталей..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Optimizing workpiece order..."
-msgstr "Оптимізація порядку деталей..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Applying 2-opt refinement..."
-msgstr "Застосування 2-opt уточнення..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized workpieces..."
-msgstr "Повторна збірка оптимізованих деталей..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Workpiece optimization complete"
-msgstr "Оптимізація деталей завершена"
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Preprocessing for optimization..."
-msgstr "Попередня обробка для оптимізації..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Analyzing and bucketing path segments..."
-msgstr "Аналіз та групування сегментів контуру..."
-
-#: post_processors/transformers/optimize_transformer.py
-#, python-brace-format
-msgid "Optimizing segment {i}/{total}..."
-msgstr "Оптимізація сегмента {i}/{total}..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Finding nearest paths..."
-msgstr "Пошук найближчих контурів..."
-
-#: post_processors/transformers/optimize_transformer.py
-msgid "Reassembling optimized paths..."
-msgstr "Повторна збірка оптимізованих контурів..."
-
-#: post_processors/transformers/optimize_transformer.py
 msgid "Optimization complete"
 msgstr "Оптимізація завершена"
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid "Bidirectional Scan Offset"
+msgstr "Двоспрямований зсув сканування"
+
+#: post_processors/transformers/bidir_scan_offset_transformer.py
+msgid ""
+"Shifts right-to-left raster passes along X to correct scan-direction skew."
+msgstr ""
+"Зміщує растрові проходи справа-наліво вздовж X для виправлення перекосу "
+"напрямку сканування."
 
 #: post_processors/transformers/smooth_transformer.py
 msgid "Smooth Path"

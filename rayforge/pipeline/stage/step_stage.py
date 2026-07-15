@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple
 
 from blinker import Signal
-from raygeo import Geometry
+from raygeo.geo import Geometry
 
 from ...shared.tasker.task import Task
 from ...shared.util.size import sizes_are_close
@@ -146,12 +146,20 @@ class StepPipelineStage(PipelineStage):
             self._artifact_manager.release_handle(handle)
 
         task_status = task.get_status()
-        logger.debug(f"[{ledger_key}] Task status is '{task_status}'.")
+        is_current = self._artifact_manager.is_generation_current(
+            ledger_key, task_generation_id
+        )
+        logger.debug(
+            f"[{ledger_key}] Task status is '{task_status}', "
+            f"is_current={is_current}."
+        )
 
         if task_status == "canceled":
             with self._artifact_manager.report_cancellation(
                 ledger_key, task_generation_id
             ):
+                if is_current:
+                    self._emit_node_state(ledger_key, NodeState.DIRTY)
                 self.generation_finished.send(
                     self, step=step, generation_id=task_generation_id
                 )
@@ -172,7 +180,8 @@ class StepPipelineStage(PipelineStage):
                     self, step=step, generation_id=task_generation_id
                 )
         else:
-            self._emit_node_state(ledger_key, NodeState.ERROR)
+            if is_current:
+                self._emit_node_state(ledger_key, NodeState.ERROR)
             with self._artifact_manager.report_failure(
                 ledger_key, task_generation_id
             ):
@@ -217,7 +226,6 @@ class StepPipelineStage(PipelineStage):
                     )
 
         ledger_key = ArtifactKey.for_step(step.uid)
-        self._emit_node_state(ledger_key, NodeState.PROCESSING)
 
         from ..stage.step_runner import make_step_artifact_in_subprocess
 
@@ -248,6 +256,8 @@ class StepPipelineStage(PipelineStage):
             ),
         )
         self._retained_handles_by_task[task.id] = retained_handles
+
+        self._emit_node_state(ledger_key, NodeState.PROCESSING)
 
     def get_estimate(self, step_uid: StepKey) -> Optional[float]:
         """Retrieves a cached time estimate if available."""

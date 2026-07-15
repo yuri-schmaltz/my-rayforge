@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rayforge\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-14 16:35+0200\n"
+"POT-Creation-Date: 2026-07-16 00:05+0200\n"
 "PO-Revision-Date: 2025-07-13 11:49+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: Chinese (Simplified)\n"
@@ -216,6 +216,31 @@ msgstr "串口不能为空。"
 #: rayforge/core/varset/serialportvar.py
 msgid "Serial Port"
 msgstr "串口"
+
+#: rayforge/core/cut_side.py
+msgid "Centerline"
+msgstr "中心线"
+
+#: rayforge/core/cut_side.py
+msgid "Inside"
+msgstr "内部"
+
+#: rayforge/core/cut_side.py
+msgid "Outside"
+msgstr "外部"
+
+#: rayforge/core/cut_side.py
+msgid "Inside-Outside"
+msgstr "内-外"
+
+#: rayforge/core/cut_side.py
+msgid "Outside-Inside"
+msgstr "外-内"
+
+#: rayforge/core/capability.py rayforge/machine/models/laser.py
+#: rayforge/ui_gtk/machine/laser_control_widget.py
+msgid "Laser Head"
+msgstr "激光头"
 
 #: rayforge/core/capability.py rayforge/ui_gtk/main_menu.py
 #: rayforge/ui_gtk/doceditor/asset_browser.py
@@ -458,6 +483,7 @@ msgstr "通过Telnet连接的Smoothieware"
 #: rayforge/machine/driver/smoothie.py
 #: rayforge/machine/driver/octoprint/octoprint_driver.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Machine Coordinates (G53)"
 msgstr "机器坐标（G53）"
@@ -490,6 +516,7 @@ msgstr "设备的IP地址或主机名"
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port"
 msgstr "端口"
 
@@ -657,12 +684,14 @@ msgstr "通过串行连接的Marlin固件"
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Serial port for the device"
 msgstr "设备的串口"
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port must be configured."
 msgstr "必须配置端口。"
 
@@ -712,6 +741,21 @@ msgid ""
 msgstr ""
 "在作业运行时定期查询设备的位置和状态。警告：某些设备在使用此功能时可能无法保"
 "持稳定连接！"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid "Deadlock detection"
+msgstr "死锁检测"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid ""
+"Detect and recover from serial communication deadlocks during jobs. If "
+"disabled, the driver will simply wait for the machine to respond. Disable if "
+"you experience false ALARM:3 errors."
+msgstr ""
+"在作业期间检测并恢复串行通信死锁。如果禁用，驱动程序将仅等待机器响应。如果您"
+"遇到错误的ALARM:3错误，请禁用此功能。"
 
 #: rayforge/machine/driver/grbl/grbl_util.py
 msgid "Missing Command Letter"
@@ -1271,16 +1315,19 @@ msgid ""
 msgstr "强制指定RX缓冲区大小（字节）。设置为0以从设备自动检测。"
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown Settings"
 msgstr "未知设置"
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Settings reported by the device not in the standard list."
 msgstr "设备报告的设置不在标准列表中。"
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown setting from device"
 msgstr "来自设备的未知设置"
@@ -1296,6 +1343,18 @@ msgid ""
 "Laser mode is not enabled ($32=0). Enable it for best results with laser "
 "cutters."
 msgstr "激光模式未启用（$32=0）。建议启用以获得最佳激光切割效果。"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL (Serial Simple)"
+msgstr "GRBL（简易串口）"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL serial with simple ping-pong protocol (no buffer counting)"
+msgstr "采用简单乒乓协议的GRBL串口（无缓冲计数）"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "Baudrate must be configured."
+msgstr "必须配置波特率。"
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "GRBL (Network)"
@@ -1320,6 +1379,14 @@ msgstr "WebSocket端口"
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "The WebSocket port for the device"
 msgstr "设备的WebSocket端口"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "Protocol variant"
+msgstr "协议变体"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "ESP3D or Longer GRBL variant"
+msgstr "ESP3D或Longer GRBL变体"
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Host is not configured. Please set a valid IP address or hostname."
@@ -1349,16 +1416,63 @@ msgstr "机器范围"
 msgid "{name} (device dialect)"
 msgstr "{name}（设备方言）"
 
+#: rayforge/machine/device/lightburn_importer.py
+msgid "• Camera calibration: matrix + distortion found"
+msgstr "• 相机标定：矩阵+畸变已找到"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "(no fields mapped)"
+msgstr "（未映射字段）"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Device name"
+msgstr "设备名称"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Work area"
+msgstr "工作区域"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Driver"
+msgstr "驱动"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Baud rate"
+msgstr "波特率"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Home on start"
+msgstr "启动时回原点"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Max travel speed"
+msgstr "最大移动速度"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Origin"
+msgstr "原点"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror X"
+msgstr "镜像X"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror Y"
+msgstr "镜像Y"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Camera calibration"
+msgstr "相机标定"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "matrix + distortion imported"
+msgstr "矩阵+畸变已导入"
+
 #: rayforge/machine/models/dialect_manager.py
 #: rayforge/machine/models/machine.py
 #, python-brace-format
 msgid "{label} (for {machine_name})"
 msgstr "{label}（用于{machine_name}）"
-
-#: rayforge/machine/models/laser.py
-#: rayforge/ui_gtk/machine/laser_control_widget.py
-msgid "Laser Head"
-msgstr "激光头"
 
 #: rayforge/machine/models/machine.py
 msgid "Default Machine"
@@ -1581,6 +1695,30 @@ msgid "Dwell"
 msgstr "停留"
 
 #: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CW)"
+msgstr "主轴开启 (CW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CCW)"
+msgstr "主轴开启 (CCW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle Off"
+msgstr "主轴关闭"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Flood"
+msgstr "冷却液喷淋"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Mist"
+msgstr "冷却液雾化"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Off"
+msgstr "冷却液关闭"
+
+#: rayforge/machine/models/dialect/base.py
 msgid "Scripts"
 msgstr "脚本"
 
@@ -1769,6 +1907,7 @@ msgstr "此机器配置文件及其所有设置将被永久删除。此操作无
 #: rayforge/ui_gtk/machine/hook_list.py rayforge/ui_gtk/machine/gcode_editor.py
 #: rayforge/ui_gtk/machine/wcs_dialog.py
 #: rayforge/ui_gtk/machine/maintenance_page.py
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
 #: rayforge/ui_gtk/machine/dialect_list.py
 #: rayforge/ui_gtk/machine/profile_selector.py
 #: rayforge/ui_gtk/machine/template_selector.py
@@ -2044,6 +2183,34 @@ msgid "Categories"
 msgstr "类别"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "English"
+msgstr "英语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "German"
+msgstr "德语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Spanish"
+msgstr "西班牙语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "French"
+msgstr "法语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Portuguese"
+msgstr "葡萄牙语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Ukrainian"
+msgstr "乌克兰语"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Chinese (Simplified)"
+msgstr "简体中文"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/about.py
 msgid "System"
 msgstr "系统"
@@ -2078,6 +2245,10 @@ msgid "Layer Color"
 msgstr "图层颜色"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "System Default"
+msgstr "系统默认"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/machine/rotary_module_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
 #: rayforge/ui_gtk/machine/general_preferences_page.py
@@ -2097,6 +2268,14 @@ msgstr "与应用程序外观和感觉相关的设置。"
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Theme"
 msgstr "主题"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Language"
+msgstr "语言"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "The application language. Changes require a restart."
+msgstr "应用程序语言。更改需要重启。"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Operation Colors"
@@ -2196,6 +2375,25 @@ msgstr ""
 "<a href=\"https://rayforge.org/docs/general-info/usage-tracking\">了解更多</"
 "a>关于使用跟踪和隐私的信息。"
 
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Restart required"
+msgstr "需要重启"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid ""
+"The language will take effect after restarting Rayforge. Would you like to "
+"restart now?"
+msgstr "语言将在重启 Rayforge 后生效。是否现在重启？"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
+msgid "_Cancel"
+msgstr "取消(_C)"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "_Restart"
+msgstr "重启(_R)"
+
 #: rayforge/ui_gtk/canvas2d/elements/tab_handle.py
 msgid "Move Tab"
 msgstr "移动标签"
@@ -2277,6 +2475,70 @@ msgstr "添加毛坯"
 #: rayforge/ui_gtk/actions.py
 msgid "Auto Layout (Simple)"
 msgstr "自动布局（简单）"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#, python-brace-format
+msgid "{camera_name} - Lens Calibration"
+msgstr "{camera_name} - 镜头校准"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens Calibration"
+msgstr "镜头校准"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid ""
+"Correct lens distortion for straighter lines. Use the wizard for automatic "
+"calibration or adjust manually."
+msgstr "校正镜头畸变以获得更直的线条。使用向导进行自动校准或手动调整。"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Wizard"
+msgstr "向导"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 1 (k1)"
+msgstr "径向 1 (k1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order radial distortion"
+msgstr "一阶径向畸变"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 2 (k2)"
+msgstr "径向 2 (k2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order radial distortion"
+msgstr "二阶径向畸变"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Radial 3 (k3)"
+msgstr "径向 3 (k3)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Third order radial distortion"
+msgstr "三阶径向畸变"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 1 (p1)"
+msgstr "切向 1 (p1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order tangential distortion"
+msgstr "一阶切向畸变"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 2 (p2)"
+msgstr "切向 2 (p2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order tangential distortion"
+msgstr "二阶切向畸变"
 
 #: rayforge/ui_gtk/camera/selection_dialog.py
 msgid "Please select an available camera device"
@@ -2368,12 +2630,36 @@ msgid "Adjust brightness, contrast, white balance, and noise"
 msgstr "调整亮度、对比度、白平衡和噪点"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Correct lens distortion for straighter lines"
+msgstr "校正镜头畸变以获得更直的线条"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Image Alignment"
 msgstr "图像对齐"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Calibrate camera position and perspective"
 msgstr "校准摄像头位置和透视"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration completed"
+msgstr "镜头校准完成"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration not yet performed"
+msgstr "镜头校准尚未执行"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment completed"
+msgstr "图像对齐完成"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment must be redone after lens calibration was updated"
+msgstr "镜头校准更新后必须重新进行图像对齐"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment not yet performed"
+msgstr "图像对齐尚未执行"
 
 #: rayforge/ui_gtk/camera/calibration_wizard.py
 msgid "Waiting for camera..."
@@ -2717,64 +3003,6 @@ msgstr "透明度"
 #: rayforge/ui_gtk/camera/image_settings_dialog.py
 msgid "Transparency on the worksurface"
 msgstr "工作台上的透明度"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Lens Calibration"
-msgstr "镜头校准"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid ""
-"Correct lens distortion for straighter lines. Use the wizard for automatic "
-"calibration or adjust manually."
-msgstr "校正镜头畸变以获得更直的线条。使用向导进行自动校准或手动调整。"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Wizard"
-msgstr "向导"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 1 (k1)"
-msgstr "径向 1 (k1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order radial distortion"
-msgstr "一阶径向畸变"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 2 (k2)"
-msgstr "径向 2 (k2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order radial distortion"
-msgstr "二阶径向畸变"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Radial 3 (k3)"
-msgstr "径向 3 (k3)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Third order radial distortion"
-msgstr "三阶径向畸变"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 1 (p1)"
-msgstr "切向 1 (p1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order tangential distortion"
-msgstr "一阶切向畸变"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 2 (p2)"
-msgstr "切向 2 (p2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order tangential distortion"
-msgstr "二阶切向畸变"
 
 #: rayforge/ui_gtk/camera/camera_preferences_page.py
 #, python-brace-format
@@ -3172,6 +3400,10 @@ msgid "Device Profile archives"
 msgstr "设备配置文件归档"
 
 #: rayforge/ui_gtk/machine/profile_importer.py
+msgid "LightBurn device profiles"
+msgstr "LightBurn设备配置文件"
+
+#: rayforge/ui_gtk/machine/profile_importer.py
 msgid "All files"
 msgstr "所有文件"
 
@@ -3397,6 +3629,28 @@ msgstr "无法连接：正被'{machine}'使用"
 #: rayforge/ui_gtk/machine/device_settings_page.py
 msgid "Machine activated."
 msgstr "机器已激活。"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import LightBurn profile?"
+msgstr "导入LightBurn配置？"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid ""
+"LightBurn device profiles contain only basic machine settings. The imported "
+"profile may be incomplete. After import, please review and configure any "
+"additional settings such as laser heads, homing, end stops, G-code dialect, "
+"macros, and rotary modules."
+msgstr ""
+"LightBurn设备配置文件仅包含基本机器设置。导入的配置可能不完整。导入后，请检查"
+"并配置任何其他设置，如激光头、回原点、限位开关、G代码方言、宏和旋转模块。"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import Anyway"
+msgstr "仍然导入"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "The following values will be imported:"
+msgstr "将导入以下值："
 
 #: rayforge/ui_gtk/machine/hooks_macros_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
@@ -4884,10 +5138,6 @@ msgstr "选择"
 msgid "Job Sanity Check"
 msgstr "作业检查"
 
-#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
-msgid "_Cancel"
-msgstr "取消(_C)"
-
 #: rayforge/ui_gtk/shared/sanity_check_dialog.py
 msgid "_Proceed"
 msgstr "_继续"
@@ -5546,6 +5796,12 @@ msgstr "启用 {}"
 msgid "Toggle {}"
 msgstr "切换 {}"
 
+#: rayforge/ui_gtk/doceditor/step_settings/base.py
+#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
+#, python-brace-format
+msgid "Change {key}"
+msgstr "更改{key}"
+
 #: rayforge/ui_gtk/doceditor/material_library_list.py
 msgid "1 material"
 msgstr "1 种材料"
@@ -5615,11 +5871,6 @@ msgstr "此操作的功率、速度和激光头选择。"
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "Change Laser"
 msgstr "更改激光"
-
-#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
-#, python-brace-format
-msgid "Change {key}"
-msgstr "更改{key}"
 
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "No post-processing options available for this step."
@@ -5876,6 +6127,10 @@ msgstr "移动到选择或工作区域的中心"
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Move to Upper-Right of Selection or Workarea"
 msgstr "移动到选择或工作区域的右上角"
+
+#: rayforge/ui_gtk/doceditor/bottom_panel.py
+msgid "Move to Origin of Active WCS"
+msgstr "移动到活动WCS原点"
 
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Zero Axes"
@@ -6365,6 +6620,10 @@ msgid "Graphics & Imaging"
 msgstr "图形与成像"
 
 #: rayforge/ui_gtk/about.py
+msgid "Geometry"
+msgstr "几何"
+
+#: rayforge/ui_gtk/about.py
 msgid "File Formats & Communication"
 msgstr "文件格式与通信"
 
@@ -6621,27 +6880,6 @@ msgid ""
 "configs."
 msgstr "自定义配置目录的路径。适用于使用独立配置进行测试。"
 
-#: rayforge/pipeline/producer/placeholder.py
-msgid "Missing Producer"
-msgstr "缺少生产者"
-
-#: rayforge/pipeline/producer/placeholder.py
-#: rayforge/pipeline/transformer/placeholder.py
-msgid "Missing: {}"
-msgstr "缺失：{}"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Centerline"
-msgstr "中心线"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Inside"
-msgstr "内部"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Outside"
-msgstr "外部"
-
 #: rayforge/pipeline/stage/step_runner.py
 msgid "Assembling step..."
 msgstr "正在组装步骤..."
@@ -6661,6 +6899,34 @@ msgstr "正在存储最终作业制品..."
 #: rayforge/pipeline/stage/job_runner.py rayforge/pipeline/stage/job_compute.py
 msgid "Job finalization complete"
 msgstr "作业定稿完成"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable Power"
+msgstr "可变功率"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant Power"
+msgstr "恒定功率"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Dither"
+msgstr "抖动"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multiple Depths"
+msgstr "多深度"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable"
+msgstr "可变"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant"
+msgstr "恒定"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multi-Pass"
+msgstr "多遍"
 
 #: rayforge/pipeline/stage/workpiece_compute.py
 #, python-brace-format
@@ -6714,6 +6980,10 @@ msgstr "正在渲染纹理..."
 #: rayforge/pipeline/view/view_compute.py
 msgid "Rendering complete."
 msgstr "渲染完成。"
+
+#: rayforge/pipeline/transformer/placeholder.py
+msgid "Missing: {}"
+msgstr "缺失：{}"
 
 #: rayforge/pipeline/transformer/placeholder.py
 msgid "This transformer is not available."
@@ -7139,3 +7409,19 @@ msgstr "无效或不支持的BMP数据。"
 #: rayforge/image/ruida/importer.py
 msgid "File contains no vector commands."
 msgstr "文件不包含矢量命令。"
+
+#: rayforge/image/dither.py
+msgid "Floyd Steinberg"
+msgstr "Floyd Steinberg"
+
+#: rayforge/image/dither.py
+msgid "Bayer 2"
+msgstr "Bayer 2"
+
+#: rayforge/image/dither.py
+msgid "Bayer 4"
+msgstr "Bayer 4"
+
+#: rayforge/image/dither.py
+msgid "Bayer 8"
+msgstr "Bayer 8"

@@ -42,12 +42,18 @@ TARGETS = {
     "machine-settings:laser": "machine_settings_laser",
     "machine-settings:rotary-module": "machine_settings_rotary_module",
     "machine-settings:camera": "machine_settings_camera",
+    "machine-settings:camera:image-settings": "machine_settings_camera",
+    "machine-settings:camera:lens-calibration": "machine_settings_camera",
+    "machine-settings:camera:lens-calibration:wizard-card": "machine_settings_camera",
+    "machine-settings:camera:lens-calibration:wizard-capture": "machine_settings_camera",
+    "machine-settings:camera:image-alignment": "machine_settings_camera",
     "machine-settings:maintenance": "machine_settings_maintenance",
     "machine-settings:nogo-zones": "machine_settings_nogo_zones",
     "main:standard": "main_standard",
     "main:3d": "main_3d",
     "main:3d-rotary": "main_3d_rotary",
     "material-test": "material_test",
+    "operations:wavefront": "wavefront",
     "recipe-editor:general": "recipe_editor_general",
     "recipe-editor:applicability": "recipe_editor_applicability",
     "recipe-editor:settings": "recipe_editor_settings",
@@ -82,16 +88,15 @@ def get_matching_targets(target: str) -> list[str]:
                 if fnmatch.fnmatch(t, target.replace("*", ":*"))
             ]
         return matches
+    if target in TARGETS:
+        return [target]
     children = [t for t in TARGETS if t.startswith(target + ":")]
     if children:
-        leaves = [
+        return [
             t
             for t in children
             if not any(other.startswith(t + ":") for other in TARGETS)
         ]
-        return leaves
-    if target in TARGETS:
-        return [target]
     return []
 
 

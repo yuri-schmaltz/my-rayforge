@@ -1,26 +1,14 @@
 from __future__ import annotations
 
-import io
 import logging
 from gettext import gettext as _
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from xml.etree import ElementTree as ET
 
-from raygeo import Geometry
+from raygeo.geo import Geometry, Matrix
 from raygeo.geo.types import Rect
-from svgelements import (
-    SVG,
-    Arc,
-    Close,
-    CubicBezier,
-    Line,
-    Move,
-    QuadraticBezier,
-)
-from svgelements import (
-    Path as SvgPath,
-)
+from raygeo.svg import extract_svg_metadata, svg_string_to_geometry
 
 from ...core.source_asset import SourceAsset
 from ...core.vectorization_spec import PassthroughSpec
@@ -42,9 +30,6 @@ from .svgutil import (
 
 logger = logging.getLogger(__name__)
 
-ViewBoxType = Optional[Rect]
-ParsingFactsType = Optional[Tuple[float, float, ViewBoxType]]
-
 
 class SvgImporterBase(Importer):
     """
@@ -58,7 +43,6 @@ class SvgImporterBase(Importer):
     def __init__(self, data: bytes, source_file: Optional[Path] = None):
         super().__init__(data, source_file)
         self.trimmed_data: Optional[bytes] = None
-        self.svg: Optional[SVG] = None
 
     def _get_ppi(self) -> float:
         if self._vectorization_spec and hasattr(
@@ -124,8 +108,8 @@ class SvgImporterBase(Importer):
         # Get pixel dimensions for rendering from the parsed SVG object,
         # which is based on the trimmed_data. This is the authoritative source
         # for the trimmed pixel dimensions.
-        if self.svg:
-            facts = self._get_svg_parsing_facts(self.svg)
+        if self.trimmed_data:
+            facts = self._get_svg_parsing_facts(self.trimmed_data)
             if facts:
                 w_px_float, h_px_float, viewbox = facts
                 source.width_px = int(w_px_float)
@@ -164,7 +148,7 @@ class SvgImporterBase(Importer):
                     pass
 
             source.metadata.update(metadata)
-        except (ValueError, ET.ParseError):
+        except ValueError:
             logger.warning("Could not calculate SVG metadata.", exc_info=True)
             self.add_warning(_("Could not calculate SVG metadata."))
 
@@ -174,7 +158,6 @@ class SvgImporterBase(Importer):
         self,
     ) -> Optional[
         Tuple[
-            SVG,
             Rect,
             float,
             Optional[Rect],
@@ -183,7 +166,7 @@ class SvgImporterBase(Importer):
     ]:
         """
         Common parsing logic. Returns:
-        (svg_object, document_bounds, unit_to_mm, untrimmed_document_bounds,
+        (document_bounds, unit_to_mm, untrimmed_document_bounds,
          world_frame_of_reference)
         or None if parsing fails.
 
@@ -196,23 +179,25 @@ class SvgImporterBase(Importer):
             self.add_error(_("Failed to prepare trimmed SVG data."))
             return None
 
-        svg = self._parse_svg_data(self.trimmed_data)
-        if svg is None:
-            # Error already added in _parse_svg_data
-            return None
-        self.svg = svg
-
-        # Check dimensions
-        has_explicit_dims = svg.values is not None and (
-            "width" in svg.values or "height" in svg.values
+        # Check dimensions: if no viewBox and no explicit width/height,
+        # verify there's actual geometry.
+        try:
+            check_meta = extract_svg_metadata(
+                self.trimmed_data.decode("utf-8")
+            )
+        except ValueError:
+            check_meta = None
+        has_viewbox = check_meta is not None and check_meta.viewbox is not None
+        has_explicit_dims = check_meta is not None and (
+            check_meta.width is not None or check_meta.height is not None
         )
-        if not has_explicit_dims:
-            geo = self._convert_svg_to_geometry(svg)
+        if not has_viewbox and not has_explicit_dims:
+            geo = self._convert_svg_to_geometry(self.trimmed_data)
             if geo.is_empty():
                 self.add_error(_("SVG contains no geometry or dimensions."))
                 return None
 
-        facts = self._get_svg_parsing_facts(svg)
+        facts = self._get_svg_parsing_facts(self.trimmed_data)
         if not facts:
             self.add_error(_("Could not determine valid SVG dimensions."))
             return None
@@ -242,25 +227,23 @@ class SvgImporterBase(Importer):
         # First, try to get the authoritative untrimmed viewbox by parsing
         # the original, untrimmed SVG data. This is the correct frame of
         # reference for positioning.
-        untrimmed_svg_for_vb = self._parse_svg_data(self.raw_data)
-        if untrimmed_svg_for_vb:
-            untrimmed_facts = self._get_svg_parsing_facts(untrimmed_svg_for_vb)
-            if untrimmed_facts:
-                _w, _h, untrimmed_vb = untrimmed_facts
-                if untrimmed_vb:
-                    untrimmed_document_bounds = untrimmed_vb
-                    logger.debug(f"Found untrimmed viewBox: {untrimmed_vb}")
-                else:
-                    # Fallback for SVGs without a viewbox, use pixel dims
-                    untrimmed_document_bounds = (
-                        0.0,
-                        0.0,
-                        float(_w),
-                        float(_h),
-                    )
-                logger.debug(
-                    f"Using untrimmed viewBox: {untrimmed_document_bounds}"
+        untrimmed_facts = self._get_svg_parsing_facts(self.raw_data)
+        if untrimmed_facts:
+            _w, _h, untrimmed_vb = untrimmed_facts
+            if untrimmed_vb:
+                untrimmed_document_bounds = untrimmed_vb
+                logger.debug(f"Found untrimmed viewBox: {untrimmed_vb}")
+            else:
+                # Fallback for SVGs without a viewbox, use pixel dims
+                untrimmed_document_bounds = (
+                    0.0,
+                    0.0,
+                    float(_w),
+                    float(_h),
                 )
+            logger.debug(
+                f"Using untrimmed viewBox: {untrimmed_document_bounds}"
+            )
 
         # If parsing failed, fall back to calculating from physical size
         if not untrimmed_document_bounds:
@@ -290,7 +273,6 @@ class SvgImporterBase(Importer):
         world_frame = (x_mm, y_mm, w_mm, h_mm)
 
         return (
-            svg,
             document_bounds,
             unit_to_mm,
             untrimmed_document_bounds,
@@ -302,18 +284,16 @@ class SvgImporterBase(Importer):
     def _analytical_trim(self, data: bytes) -> bytes:
         """Trims the SVG using vector geometry bounds."""
         try:
-            svg = SVG.parse(io.BytesIO(data), ppi=self._get_ppi())
             root = ET.fromstring(data)
 
             # 1. Get geometry bounds in the SVG's native user coordinate
             # system.
-            # This requires converting from svgelements' pixel-based coords.
-            geo_px = self._convert_svg_to_geometry(svg)
-            if geo_px.is_empty():
+            geo = self._convert_svg_to_geometry(data)
+            if geo.is_empty():
                 return data
 
             # Get pixel and user unit dimensions to calculate the scale
-            facts = self._get_svg_parsing_facts(svg)
+            facts = self._get_svg_parsing_facts(data)
             if not facts:
                 return data
             orig_w_px, orig_h_px, viewbox = facts
@@ -328,19 +308,7 @@ class SvgImporterBase(Importer):
                 f"VB=({vb_x}, {vb_y}, {orig_vb_w}, {orig_vb_h})"
             )
 
-            scale_x = orig_vb_w / orig_w_px if orig_w_px > 0 else 1.0
-            scale_y = orig_vb_h / orig_h_px if orig_h_px > 0 else 1.0
-
-            from ...core.matrix import Matrix
-
-            scale_matrix = Matrix.scale(scale_x, scale_y)
-            translate_matrix = Matrix.translation(vb_x, vb_y)
-            final_transform = translate_matrix @ scale_matrix
-
-            geo_user_units = geo_px.copy()
-            geo_user_units.transform(final_transform.to_4x4_numpy())
-
-            min_x, min_y, max_x, max_y = geo_user_units.rect()
+            min_x, min_y, max_x, max_y = geo.rect()
 
             logger.debug(
                 f"_analytical_trim: Content Bounds (User Units): "
@@ -383,139 +351,40 @@ class SvgImporterBase(Importer):
 
             return ET.tostring(root, encoding="utf-8")
 
-        except (ET.ParseError, ValueError, TypeError) as e:
-            # Catch specific, expected errors instead of a generic Exception.
+        except (ValueError, ET.ParseError) as e:
             logger.warning(f"Analytical trim failed: {e}")
             self.add_warning(f"Optimization (trimming) failed: {e}")
             return data
 
-    def _parse_svg_data(self, data: bytes) -> Optional[SVG]:
+    def _get_svg_parsing_facts(
+        self, data: bytes
+    ) -> Optional[Tuple[float, float, Optional[Rect]]]:
         try:
-            svg_stream = io.BytesIO(data)
-            return SVG.parse(svg_stream, ppi=self._get_ppi())
-        except (ET.ParseError, ValueError, TypeError) as e:
-            logger.error(f"Failed to parse SVG for direct import: {e}")
-            self.add_error(_(f"Failed to parse SVG structure: {e}"))
+            meta = extract_svg_metadata(data.decode())
+        except ValueError:
             return None
 
-    def _get_svg_parsing_facts(self, svg: SVG) -> ParsingFactsType:
-        if svg.width is None or svg.height is None:
+        ppi = self._get_ppi()
+        w_px = meta.width_px(ppi)
+        h_px = meta.height_px(ppi)
+        if w_px is None or h_px is None:
+            return None
+        if w_px <= 1e-9 or h_px <= 1e-9:
             return None
 
-        # Robustly get pixel dimensions, as svgelements can return a float
-        width_px: float = float(getattr(svg.width, "px", svg.width))
-        height_px: float = float(getattr(svg.height, "px", svg.height))
-
-        if width_px <= 1e-9 or height_px <= 1e-9:
-            return None
-
-        viewbox: ViewBoxType = None
-        if (
-            svg.viewbox
-            and svg.viewbox.x is not None
-            and svg.viewbox.y is not None
-            and svg.viewbox.width is not None
-            and svg.viewbox.height is not None
-        ):
-            viewbox = (
-                svg.viewbox.x,
-                svg.viewbox.y,
-                svg.viewbox.width,
-                svg.viewbox.height,
-            )
-
-        return width_px, height_px, viewbox
+        return w_px, h_px, meta.viewbox
 
     def _convert_svg_to_geometry(
-        self, svg: SVG, translate_to_origin: bool = False
+        self, data: bytes, translate_to_origin: bool = False
     ) -> Geometry:
-        geo = Geometry()
-        for shape in svg.elements():
-            try:
-                path = SvgPath(shape)
-                path.reify()
-                self._add_path_to_geometry(path, geo)
-            except (AttributeError, TypeError):
-                continue
+        try:
+            geo = svg_string_to_geometry(data.decode("utf-8"), 1.0, 1.0)
+        except ValueError:
+            geo = Geometry()
 
         if translate_to_origin and not geo.is_empty():
             min_x, min_y, _, _ = geo.rect()
-            from ...core.matrix import Matrix
-
             translate_matrix = Matrix.translation(-min_x, -min_y)
-            geo.transform(translate_matrix.to_4x4_numpy())
+            geo.transform(translate_matrix)
 
         return geo
-
-    def _add_path_to_geometry(self, path: SvgPath, geo: Geometry) -> None:
-        for seg in path:
-            end_pt = (0.0, 0.0)
-            if not isinstance(seg, Close):
-                if seg.end is None or seg.end.x is None or seg.end.y is None:
-                    continue
-                end_pt = (float(seg.end.x), float(seg.end.y))
-
-            if isinstance(seg, Move):
-                geo.move_to(end_pt[0], end_pt[1])
-            elif isinstance(seg, Line):
-                geo.line_to(end_pt[0], end_pt[1])
-            elif isinstance(seg, Close):
-                geo.close_path()
-            elif isinstance(seg, CubicBezier):
-                if (
-                    seg.control1 is not None
-                    and seg.control1.x is not None
-                    and seg.control1.y is not None
-                    and seg.control2 is not None
-                    and seg.control2.x is not None
-                    and seg.control2.y is not None
-                ):
-                    c1 = (float(seg.control1.x), float(seg.control1.y))
-                    c2 = (float(seg.control2.x), float(seg.control2.y))
-                    geo.bezier_to(
-                        end_pt[0], end_pt[1], c1[0], c1[1], c2[0], c2[1]
-                    )
-                else:
-                    geo.line_to(end_pt[0], end_pt[1])
-            elif isinstance(seg, QuadraticBezier):
-                if (
-                    seg.start is not None
-                    and seg.start.x is not None
-                    and seg.start.y is not None
-                    and seg.control is not None
-                    and seg.control.x is not None
-                    and seg.control.y is not None
-                ):
-                    sx, sy = float(seg.start.x), float(seg.start.y)
-                    cx, cy = float(seg.control.x), float(seg.control.y)
-                    ex, ey = end_pt
-                    c1x = sx + (2.0 / 3.0) * (cx - sx)
-                    c1y = sy + (2.0 / 3.0) * (cy - sy)
-                    c2x = ex + (2.0 / 3.0) * (cx - ex)
-                    c2y = ey + (2.0 / 3.0) * (cy - ey)
-                    geo.bezier_to(ex, ey, c1x, c1y, c2x, c2y)
-                else:
-                    geo.line_to(end_pt[0], end_pt[1])
-            elif isinstance(seg, Arc):
-                for cubic in seg.as_cubic_curves():
-                    if (
-                        cubic.end is not None
-                        and cubic.end.x is not None
-                        and cubic.end.y is not None
-                        and cubic.control1 is not None
-                        and cubic.control1.x is not None
-                        and cubic.control1.y is not None
-                        and cubic.control2 is not None
-                        and cubic.control2.x is not None
-                        and cubic.control2.y is not None
-                    ):
-                        e = (float(cubic.end.x), float(cubic.end.y))
-                        c1 = (float(cubic.control1.x), float(cubic.control1.y))
-                        c2 = (float(cubic.control2.x), float(cubic.control2.y))
-                        geo.bezier_to(e[0], e[1], c1[0], c1[1], c2[0], c2[1])
-                    elif (
-                        cubic.end is not None
-                        and cubic.end.x is not None
-                        and cubic.end.y is not None
-                    ):
-                        geo.line_to(float(cubic.end.x), float(cubic.end.y))

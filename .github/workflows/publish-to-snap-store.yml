@@ -29,20 +29,15 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Checkout raygeo source
-        uses: actions/checkout@v6
-        with:
-          repository: barebaric/raygeo
-          path: external/raygeo
-
       - name: Install Pixi
         uses: prefix-dev/setup-pixi@v0.9.4
         with:
           pixi-version: latest
+          frozen: true
           environments: build
 
       - name: Compile Translations
-        run: pixi run -e build compile-translations
+        run: pixi run --frozen -e build compile-translations
 
       - name: Build snap
         uses: snapcore/action-build@v1

@@ -10,7 +10,7 @@ import logging
 import os
 import threading
 import traceback
-from multiprocessing import Manager, get_context
+from multiprocessing import get_context
 from multiprocessing.managers import DictProxy
 from multiprocessing.process import BaseProcess
 from multiprocessing.queues import Queue as MpQueue
@@ -75,8 +75,12 @@ def _worker_main_loop(
     result_queue.
     """
     worker_logger = logging.getLogger(__name__)
+    try:
+        state_keys = list(shared_state.keys())
+    except OSError:
+        state_keys = "<unavailable>"
     worker_logger.debug(
-        f"Worker {os.getpid()} shared_state keys: {list(shared_state.keys())}"
+        f"Worker {os.getpid()} shared_state keys: {state_keys}"
     )
     # Set up a null translator for gettext in the subprocess.
     if not hasattr(builtins, "_"):
@@ -144,16 +148,64 @@ def _worker_main_loop(
                     )
                 )
             except (OSError, BrokenPipeError):
-                pass
+                logger.warning(
+                    f"Worker {os.getpid()}: "
+                    f"Failed to send shutdown info via result queue. "
+                    f"Queue may be closed."
+                )
             break
 
         key, task_id, user_func, user_args, user_kwargs = job
         last_task_key = key
+
+        cancel_key = f"cancel:{task_id}"
+        if cancel_key in adoption_signals and adoption_signals[cancel_key]:
+            worker_logger.debug(
+                f"Worker {os.getpid()} skipping cancelled task "
+                f"'{key}' (id: {task_id})."
+            )
+            try:
+                result_queue.put_nowait((key, task_id, "done", None))
+            except (OSError, BrokenPipeError):
+                pass
+            continue
+
         worker_logger.debug(f"Worker {os.getpid()} starting task '{key}'.")
         worker_logger.info(
             f"[DIAGNOSTIC] Worker {os.getpid()} task_id={task_id}, "
             f"key={key}, last_task_key={last_task_key}"
         )
+
+        cancel_key = f"cancel:{task_id}"
+        if cancel_key in adoption_signals:
+            worker_logger.debug(
+                f"Worker {os.getpid()} skipping already-cancelled "
+                f"task '{key}' (id: {task_id})."
+            )
+            try:
+                result_queue.put_nowait((key, task_id, "done", None))
+            except (OSError, BrokenPipeError):
+                pass
+            adoption_signals.pop(cancel_key, None)
+            shared_state.pop(f"_wpool:{os.getpid()}", None)
+            continue
+
+        # Track this task via the DictProxy BEFORE running user_func.
+        # This is the sole mechanism for identifying orphaned tasks when
+        # a worker crashes — it uses the SyncManager's own connection,
+        # which is immune to POSIX semaphore corruption from a crashed
+        # peer's _feed thread. Unlike the result queue, a worker crash
+        # merely closes the DictProxy socket; the shared dict remains
+        # intact and the health check can read the orphaned task info.
+        try:
+            shared_state[f"_wpool:{os.getpid()}"] = (key, task_id)
+        except (OSError, BrokenPipeError):
+            pass
+
+        try:
+            result_queue.put_nowait((key, task_id, "running", os.getpid()))
+        except (OSError, BrokenPipeError):
+            pass
 
         # Wrap the result queue to automatically tag all messages from the
         # proxy with this task's unique key.
@@ -172,6 +224,11 @@ def _worker_main_loop(
             result = user_func(proxy, *user_args, **user_kwargs)
             proxy.flush()  # Ensure the final progress is sent before "done"
             result_queue.put_nowait((key, task_id, "done", result))
+            # Clean up the DictProxy entry ONLY after the result was
+            # successfully sent. If this line is not reached (worker
+            # crashes), the entry remains so the health check can detect
+            # the orphaned task.
+            shared_state.pop(f"_wpool:{os.getpid()}", None)
         except Exception:
             error_info = traceback.format_exc()
             worker_logger.error(
@@ -179,7 +236,16 @@ def _worker_main_loop(
             )
             # Also flush on error to send any last-known state
             proxy.flush()
-            result_queue.put_nowait((key, task_id, "error", error_info))
+            try:
+                result_queue.put_nowait((key, task_id, "error", error_info))
+                # Clean up ONLY after error was successfully reported.
+                # If this raises (worker crashes), entry stays for
+                # health check detection.
+                shared_state.pop(f"_wpool:{os.getpid()}", None)
+            except Exception:
+                # Couldn't send error either. Worker will exit and
+                # the DictProxy entry stays for the health check.
+                raise
         worker_logger.debug(f"Worker {os.getpid()} finished task '{key}'.")
 
 
@@ -207,7 +273,7 @@ class WorkerPoolManager:
         )
 
         self._mp_context = get_context("spawn")
-        self._manager = Manager()
+        self._manager = self._mp_context.Manager()
         self._task_queue: MpQueue = self._mp_context.Queue()
         self._result_queue: MpQueue = self._mp_context.Queue()
         self._adoption_signals = self._manager.dict()
@@ -219,6 +285,10 @@ class WorkerPoolManager:
         self._cancelled_task_ids: Set[int] = set()
         self._lock = threading.Lock()
         self._worker_shutdown_info: dict[int, tuple[int, Any | None]] = {}
+        self._worker_task_map: dict[int, Tuple[Any, int]] = {}
+        self._pid_to_worker: dict[int, BaseProcess] = {}
+        self._health_check_counter = 0
+        self._shutting_down = False
 
         # Signals for the TaskManager to subscribe to
         self.task_event_received = Signal()
@@ -226,8 +296,14 @@ class WorkerPoolManager:
         self.task_failed = Signal()
         self.task_progress_updated = Signal()
         self.task_message_updated = Signal()
+        self.worker_died = Signal()
 
         log_level = logging.getLogger().getEffectiveLevel()
+
+        # Store worker creation params for replacement workers
+        self._log_level = log_level
+        self._initializer = initializer
+        self._initargs = initargs
 
         for _ in range(num_workers):
             process = self._mp_context.Process(
@@ -245,6 +321,8 @@ class WorkerPoolManager:
             )
             self._workers.append(process)
             process.start()
+            assert process.pid is not None
+            self._pid_to_worker[process.pid] = process
 
         self._listener_thread = threading.Thread(
             target=self._result_listener_loop, daemon=True
@@ -320,6 +398,10 @@ class WorkerPoolManager:
         """
         logger.debug("Result listener thread started.")
         while True:
+            self._health_check_counter += 1
+            if self._health_check_counter % 10 == 0:
+                self._check_worker_health()
+
             try:
                 message = self._result_queue.get(timeout=0.1)
             except (EOFError, OSError):
@@ -349,6 +431,17 @@ class WorkerPoolManager:
                     f"Received shutdown info from worker {pid}: "
                     f"last_task={last_task_key}"
                 )
+                continue
+
+            # Track which worker is processing which task via the result
+            # queue. The primary tracking mechanism is the DictProxy
+            # (_wpool:pid), but _worker_task_map serves as a secondary
+            # source for workers that successfully sent "running" before
+            # a potential queue stall or peer crash.
+            if msg_type == "running":
+                pid = value
+                with self._lock:
+                    self._worker_task_map[pid] = (key, task_id)
                 continue
 
             # The 'event' message type is special because it may carry
@@ -405,13 +498,117 @@ class WorkerPoolManager:
                 self.task_message_updated.send(
                     self, key=key, task_id=task_id, message=value
                 )
+
+            # Clean up the worker task mapping when a task finishes.
+            if msg_type in ("done", "error"):
+                with self._lock:
+                    for pid, (k, tid) in list(self._worker_task_map.items()):
+                        if k == key and tid == task_id:
+                            del self._worker_task_map[pid]
+                            break
+
         logger.debug("Result listener thread finished.")
+
+    def _check_worker_health(self):
+        """
+        Check if any workers have died. If so, emit a worker_died
+        signal for orphaned task cleanup and start a replacement worker.
+        """
+        if self._shutting_down:
+            return
+
+        dead_info = []
+        with self._lock:
+            for pid, (key, task_id) in list(self._worker_task_map.items()):
+                worker = self._pid_to_worker.get(pid)
+                if worker is not None:
+                    try:
+                        alive = worker.is_alive()
+                    except ValueError:
+                        alive = False
+                else:
+                    alive = False
+                if not alive:
+                    dead_info.append((pid, key, task_id, worker))
+                    del self._worker_task_map[pid]
+                    if pid in self._pid_to_worker:
+                        del self._pid_to_worker[pid]
+                    try:
+                        if worker is not None:
+                            self._workers.remove(worker)
+                    except (ValueError, AttributeError):
+                        pass
+
+            for pid, worker in list(self._pid_to_worker.items()):
+                if pid in self._worker_task_map:
+                    continue
+                try:
+                    alive = worker.is_alive()
+                except ValueError:
+                    alive = False
+
+                if not alive:
+                    status = self._shared_state.get(f"_wpool:{pid}")
+                    if status is not None:
+                        key, task_id = status
+                        dead_info.append((pid, key, task_id, worker))
+                    else:
+                        dead_info.append((pid, None, None, worker))
+                    if pid in self._pid_to_worker:
+                        del self._pid_to_worker[pid]
+                    try:
+                        self._workers.remove(worker)
+                    except ValueError:
+                        pass
+
+        for pid, key, task_id, worker in dead_info:
+            if key is not None:
+                logger.warning(
+                    f"Worker PID {pid} died while processing task "
+                    f"'{key}' (id: {task_id}). "
+                    f"Orphaned task will be marked as failed."
+                )
+            else:
+                logger.warning(f"Worker PID {pid} died while idle.")
+            try:
+                worker.close()
+            except ValueError:
+                pass
+            if key is not None:
+                self.worker_died.send(self, key=key, task_id=task_id, pid=pid)
+
+        if dead_info:
+            for _ in dead_info:
+                self._spawn_replacement_worker()
+
+    def _spawn_replacement_worker(self):
+        """Start a single replacement worker process."""
+        process = self._mp_context.Process(
+            target=_worker_main_loop,
+            args=(
+                self._task_queue,
+                self._result_queue,
+                self._log_level,
+                self._initializer,
+                self._initargs,
+                self._adoption_signals,
+                self._shared_state,
+            ),
+            daemon=True,
+        )
+        process.start()
+        assert process.pid is not None
+        with self._lock:
+            self._workers.append(process)
+            self._pid_to_worker[process.pid] = process
+        logger.info(f"Replacement worker PID {process.pid} started.")
 
     def shutdown(self, timeout: float = 2.0):
         """
         Shuts down the worker pool, terminating all worker processes.
         """
         logger.info("Shutting down worker pool.")
+        self._shutting_down = True
         try:
             for worker in self._workers:
                 pid = worker.pid
@@ -422,15 +619,28 @@ class WorkerPoolManager:
             for _ in self._workers:
                 try:
                     self._task_queue.put(_WORKER_POISON_PILL)
-                except (OSError, BrokenPipeError):
-                    pass  # Queue may already be closed if workers crashed
+                except (OSError, BrokenPipeError) as e:
+                    logger.warning(
+                        f"Failed to send poison pill to worker: {e}. "
+                        "Queue may already be closed if workers crashed."
+                    )
 
             # 2. Join worker processes with a timeout.
             # Capture PIDs before closing workers for shutdown summary.
             worker_pids = [w.pid for w in self._workers]
             for worker in self._workers:
-                worker.join(timeout=timeout)
-                if worker.is_alive():
+                try:
+                    worker.join(timeout=timeout)
+                except OSError:
+                    logger.warning(
+                        f"Worker process {worker.pid}: join failed "
+                        "(process handle invalid, may have crashed)."
+                    )
+                try:
+                    still_alive = worker.is_alive()
+                except (OSError, ValueError):
+                    still_alive = False
+                if still_alive:
                     logger.warning(
                         f"Worker process {worker.pid} did not exit cleanly. "
                         "Terminating."
@@ -450,16 +660,22 @@ class WorkerPoolManager:
             # 3. Stop the result listener thread.
             try:
                 self._result_queue.put(_LISTENER_SENTINEL)
-            except (OSError, BrokenPipeError):
-                pass
+            except (OSError, BrokenPipeError) as e:
+                logger.warning(
+                    f"Failed to send sentinel to listener: {e}. "
+                    "Result queue may already be closed."
+                )
             self._listener_thread.join(timeout=1.0)
 
-            # 4. Clean up queues.
+            # 4. Clean up multiprocessing queues.
+            # Use cancel_join_thread() to prevent joining the feeder thread,
+            # which avoids reentrant resource_tracker warnings on Python 3.12.
+            # The feeder thread is a daemon and will be cleaned up when the
+            # process exits.
+            self._task_queue.cancel_join_thread()
             self._task_queue.close()
+            self._result_queue.cancel_join_thread()
             self._result_queue.close()
-            # It's important to join the queue's feeder thread.
-            self._task_queue.join_thread()
-            self._result_queue.join_thread()
 
             logger.debug("Worker shutdown summary")
             for pid in worker_pids:
@@ -473,6 +689,13 @@ class WorkerPoolManager:
                         f"Worker PID {pid}: no shutdown info received "
                         "(may have crashed or not reported)"
                     )
+            # 5. Shut down the Manager to release its process and
+            # named pipe / Unix socket resources.
+            try:
+                self._manager.shutdown()
+            except Exception:
+                logger.debug("Manager shutdown failed (may already be gone).")
+
             logger.info("Worker pool shutdown complete.")
         except KeyboardInterrupt:
             logger.debug(

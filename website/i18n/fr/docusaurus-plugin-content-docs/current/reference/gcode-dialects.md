@@ -117,9 +117,106 @@ réelle. Consulte la page des paramètres de ton dialecte pour cette option.
 
 ---
 
+## Espaces réservés des modèles
+
+Lors de la création ou de la modification d'un dialecte personnalisé, chaque
+modèle de commande utilise des
+[chaînes de formatage Python](https://docs.python.org/3/library/string.html#format-string-syntax)
+avec des espaces réservés pour injecter des valeurs dynamiques. Utilise la
+syntaxe `{nom}` ou `{nom:.0f}` (par ex. `{power:.0f}` pour formater en nombre
+entier sans décimales).
+
+### Espaces réservés disponibles par modèle
+
+| Modèle                 | Espaces réservés                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| **Laser On**           | `power`                                                                                                      |
+| **Focus Laser On**     | `power`                                                                                                      |
+| **Laser Off**          | _(aucun)_                                                                                                    |
+| **Changement d'outil** | `tool_number`                                                                                                |
+| **Réglage vitesse**    | `speed`                                                                                                      |
+| **Déplacement rapide** | `x`, `y`, `z`, `x_cmd`, `y_cmd`, `z_cmd`, `extra_cmd`, `f_command`, `s_command`                              |
+| **Mouvement linéaire** | `x`, `y`, `z`, `x_cmd`, `y_cmd`, `z_cmd`, `extra_cmd`, `f_command`, `s_command`, `i`, `j`, `power`           |
+| **Arc (CW)**           | `x`, `y`, `z`, `x_cmd`, `y_cmd`, `z_cmd`, `extra_cmd`, `f_command`, `s_command`, `i`, `j`, `power`           |
+| **Arc (CCW)**          | `x`, `y`, `z`, `x_cmd`, `y_cmd`, `z_cmd`, `extra_cmd`, `f_command`, `s_command`, `i`, `j`, `power`           |
+| **Bézier Cubique**     | `x`, `y`, `z`, `x_cmd`, `y_cmd`, `z_cmd`, `extra_cmd`, `f_command`, `s_command`, `i`, `j`, `p`, `q`, `power` |
+| **Air On/Off**         | _(aucun)_                                                                                                    |
+| **Origine tous**       | _(aucun)_                                                                                                    |
+| **Origine axe**        | `axis_letter`                                                                                                |
+| **Déplacer vers**      | `speed`, `x`, `y`, `z`                                                                                       |
+| **Jog**                | `speed`                                                                                                      |
+| **Effacer alarme**     | _(aucun)_                                                                                                    |
+| **Décalage WCS**       | `p_num`, `x`, `y`, `z`                                                                                       |
+| **Cycle de palpage**   | `axis_letter`, `max_travel`, `feed_rate`                                                                     |
+| **Temporisation**      | `seconds`, `milliseconds`                                                                                    |
+
+### Référence des espaces réservés
+
+#### Coordonnées
+
+| Espace réservé | Description                                                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `x`            | Coordonnée X cible en virgule flottante (par ex. `100.0`)                                                                     |
+| `y`            | Coordonnée Y cible en virgule flottante (par ex. `200.0`)                                                                     |
+| `z`            | Coordonnée Z cible en virgule flottante (par ex. `5.0`)                                                                       |
+| `x_cmd`        | Chaîne de commande de l'axe X, par ex. `" X100.0"`. Omise si inchangée (si « Omettre les coordonnées inchangées » est activé) |
+| `y_cmd`        | Chaîne de commande de l'axe Y, par ex. `" Y200.0"`. Omise si inchangée                                                        |
+| `z_cmd`        | Chaîne de commande de l'axe Z, par ex. `" Z5.0"`. Omise si inchangée                                                          |
+| `extra_cmd`    | Chaîne de commande pour axes supplémentaires (A, B, C), par ex. `" A90.0"`. Vide si aucun axe supplémentaire n'est configuré  |
+
+#### Mouvement
+
+| Espace réservé | Description                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `f_command`    | Chaîne de commande de vitesse d'avance, par ex. `" F3000"`. Omise si modale et inchangée                                 |
+| `s_command`    | Chaîne de commande de broche/puissance, par ex. `" S500"`. Utilisée en modes dynamique/rastrage et en mode laser continu |
+| `i`            | Décalage X du point de contrôle de l'arc ou Bézier par rapport à la position de départ                                   |
+| `j`            | Décalage Y du point de contrôle de l'arc ou Bézier par rapport à la position de départ                                   |
+| `p`            | Décalage X du deuxième point de contrôle Bézier par rapport à la position finale (Bézier Cubique uniquement)             |
+| `q`            | Décalage Y du deuxième point de contrôle Bézier par rapport à la position finale (Bézier Cubique uniquement)             |
+
+#### Puissance et vitesse
+
+| Espace réservé | Description                                                                                                                  |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `power`        | Valeur absolue de puissance laser en virgule flottante. Prend en charge le formatage, par ex. `{power:.0f}` pour des entiers |
+| `speed`        | Valeur de vitesse (pour les commandes Déplacer vers et Jog)                                                                  |
+| `tool_number`  | Numéro de l'outil/tête laser                                                                                                 |
+
+#### Machine et palpage
+
+| Espace réservé | Description                                                                    |
+| -------------- | ------------------------------------------------------------------------------ |
+| `axis_letter`  | Lettre d'axe unique, par ex. `"X"`, `"Y"`, `"Z"` (pour Origine axe et palpage) |
+| `p_num`        | Numéro P du WCS (par ex. `1` pour G54)                                         |
+| `max_travel`   | Distance maximale de déplacement du palpage (Cycle de palpage uniquement)      |
+| `feed_rate`    | Vitesse d'avance du palpage (Cycle de palpage uniquement)                      |
+
+#### Temporisation
+
+| Espace réservé | Description                                                               |
+| -------------- | ------------------------------------------------------------------------- |
+| `seconds`      | Durée de temporisation en secondes en virgule flottante (par ex. `1.5`)   |
+| `milliseconds` | Durée de temporisation en millisecondes en nombre entier (par ex. `1500`) |
+
+### Conseils
+
+- Les **spécifications de formatage** sont prises en charge : `{power:.0f}` formate la puissance
+  en nombre entier, `{power:.2f}` avec deux décimales.
+- Le paramètre **« Omettre les coordonnées inchangées »** contrôle si `x_cmd`, `y_cmd`
+  et `z_cmd` sont laissés vides lorsque la position de l'axe n'a pas changé depuis
+  la dernière commande. Cela réduit la taille du G-code.
+- Le paramètre **« Vitesse modale »** contrôle si `f_command` est omise lorsque
+  la vitesse d'avance n'a pas changé.
+- Laissez un champ de modèle **vide** pour ignorer complètement cette commande
+  (par ex., régler `bezier_cubic` sur `""` désactive la sortie Bézier native
+  et utilise la linéarisation à la place).
+
+---
+
 ## Pages connexes
 
-- [Exporter du G-code](../files/exporting) - Paramètres d'exportation
+- [Exporter du G-code](../files/exporting.md) - Paramètres d'exportation
 - [Compatibilité des firmwares](firmware) - Versions de firmware
-- [Paramètres de l'appareil](../machine/device) - Configuration GRBL
-- [Macros et Hooks](../machine/hooks-macros) - Injection de G-code personnalisé
+- [Paramètres de l'appareil](../machine/device.md) - Configuration GRBL
+- [Macros et Hooks](../machine/hooks-macros.md) - Injection de G-code personnalisé

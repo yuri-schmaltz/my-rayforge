@@ -1,12 +1,13 @@
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
-from raygeo import Geometry
+from raygeo.geo import Geometry
 from raygeo.geo.shape.line import (
     does_line_segment_intersect_rect,
     get_line_segment_closest_point,
 )
 from raygeo.geo.shape.rect import does_rect_contain_rect
-from raygeo.geo.types import Point as GeoPoint, Polygon, Rect
+from raygeo.geo.types import Point as GeoPoint
+from raygeo.geo.types import Polygon, Rect
 
 from ..types import EntityID
 from .entity import Entity

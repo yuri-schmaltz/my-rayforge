@@ -1,0 +1,22 @@
+api_version: 1
+device:
+  name: Carvera
+  description: Desktop CNC machine with Smoothieware controller and 210x170mm work area
+machine:
+  driver: SmoothieDriver
+  gcode_precision: 4
+  axis_extents:
+  - 210.0
+  - 170.0
+  origin: bottom_left
+  max_travel_speed: 3000
+  max_cut_speed: 3000
+  home_on_start: true
+  heads:
+  - tool_number: -1
+    max_power: 1.0
+    frame_power_percent: 1.0
+    focus_power_percent: 1.0
+    spot_size_mm:
+    - 0.1
+    - 0.1

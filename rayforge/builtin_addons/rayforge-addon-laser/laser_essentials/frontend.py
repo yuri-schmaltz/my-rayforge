@@ -4,7 +4,7 @@ Frontend entry point for laser-essentials addon.
 Registers UI widgets and actions with the main application.
 """
 
-import gettext
+from gettext import gettext as _
 from pathlib import Path
 
 from gi.repository import Gio
@@ -14,13 +14,7 @@ from rayforge.ui_gtk.action_registry import MenuPlacement
 from rayforge.ui_gtk.icons import register_icon_path
 
 from .commands import MaterialTestCmd
-from .widgets import PRODUCER_WIDGETS
-
-_localedir = Path(__file__).parent.parent / "locale"
-_t = gettext.translation(
-    "laser_essentials", localedir=_localedir, fallback=True
-)
-_ = _t.gettext
+from .widgets import ASSEMBLER_WIDGETS
 
 ADDON_NAME = "laser_essentials"
 _ICONS_DIR = Path(__file__).parent / "resources" / "icons"
@@ -30,17 +24,13 @@ register_icon_path(_ICONS_DIR)
 
 @hookimpl
 def step_settings_loaded(dialog, step, producer):
-    """Add step settings widgets based on producer type."""
-    if producer is None:
-        return
-
-    widget_cls = PRODUCER_WIDGETS.get(type(producer))
+    """Add step settings widgets based on assembler name."""
+    widget_cls = ASSEMBLER_WIDGETS.get(step.ASSEMBLER_NAME)
     if widget_cls:
         dialog.add(
             widget_cls(
                 dialog.editor,
                 step.typelabel,
-                producer,
                 dialog,
                 step,
             )

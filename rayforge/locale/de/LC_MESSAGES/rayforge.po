@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Rayforge\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-14 16:35+0200\n"
+"POT-Creation-Date: 2026-07-16 00:05+0200\n"
 "PO-Revision-Date: 2025-07-24 22:08+0200\n"
 "Last-Translator: Samuel Abels <knipknap@gmail.com>\n"
 "Language-Team: none\n"
@@ -218,6 +218,31 @@ msgstr "Serieller Port darf nicht leer sein."
 #: rayforge/core/varset/serialportvar.py
 msgid "Serial Port"
 msgstr "Serieller Port"
+
+#: rayforge/core/cut_side.py
+msgid "Centerline"
+msgstr "Mittellinie"
+
+#: rayforge/core/cut_side.py
+msgid "Inside"
+msgstr "Innen"
+
+#: rayforge/core/cut_side.py
+msgid "Outside"
+msgstr "Außen"
+
+#: rayforge/core/cut_side.py
+msgid "Inside-Outside"
+msgstr "Innen-Außen"
+
+#: rayforge/core/cut_side.py
+msgid "Outside-Inside"
+msgstr "Außen-Innen"
+
+#: rayforge/core/capability.py rayforge/machine/models/laser.py
+#: rayforge/ui_gtk/machine/laser_control_widget.py
+msgid "Laser Head"
+msgstr "Laserkopf"
 
 #: rayforge/core/capability.py rayforge/ui_gtk/main_menu.py
 #: rayforge/ui_gtk/doceditor/asset_browser.py
@@ -469,6 +494,7 @@ msgstr "Smoothieware über eine Telnet-Verbindung"
 #: rayforge/machine/driver/smoothie.py
 #: rayforge/machine/driver/octoprint/octoprint_driver.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Machine Coordinates (G53)"
 msgstr "Maschinenkoordinaten (G53)"
@@ -501,6 +527,7 @@ msgstr "Die IP-Adresse oder der Hostname des Geräts"
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port"
 msgstr "Port"
 
@@ -688,12 +715,14 @@ msgstr "Marlin-Firmware über serielle Verbindung"
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Serial port for the device"
 msgstr "Serieller Port für das Gerät"
 
 #: rayforge/machine/driver/marlin/marlin_serial.py
 #: rayforge/machine/driver/grbl/grbl_telnet.py
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 msgid "Port must be configured."
 msgstr "Port muss konfiguriert werden."
 
@@ -744,6 +773,22 @@ msgstr ""
 "Das Gerät regelmäßig nach Position und Status abfragen, während ein Auftrag "
 "läuft. Warnung: Einige Geräte haben Probleme, eine stabile Verbindung "
 "aufrechtzuerhalten, wenn dies verwendet wird!"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid "Deadlock detection"
+msgstr "Deadlock-Erkennung"
+
+#: rayforge/machine/driver/grbl/grbl_telnet.py
+#: rayforge/machine/driver/grbl/grbl_serial.py
+msgid ""
+"Detect and recover from serial communication deadlocks during jobs. If "
+"disabled, the driver will simply wait for the machine to respond. Disable if "
+"you experience false ALARM:3 errors."
+msgstr ""
+"Erkennt und behebt serielle Kommunikationsdeadlocks während Aufträgen. Wenn "
+"deaktiviert, wartet der Treiber einfach auf die Antwort der Maschine. "
+"Deaktivieren bei falschen ALARM:3-Fehlern."
 
 #: rayforge/machine/driver/grbl/grbl_util.py
 msgid "Missing Command Letter"
@@ -1405,11 +1450,13 @@ msgstr ""
 "automatische Erkennung vom Gerät."
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown Settings"
 msgstr "Unbekannte Einstellungen"
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Settings reported by the device not in the standard list."
 msgstr ""
@@ -1417,6 +1464,7 @@ msgstr ""
 "sind."
 
 #: rayforge/machine/driver/grbl/grbl_serial.py
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Unknown setting from device"
 msgstr "Unbekannte Einstellung vom Gerät"
@@ -1436,6 +1484,18 @@ msgid ""
 msgstr ""
 "Lasermodus ist nicht aktiviert ($32=0). Für beste Ergebnisse mit "
 "Lasergeräten aktivieren."
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL (Serial Simple)"
+msgstr "GRBL (Serial Simple)"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "GRBL serial with simple ping-pong protocol (no buffer counting)"
+msgstr "GRBL-Seriell mit einfachem Ping-Pong-Protokoll (ohne Pufferzählung)"
+
+#: rayforge/machine/driver/grbl/grbl_serial_simple.py
+msgid "Baudrate must be configured."
+msgstr "Baudrate muss konfiguriert werden."
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "GRBL (Network)"
@@ -1460,6 +1520,14 @@ msgstr "WebSocket-Port"
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "The WebSocket port for the device"
 msgstr "Der WebSocket-Port für das Gerät"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "Protocol variant"
+msgstr "Protokollvariante"
+
+#: rayforge/machine/driver/grbl/grbl_network.py
+msgid "ESP3D or Longer GRBL variant"
+msgstr "ESP3D- oder Longer-GRBL-Variante"
 
 #: rayforge/machine/driver/grbl/grbl_network.py
 msgid "Host is not configured. Please set a valid IP address or hostname."
@@ -1493,16 +1561,63 @@ msgstr "Maschinengrenzen"
 msgid "{name} (device dialect)"
 msgstr "{name} (Geräte-Dialekt)"
 
+#: rayforge/machine/device/lightburn_importer.py
+msgid "• Camera calibration: matrix + distortion found"
+msgstr "• Kamerakalibrierung: Matrix + Verzerrung gefunden"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "(no fields mapped)"
+msgstr "(keine Felder zugeordnet)"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Device name"
+msgstr "Gerätename"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Work area"
+msgstr "Arbeitsbereich"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Driver"
+msgstr "Treiber"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Baud rate"
+msgstr "Baudrate"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Home on start"
+msgstr "Referenzfahrt beim Start"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Max travel speed"
+msgstr "Maximale Verfahrgeschwindigkeit"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Origin"
+msgstr "Ursprung"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror X"
+msgstr "Spiegelung X"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Mirror Y"
+msgstr "Spiegelung Y"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "Camera calibration"
+msgstr "Kamerakalibrierung"
+
+#: rayforge/machine/device/lightburn_importer.py
+msgid "matrix + distortion imported"
+msgstr "Matrix + Verzerrung importiert"
+
 #: rayforge/machine/models/dialect_manager.py
 #: rayforge/machine/models/machine.py
 #, python-brace-format
 msgid "{label} (for {machine_name})"
 msgstr "{label} (für {machine_name})"
-
-#: rayforge/machine/models/laser.py
-#: rayforge/ui_gtk/machine/laser_control_widget.py
-msgid "Laser Head"
-msgstr "Laserkopf"
 
 #: rayforge/machine/models/machine.py
 msgid "Default Machine"
@@ -1736,6 +1851,30 @@ msgid "Dwell"
 msgstr "Verweilen"
 
 #: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CW)"
+msgstr "Spindle ein (CW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle On (CCW)"
+msgstr "Spindle ein (CCW)"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Spindle Off"
+msgstr "Spindle aus"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Flood"
+msgstr "Kühlmittel Flut"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Mist"
+msgstr "Kühlmittel Nebel"
+
+#: rayforge/machine/models/dialect/base.py
+msgid "Coolant Off"
+msgstr "Kühlmittel aus"
+
+#: rayforge/machine/models/dialect/base.py
 msgid "Scripts"
 msgstr "Skripte"
 
@@ -1933,6 +2072,7 @@ msgstr ""
 #: rayforge/ui_gtk/machine/hook_list.py rayforge/ui_gtk/machine/gcode_editor.py
 #: rayforge/ui_gtk/machine/wcs_dialog.py
 #: rayforge/ui_gtk/machine/maintenance_page.py
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
 #: rayforge/ui_gtk/machine/dialect_list.py
 #: rayforge/ui_gtk/machine/profile_selector.py
 #: rayforge/ui_gtk/machine/template_selector.py
@@ -2221,6 +2361,34 @@ msgid "Categories"
 msgstr "Kategorien"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "English"
+msgstr "Englisch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "German"
+msgstr "Deutsch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Spanish"
+msgstr "Spanisch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "French"
+msgstr "Französisch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Portuguese"
+msgstr "Portugiesisch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Ukrainian"
+msgstr "Ukrainisch"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Chinese (Simplified)"
+msgstr "Chinesisch (vereinfacht)"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/about.py
 msgid "System"
 msgstr "System"
@@ -2255,6 +2423,10 @@ msgid "Layer Color"
 msgstr "Ebenenfarbe"
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "System Default"
+msgstr "Systemstandard"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
 #: rayforge/ui_gtk/machine/rotary_module_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
 #: rayforge/ui_gtk/machine/general_preferences_page.py
@@ -2274,6 +2446,14 @@ msgstr "Einstellungen zum Erscheinungsbild der Anwendung."
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Theme"
 msgstr "Thema"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Language"
+msgstr "Sprache"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "The application language. Changes require a restart."
+msgstr "Die Anwendungssprache. Änderungen erfordern einen Neustart."
 
 #: rayforge/ui_gtk/settings/general_preferences_page.py
 msgid "Operation Colors"
@@ -2379,6 +2559,27 @@ msgstr ""
 "<a href=\"https://rayforge.org/docs/general-info/usage-tracking\">Mehr "
 "erfahren</a> über Nutzungsstatistiken und Datenschutz."
 
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "Restart required"
+msgstr "Neustart erforderlich"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid ""
+"The language will take effect after restarting Rayforge. Would you like to "
+"restart now?"
+msgstr ""
+"Die Sprache wird erst nach einem Neustart von Rayforge aktiv. Möchtest du "
+"jetzt neu starten?"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
+msgid "_Cancel"
+msgstr "_Abbrechen"
+
+#: rayforge/ui_gtk/settings/general_preferences_page.py
+msgid "_Restart"
+msgstr "_Neu starten"
+
 #: rayforge/ui_gtk/canvas2d/elements/tab_handle.py
 msgid "Move Tab"
 msgstr "Haltesteg verschieben"
@@ -2460,6 +2661,72 @@ msgstr "Material hinzufügen"
 #: rayforge/ui_gtk/actions.py
 msgid "Auto Layout (Simple)"
 msgstr "Automatische Anordnung (Einfach)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#, python-brace-format
+msgid "{camera_name} - Lens Calibration"
+msgstr "{camera_name} - Objektivkalibrierung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens Calibration"
+msgstr "Objektivkalibrierung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid ""
+"Correct lens distortion for straighter lines. Use the wizard for automatic "
+"calibration or adjust manually."
+msgstr ""
+"Korrigiert die Objektivverzeichnung für gerade Linien. Verwenden Sie den "
+"Assistenten zur automatischen Kalibrierung oder passen Sie sie manuell an."
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Wizard"
+msgstr "Assistent"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 1 (k1)"
+msgstr "Radial 1 (k1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order radial distortion"
+msgstr "Radialverzerrung erster Ordnung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Radial 2 (k2)"
+msgstr "Radial 2 (k2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order radial distortion"
+msgstr "Radialverzerrung zweiter Ordnung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Radial 3 (k3)"
+msgstr "Radial 3 (k3)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Third order radial distortion"
+msgstr "Radialverzeichnung dritter Ordnung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 1 (p1)"
+msgstr "Tangential 1 (p1)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "First order tangential distortion"
+msgstr "Tangentialverzerrung erster Ordnung"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+#: rayforge/ui_gtk/camera/camera_preferences_page.py
+msgid "Tangential 2 (p2)"
+msgstr "Tangential 2 (p2)"
+
+#: rayforge/ui_gtk/camera/lens_calibration_dialog.py
+msgid "Second order tangential distortion"
+msgstr "Tangentialverzerrung zweiter Ordnung"
 
 #: rayforge/ui_gtk/camera/selection_dialog.py
 msgid "Please select an available camera device"
@@ -2551,12 +2818,38 @@ msgid "Adjust brightness, contrast, white balance, and noise"
 msgstr "Helligkeit, Kontrast, Weißabgleich und Rauschen anpassen"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Correct lens distortion for straighter lines"
+msgstr "Objektivverzerrung für geradere Linien korrigieren"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Image Alignment"
 msgstr "Bildausrichtung"
 
 #: rayforge/ui_gtk/camera/properties_widget.py
 msgid "Calibrate camera position and perspective"
 msgstr "Kameraposition und Perspektive kalibrieren"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration completed"
+msgstr "Objektivkalibrierung abgeschlossen"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Lens calibration not yet performed"
+msgstr "Objektivkalibrierung noch nicht durchgeführt"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment completed"
+msgstr "Bildausrichtung abgeschlossen"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment must be redone after lens calibration was updated"
+msgstr ""
+"Bildausrichtung muss nach Aktualisierung der Objektivkalibrierung wiederholt "
+"werden"
+
+#: rayforge/ui_gtk/camera/properties_widget.py
+msgid "Image alignment not yet performed"
+msgstr "Bildausrichtung noch nicht durchgeführt"
 
 #: rayforge/ui_gtk/camera/calibration_wizard.py
 msgid "Waiting for camera..."
@@ -2907,66 +3200,6 @@ msgstr "Transparenz"
 #: rayforge/ui_gtk/camera/image_settings_dialog.py
 msgid "Transparency on the worksurface"
 msgstr "Transparenz auf der Arbeitsfläche"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Lens Calibration"
-msgstr "Objektivkalibrierung"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid ""
-"Correct lens distortion for straighter lines. Use the wizard for automatic "
-"calibration or adjust manually."
-msgstr ""
-"Korrigiert die Objektivverzeichnung für gerade Linien. Verwenden Sie den "
-"Assistenten zur automatischen Kalibrierung oder passen Sie sie manuell an."
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Wizard"
-msgstr "Assistent"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 1 (k1)"
-msgstr "Radial 1 (k1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order radial distortion"
-msgstr "Radialverzerrung erster Ordnung"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Radial 2 (k2)"
-msgstr "Radial 2 (k2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order radial distortion"
-msgstr "Radialverzerrung zweiter Ordnung"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Radial 3 (k3)"
-msgstr "Radial 3 (k3)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Third order radial distortion"
-msgstr "Radialverzeichnung dritter Ordnung"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 1 (p1)"
-msgstr "Tangential 1 (p1)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "First order tangential distortion"
-msgstr "Tangentialverzerrung erster Ordnung"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-#: rayforge/ui_gtk/camera/camera_preferences_page.py
-msgid "Tangential 2 (p2)"
-msgstr "Tangential 2 (p2)"
-
-#: rayforge/ui_gtk/camera/image_settings_dialog.py
-msgid "Second order tangential distortion"
-msgstr "Tangentialverzerrung zweiter Ordnung"
 
 #: rayforge/ui_gtk/camera/camera_preferences_page.py
 #, python-brace-format
@@ -3376,6 +3609,10 @@ msgid "Device Profile archives"
 msgstr "Geräteprofil-Archive"
 
 #: rayforge/ui_gtk/machine/profile_importer.py
+msgid "LightBurn device profiles"
+msgstr "LightBurn-Geräteprofile"
+
+#: rayforge/ui_gtk/machine/profile_importer.py
 msgid "All files"
 msgstr "Alle Dateien"
 
@@ -3618,6 +3855,30 @@ msgstr "Verbindung nicht möglich: Wird von '{machine}' verwendet"
 #: rayforge/ui_gtk/machine/device_settings_page.py
 msgid "Machine activated."
 msgstr "Maschine aktiviert."
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import LightBurn profile?"
+msgstr "LightBurn-Profil importieren?"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid ""
+"LightBurn device profiles contain only basic machine settings. The imported "
+"profile may be incomplete. After import, please review and configure any "
+"additional settings such as laser heads, homing, end stops, G-code dialect, "
+"macros, and rotary modules."
+msgstr ""
+"LightBurn-Geräteprofile enthalten nur grundlegende Maschineneinstellungen. "
+"Das importierte Profil kann unvollständig sein. Bitte überprüfe nach dem "
+"Import und konfiguriere zusätzliche Einstellungen wie Laserköpfe, "
+"Referenzfahrt, Endschalter, G-Code-Dialekt, Makros und Rotationsmodule."
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "Import Anyway"
+msgstr "Trotzdem importieren"
+
+#: rayforge/ui_gtk/machine/lbdev_import_dialog.py
+msgid "The following values will be imported:"
+msgstr "Die folgenden Werte werden importiert:"
 
 #: rayforge/ui_gtk/machine/hooks_macros_page.py
 #: rayforge/ui_gtk/machine/settings_dialog.py
@@ -5152,10 +5413,6 @@ msgstr "Auswählen"
 msgid "Job Sanity Check"
 msgstr "Auftragsprüfung"
 
-#: rayforge/ui_gtk/shared/sanity_check_dialog.py rayforge/ui_gtk/project_cmd.py
-msgid "_Cancel"
-msgstr "_Abbrechen"
-
 #: rayforge/ui_gtk/shared/sanity_check_dialog.py
 msgid "_Proceed"
 msgstr "_Fortfahren"
@@ -5831,6 +6088,12 @@ msgstr "{} aktivieren"
 msgid "Toggle {}"
 msgstr "{} umschalten"
 
+#: rayforge/ui_gtk/doceditor/step_settings/base.py
+#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
+#, python-brace-format
+msgid "Change {key}"
+msgstr "{key} ändern"
+
 #: rayforge/ui_gtk/doceditor/material_library_list.py
 msgid "1 material"
 msgstr "1 Material"
@@ -5904,11 +6167,6 @@ msgstr "Leistung, Geschwindigkeit und Laserkopfauswahl für diesen Vorgang."
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "Change Laser"
 msgstr "Laser ändern"
-
-#: rayforge/ui_gtk/doceditor/step_settings_dialog.py
-#, python-brace-format
-msgid "Change {key}"
-msgstr "{key} ändern"
 
 #: rayforge/ui_gtk/doceditor/step_settings_dialog.py
 msgid "No post-processing options available for this step."
@@ -6171,6 +6429,10 @@ msgstr "Zur Mitte der Auswahl oder des Arbeitsbereichs bewegen"
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Move to Upper-Right of Selection or Workarea"
 msgstr "Zur oberen rechten Ecke der Auswahl oder des Arbeitsbereichs bewegen"
+
+#: rayforge/ui_gtk/doceditor/bottom_panel.py
+msgid "Move to Origin of Active WCS"
+msgstr "Zum Ursprung des aktiven WCS bewegen"
 
 #: rayforge/ui_gtk/doceditor/bottom_panel.py
 msgid "Zero Axes"
@@ -6676,6 +6938,10 @@ msgid "Graphics & Imaging"
 msgstr "Grafik & Bildverarbeitung"
 
 #: rayforge/ui_gtk/about.py
+msgid "Geometry"
+msgstr "Geometrie"
+
+#: rayforge/ui_gtk/about.py
 msgid "File Formats & Communication"
 msgstr "Dateiformate & Kommunikation"
 
@@ -6948,27 +7214,6 @@ msgstr ""
 "Pfad zu einem benutzerdefinierten Konfigurationsverzeichnis. Nützlich für "
 "Tests mit isolierten Konfigurationen."
 
-#: rayforge/pipeline/producer/placeholder.py
-msgid "Missing Producer"
-msgstr "Fehlender Produzent"
-
-#: rayforge/pipeline/producer/placeholder.py
-#: rayforge/pipeline/transformer/placeholder.py
-msgid "Missing: {}"
-msgstr "Fehlt: {}"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Centerline"
-msgstr "Mittellinie"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Inside"
-msgstr "Innen"
-
-#: rayforge/pipeline/producer/base.py
-msgid "Outside"
-msgstr "Außen"
-
 #: rayforge/pipeline/stage/step_runner.py
 msgid "Assembling step..."
 msgstr "Schritt wird zusammengestellt..."
@@ -6988,6 +7233,34 @@ msgstr "Endgültiges Auftragsartefakt wird gespeichert..."
 #: rayforge/pipeline/stage/job_runner.py rayforge/pipeline/stage/job_compute.py
 msgid "Job finalization complete"
 msgstr "Auftragsfertigstellung abgeschlossen"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable Power"
+msgstr "Variable Leistung"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant Power"
+msgstr "Konstante Leistung"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Dither"
+msgstr "Dithering"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multiple Depths"
+msgstr "Mehrere Tiefen"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Variable"
+msgstr "Variabel"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Constant"
+msgstr "Konstant"
+
+#: rayforge/pipeline/stage/assembler_helpers.py
+msgid "Multi-Pass"
+msgstr "Mehrfachdurchlauf"
 
 #: rayforge/pipeline/stage/workpiece_compute.py
 #, python-brace-format
@@ -7041,6 +7314,10 @@ msgstr "Textur wird gerendert..."
 #: rayforge/pipeline/view/view_compute.py
 msgid "Rendering complete."
 msgstr "Rendering abgeschlossen."
+
+#: rayforge/pipeline/transformer/placeholder.py
+msgid "Missing: {}"
+msgstr "Fehlt: {}"
 
 #: rayforge/pipeline/transformer/placeholder.py
 msgid "This transformer is not available."
@@ -7471,3 +7748,19 @@ msgstr "Ungültige oder nicht unterstützte BMP-Daten."
 #: rayforge/image/ruida/importer.py
 msgid "File contains no vector commands."
 msgstr "Datei enthält keine Vektorbefehle."
+
+#: rayforge/image/dither.py
+msgid "Floyd Steinberg"
+msgstr "Floyd Steinberg"
+
+#: rayforge/image/dither.py
+msgid "Bayer 2"
+msgstr "Bayer 2"
+
+#: rayforge/image/dither.py
+msgid "Bayer 4"
+msgstr "Bayer 4"
+
+#: rayforge/image/dither.py
+msgid "Bayer 8"
+msgstr "Bayer 8"

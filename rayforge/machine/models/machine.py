@@ -191,6 +191,16 @@ class Machine:
         return self.context.machine_mgr.get_controller(self.id)
 
     @property
+    def has_controller(self) -> bool:
+        """
+        Returns whether a controller currently exists for this machine
+        without lazily creating one. This is ``False`` once the machine has
+        been removed and its controller torn down, allowing callers to skip
+        controller access that would otherwise raise.
+        """
+        return self.context.machine_mgr.has_controller(self.id)
+
+    @property
     def driver(self) -> "Driver":
         """Property to access the driver through the controller."""
         return self.controller.driver
@@ -386,6 +396,7 @@ class Machine:
         Callback when dialects are updated.
         Sends machine's changed signal to trigger recalculation.
         """
+        self._hydrated_dialect = None
         self.changed.send(self)
 
     def is_connected(self) -> bool:
@@ -416,6 +427,7 @@ class Machine:
 
         self.driver_name = new_driver_name
         self.driver_args = new_args
+        self.changed.send(self)
         task_mgr.add_coroutine(
             self.controller.rebuild_driver,
             key=(self.id, "rebuild-driver"),
@@ -427,6 +439,7 @@ class Machine:
             return
 
         self.driver_args = new_args
+        self.changed.send(self)
         task_mgr.add_coroutine(
             self.controller.rebuild_driver,
             key=(self.id, "rebuild-driver"),
@@ -473,6 +486,7 @@ class Machine:
         if self.dialect_uid == dialect_uid:
             return
         self.dialect_uid = dialect_uid
+        self._hydrated_dialect = None
         self.changed.send(self)
 
     def set_gcode_precision(self, precision: int):
@@ -493,7 +507,15 @@ class Machine:
         self.supports_curves = supports
         self.changed.send(self)
 
+    def set_supports_arcs(self, supports: bool):
+        if self.supports_arcs == supports:
+            return
+        self.supports_arcs = supports
+        self.changed.send(self)
+
     def set_home_on_start(self, home_on_start: bool = True):
+        if self.home_on_start == home_on_start:
+            return
         self.home_on_start = home_on_start
         self.changed.send(self)
 
@@ -510,14 +532,20 @@ class Machine:
         self.changed.send(self)
 
     def set_max_travel_speed(self, speed: int):
+        if self.max_travel_speed == speed:
+            return
         self.max_travel_speed = speed
         self.changed.send(self)
 
     def set_max_cut_speed(self, speed: int):
+        if self.max_cut_speed == speed:
+            return
         self.max_cut_speed = speed
         self.changed.send(self)
 
     def set_acceleration(self, acceleration: int):
+        if self.acceleration == acceleration:
+            return
         self.acceleration = acceleration
         self.changed.send(self)
 
@@ -632,7 +660,15 @@ class Machine:
         self._soft_limits = clamped
         self.changed.send(self)
 
+    def clear_soft_limits(self):
+        if self._soft_limits is None:
+            return
+        self._soft_limits = None
+        self.changed.send(self)
+
     def set_origin(self, origin: Origin):
+        if self.origin == origin:
+            return
         self.origin = origin
         self.changed.send(self)
 
@@ -747,6 +783,8 @@ class Machine:
 
     def set_soft_limits_enabled(self, enabled: bool):
         """Enable or disable soft limits for jog operations."""
+        if self.soft_limits_enabled == enabled:
+            return
         self.soft_limits_enabled = enabled
         self.changed.send(self)
 

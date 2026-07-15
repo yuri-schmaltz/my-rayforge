@@ -23,8 +23,13 @@ settings and G-code dialect.
 ![Add Machine Dialog](/screenshots/app-settings-machines-add.png)
 
 If your device is connected and powered on, you can click **Other Device…**
-to use the [Configuration Wizard](../machine/config-wizard), which
+to use the [Configuration Wizard](../machine/config-wizard.md), which
 automatically detects and configures your machine.
+
+If you have a LightBurn device profile (.lbdev) with camera calibration
+and device settings, you can click **Import from File…** and select the
+.lbdev file. The camera calibration and laser settings from your LightBurn
+setup will be applied to the new machine.
 
 After selecting, the Machine Settings dialog opens for your new machine.
 
@@ -42,7 +47,12 @@ The **General** page contains basic machine information, driver selection, and c
 
 Select the appropriate driver for your device from the dropdown:
 
-- **GRBL (Serial)** - For GRBL devices connected via USB/serial port
+- **GRBL (Serial)** - For GRBL devices connected via USB/serial port.
+  Uses buffer-counting for flow control. Recommended for most GRBL devices
+- **GRBL (Serial Simple)** - An alternative GRBL serial driver using a
+  ping-pong protocol. Send one line, wait for "ok", send the next. Useful
+  when the standard driver causes false alarms or communication errors on
+  your device
 - **GRBL (Network)** - For GRBL devices with WiFi/Ethernet connectivity
 - **Smoothie** - For Smoothieware-based devices
 
@@ -113,7 +123,7 @@ If your machine has multiple laser modules (e.g., diode and CO2), you can config
 
 ![Laser Settings](/screenshots/machine-laser.png)
 
-See [Laser Configuration](../machine/laser) for details.
+See [Laser Configuration](../machine/laser.md) for details.
 
 ### Camera Setup
 
@@ -121,7 +131,7 @@ If you have a USB camera for alignment and positioning, configure it in the **Ca
 
 ![Camera Settings](/screenshots/machine-camera.png)
 
-See [Camera Integration](../machine/camera) for details.
+See [Camera Integration](../machine/camera.md) for details.
 
 ### Device Settings
 
@@ -166,7 +176,7 @@ Editing device settings can be dangerous and may render your machine inoperable 
 - Check for loose cables or poor connections
 - Power cycle your laser cutter and try again
 
-For more help, see [Connection Issues](../troubleshooting/connection).
+For more help, see [Connection Issues](../troubleshooting/connection.md).
 
 ---
 

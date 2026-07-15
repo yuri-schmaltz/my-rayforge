@@ -14,18 +14,13 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Tuple
 
 import numpy as np
+from raygeo.geo.algo.cylindrical import transform_to_cylinder
 from raygeo.geo.shape.arc import linearize_arc
 from raygeo.geo.shape.bezier import linearize_bezier_segment
+from raygeo.image import rasterize_scanlines
 from raygeo.ops import Ops
 from raygeo.ops.types import CommandType
 
-from ...pipeline.encoder.scanline_rasterizer import (
-    MAX_TEXTURE_DIMENSION,
-)
-from ...pipeline.encoder.scanline_rasterizer import (
-    rasterize_scanlines as _rasterize_scanlines_shared,
-)
-from ...pipeline.encoder.vertexencoder import transform_to_cylinder
 from .compiled_scene import (
     CompiledSceneArtifact,
     ScanlineOverlayLayer,
@@ -55,6 +50,7 @@ from .rotary_coords import (
 
 logger = logging.getLogger(__name__)
 
+MAX_TEXTURE_DIMENSION = 8192
 Z_OFFSET_NON_POWERED = 0.01
 
 
@@ -282,16 +278,14 @@ def _rasterize_scanlines(
     if width_px <= 0 or height_px <= 0:
         return None
 
-    buffer = np.zeros((height_px, width_px), dtype=np.uint8)
-    has_content = _rasterize_scanlines_shared(
+    buffer = rasterize_scanlines(
         ops,
-        buffer,
         width_px,
         height_px,
+        (px_per_mm, px_per_mm),
         origin_mm=(x0, y0),
-        px_per_mm=px_per_mm,
     )
-    if not has_content:
+    if not np.any(buffer):
         return None
 
     dilated = np.zeros_like(buffer)
@@ -790,7 +784,7 @@ def _handle_set_laser(
     ops: Ops,
     idx: int,
 ) -> None:
-    laser_uid = ops.laser_uid(idx)
+    laser_uid = ops.head_uid(idx)
     st.current_laser_uid = laser_uid
     if laser_uid not in st.laser_uid_order:
         st.laser_uid_order.append(laser_uid)
@@ -867,8 +861,10 @@ def _handle_arc_to(
             mu_end[2],
             mu_i,
             mu_j,
-            1.0 if mu_cw else 0.0,
             0.0,
+            0.0,
+            0.0,
+            -1.0 if mu_cw else 1.0,
         ]
         segments = linearize_arc(arc_row, st.current_pos)
         vis_segs = []
@@ -892,8 +888,10 @@ def _handle_arc_to(
             end[2],
             i_val,
             j_val,
-            1.0 if cw else 0.0,
             0.0,
+            0.0,
+            0.0,
+            -1.0 if cw else 1.0,
         ]
         segments = linearize_arc(arc_row, st.current_pos)
         vis_segs = segments
@@ -1028,7 +1026,7 @@ def compile_scene(
             )
         elif ct == CommandType.LAYER_END:
             _handle_layer_end(st, acc, i)
-        elif ct == CommandType.SET_LASER:
+        elif ct == CommandType.SET_HEAD:
             _handle_set_laser(st, ops, i)
         elif ct == CommandType.SET_POWER:
             st.current_power = ops.power(i)

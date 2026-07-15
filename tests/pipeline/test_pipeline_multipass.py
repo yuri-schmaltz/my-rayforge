@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from raygeo import Geometry
+from raygeo.geo import Geometry
 from raygeo.ops import Ops
 
 from rayforge.context import get_context
@@ -158,7 +158,7 @@ class TestPipelineMultipass:
                         task_info.when_done(task_obj)
 
                 elif task_info.target is make_workpiece_artifact_in_subprocess:
-                    gen_id = task_info.args[6]
+                    gen_id = task_info.args[5]
                     task_obj.result.return_value = gen_id
                     if task_info.when_event:
                         event_data = {

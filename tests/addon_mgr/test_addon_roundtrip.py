@@ -1,7 +1,7 @@
 """Integration tests for addon loading and execution."""
 
 import sys
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from rayforge.addon_mgr.addon_manager import (
     AddonManager,
@@ -23,7 +23,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "rayforge-addon.yaml").write_text(
             "name: this_name_is_ignored\nversion: 0.1\n"
-            "api_version: 13\n"
+            "api_version: 16\n"
             "depends:\n"
             "  - rayforge>=0.27.0,~0.27\n"
             "author:\n"
@@ -68,7 +68,7 @@ class TestAddonRoundTrip:
         context = RayforgeContext()
         context._headless = True
         context._addon_mgr = AddonManager(
-            [addons_dir], addons_dir, context.plugin_mgr
+            [addons_dir], addons_dir, context.plugin_mgr, MagicMock()
         )
 
         with patch.object(
@@ -93,7 +93,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "rayforge-addon.yaml").write_text(
             "name: this_name_is_ignored\nversion: 0.1\n"
-            "api_version: 13\n"
+            "api_version: 16\n"
             "depends:\n"
             "  - rayforge>=0.27.0,~0.27\n"
             "author:\n"
@@ -127,7 +127,7 @@ class TestAddonRoundTrip:
         context = RayforgeContext()
         context._headless = True
         context._addon_mgr = AddonManager(
-            [addons_dir], addons_dir, context.plugin_mgr
+            [addons_dir], addons_dir, context.plugin_mgr, MagicMock()
         )
 
         with patch.object(
@@ -152,7 +152,7 @@ class TestAddonRoundTrip:
 
         (addon_dir / "rayforge-addon.yaml").write_text(
             "name: this_name_is_ignored\nversion: 0.1\n"
-            "api_version: 13\n"
+            "api_version: 16\n"
             "depends:\n"
             "  - rayforge>=0.27.0,~0.27\n"
             "provides:\n"
@@ -162,7 +162,7 @@ class TestAddonRoundTrip:
         context = RayforgeContext()
         context._headless = True
         context._addon_mgr = AddonManager(
-            [addons_dir], addons_dir, context.plugin_mgr
+            [addons_dir], addons_dir, context.plugin_mgr, MagicMock()
         )
 
         with patch.object(
@@ -193,7 +193,7 @@ class TestAddonRoundTrip:
         context = RayforgeContext()
         context._headless = True
         context._addon_mgr = AddonManager(
-            [addons_dir], addons_dir, context.plugin_mgr
+            [addons_dir], addons_dir, context.plugin_mgr, MagicMock()
         )
 
         context._load_addons_and_call_hooks()

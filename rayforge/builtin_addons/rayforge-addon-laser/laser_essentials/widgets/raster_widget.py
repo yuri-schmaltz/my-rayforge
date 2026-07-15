@@ -2,13 +2,15 @@ from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Optional
 
 import numpy as np
-from gi.repository import Adw, GObject, Gtk
+from gi.repository import Adw, GLib, GObject, Gtk
+from raygeo.image.grayscale import compute_auto_levels
+from raygeo.image.scan import ScanMode
 
 from rayforge.image.dither import DitherAlgorithm
 from rayforge.image.util import (
-    compute_auto_levels,
     get_visible_grayscale_values,
 )
+from rayforge.pipeline.stage.assembler_helpers import DepthMode
 from rayforge.shared.util.glib import DebounceMixin
 from rayforge.ui_gtk.doceditor.step_settings.base import (
     StepComponentSettingsWidget,
@@ -18,42 +20,40 @@ from rayforge.ui_gtk.shared.direction_preview import DirectionPreview
 from rayforge.ui_gtk.shared.histogram_preview import HistogramPreview
 from rayforge.ui_gtk.shared.slider import create_slider, create_slider_row
 
-from ..producers import DepthMode, Rasterizer
+
+_SCAN_MODES = [ScanMode.SEGMENTED, ScanMode.FULL_SWEEP]
 
 if TYPE_CHECKING:
-    from rayforge.core.step import Step
     from rayforge.doceditor.editor import DocEditor
 
 
 class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
-    """UI for configuring the Raster producer."""
+    """UI for configuring the EngraveStep."""
 
     def __init__(
         self,
         editor: "DocEditor",
         title: str,
-        producer: Rasterizer,
         page: Adw.PreferencesPage,
-        step: "Step",
+        step: Any,
         **kwargs,
     ):
         super().__init__(
             editor,
             title,
-            component=producer,
             page=page,
             step=step,
             description=_("Configure how the laser engraves your image."),
             **kwargs,
         )
 
-        self.producer = producer
-
         mode_choices = [m.display_name for m in DepthMode]
         self.mode_row = Adw.ComboRow(
             title=_("Mode"), model=Gtk.StringList.new(mode_choices)
         )
-        self.mode_row.set_selected(list(DepthMode).index(producer.depth_mode))
+        self.mode_row.set_selected(
+            list(DepthMode).index(DepthMode[step.depth_mode])
+        )
         self.add(self.mode_row)
 
         # --- Threshold (for Constant Power mode) ---
@@ -62,7 +62,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             upper=255,
             step_increment=1,
             page_increment=10,
-            value=producer.threshold,
+            value=step.threshold,
         )
         self.threshold_row, self.threshold_scale = create_slider_row(
             title=_("Threshold"),
@@ -74,17 +74,13 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         self.add(self.threshold_row)
 
         # --- Dither Algorithm (for Dither mode) ---
-        dither_choices = [
-            m.name.replace("_", " ").title() for m in DitherAlgorithm
-        ]
+        dither_choices = [m.display_name for m in DitherAlgorithm]
         self.dither_algorithm_row = Adw.ComboRow(
             title=_("Engraving Method"),
             subtitle=_("Algorithm for converting grayscale to binary"),
             model=Gtk.StringList.new(dither_choices),
         )
-        current_algo = (
-            producer.dither_algorithm or DitherAlgorithm.FLOYD_STEINBERG
-        )
+        current_algo = step.dither_algorithm or DitherAlgorithm.FLOYD_STEINBERG
         self.dither_algorithm_row.set_selected(
             list(DitherAlgorithm).index(current_algo)
         )
@@ -94,14 +90,12 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         self.add(self.dither_algorithm_row)
 
         # --- Raster Geometry Group ---
-        self._build_raster_geometry_group(producer)
+        self._build_raster_geometry_group()
 
         # --- Histogram (Black/White Point) ---
         self.histogram_preview = HistogramPreview()
-        self.histogram_preview.set_points(
-            producer.black_point, producer.white_point
-        )
-        self.histogram_preview.auto_mode = producer.auto_levels
+        self.histogram_preview.set_points(step.black_point, step.white_point)
+        self.histogram_preview.auto_mode = step.auto_levels
         self.histogram_preview.black_point_changed.connect(
             self._on_black_point_changed
         )
@@ -113,7 +107,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             title=_("Auto Levels"),
             subtitle=_("Automatically adjust black/white points"),
         )
-        self.auto_levels_row.set_active(producer.auto_levels)
+        self.auto_levels_row.set_active(step.auto_levels)
         self.auto_levels_row.connect(
             "notify::active", self._on_auto_levels_changed
         )
@@ -123,7 +117,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             title=_("Brightness Range"),
             subtitle=(
                 _("Auto-adjusted based on image content")
-                if producer.auto_levels
+                if step.auto_levels
                 else _("Drag markers to set black/white points")
             ),
         )
@@ -135,7 +129,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             lower=0,
             upper=100,
             step_increment=0.1,
-            value=producer.min_power * 100,
+            value=step.min_power * 100,
         )
         self.min_power_row, self.min_power_scale = create_slider_row(
             title=_("Min Power"),
@@ -151,7 +145,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             lower=0,
             upper=100,
             step_increment=0.1,
-            value=producer.max_power * 100,
+            value=step.max_power * 100,
         )
         self.max_power_row, self.max_power_scale = create_slider_row(
             title=_("Max Power"),
@@ -167,7 +161,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             lower=2,
             upper=256,
             step_increment=1,
-            value=producer.num_power_levels,
+            value=step.num_power_levels,
         )
         self.power_levels_row = Adw.SpinRow(
             title=_("Power Levels"),
@@ -185,14 +179,14 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         )
         self.add(self.power_levels_row)
 
-        self._update_power_labels(producer.invert)
+        self._update_power_labels(step.invert)
 
         # --- Multi-Pass Settings ---
         levels_adj = Gtk.Adjustment(
             lower=1,
             upper=255,
             step_increment=1,
-            value=producer.num_depth_levels,
+            value=step.num_depth_levels,
         )
         self.levels_row = Adw.SpinRow(
             title=_("Number of Depth Levels"), adjustment=levels_adj
@@ -200,7 +194,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         self.add(self.levels_row)
 
         z_step_adj = Gtk.Adjustment(
-            lower=0, upper=50, step_increment=0.1, value=producer.z_step_down
+            lower=0, upper=50, step_increment=0.1, value=step.z_step_down
         )
         self.z_step_row = Adw.SpinRow(
             title=_("Z Step-Down per Level (mm)"),
@@ -213,7 +207,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             lower=0,
             upper=180,
             step_increment=1,
-            value=producer.angle_increment,
+            value=step.angle_increment,
         )
         self.angle_incr_row = Adw.SpinRow(
             title=_("Rotate Angle Per Pass"),
@@ -256,10 +250,10 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             ),
         )
 
-        self._compute_and_update_histogram(producer.invert)
+        GLib.idle_add(self._compute_and_update_histogram, step.invert)
         self._on_mode_changed(self.mode_row, None)
 
-    def _build_raster_geometry_group(self, producer: Rasterizer):
+    def _build_raster_geometry_group(self):
         """Builds the Engraving Pattern preferences group."""
         group = Adw.PreferencesGroup(
             title=_("Engraving Pattern"),
@@ -275,7 +269,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             upper=360,
             step_increment=0.1,
             page_increment=15,
-            value=producer.scan_angle,
+            value=self.step.scan_angle,
         )
         self.angle_scale = create_slider(
             adjustment=angle_adj,
@@ -285,7 +279,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         )
 
         self.direction_preview = DirectionPreview(
-            producer.scan_angle, producer.cross_hatch
+            self.step.scan_angle, self.step.cross_hatch
         )
 
         preview_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
@@ -303,17 +297,37 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             title=_("Cross-Hatch"),
             subtitle=_("Add a second pass at 90 degrees"),
         )
-        self.cross_hatch_row.set_active(producer.cross_hatch)
+        self.cross_hatch_row.set_active(self.step.cross_hatch)
         self.cross_hatch_row.connect(
             "notify::active", self._on_cross_hatch_changed
         )
         group.add(self.cross_hatch_row)
 
+        scan_mode_choices = [
+            _("Segmented"),
+            _("Full Sweep"),
+        ]
+        self.scan_mode_row = Adw.ComboRow(
+            title=_("Scan Mode"),
+            subtitle=_(
+                "Segmented: moves between content regions. "
+                "Full Sweep: scans full width with laser toggling."
+            ),
+            model=Gtk.StringList.new(scan_mode_choices),
+        )
+        self.scan_mode_row.set_selected(
+            _SCAN_MODES.index(getattr(ScanMode, self.step.scan_mode))
+        )
+        self.scan_mode_row.connect(
+            "notify::selected", self._on_scan_mode_changed
+        )
+        group.add(self.scan_mode_row)
+
         line_interval_adj = Gtk.Adjustment(
             lower=0.001,
             upper=10.0,
             step_increment=0.01,
-            value=producer.line_interval_mm or 0.1,
+            value=self.step.line_interval_mm or 0.1,
         )
         self.line_interval_row = Adw.SpinRow(
             title=_("Line Spacing"),
@@ -333,7 +347,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             lower=0.01,
             upper=10.0,
             step_increment=0.01,
-            value=producer.sample_interval_mm or 0.1,
+            value=self.step.sample_interval_mm or 0.1,
         )
         self.sample_interval_row = Adw.SpinRow(
             title=_("Sample Interval"),
@@ -352,11 +366,34 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         )
         group.add(self.sample_interval_row)
 
+        bidir_x_offset_adj = Gtk.Adjustment(
+            lower=-5.0,
+            upper=5.0,
+            step_increment=0.01,
+            value=self.step.bidir_x_offset_mm,
+        )
+        self.bidir_x_offset_row = Adw.SpinRow(
+            title=_("Bidirectional Scan Offset"),
+            subtitle=_(
+                "Corrects X misalignment between left-to-right and "
+                "right-to-left raster passes (in mm)"
+            ),
+            adjustment=bidir_x_offset_adj,
+            digits=3,
+        )
+        self.bidir_x_offset_row.connect(
+            "changed",
+            lambda r: self._debounce(
+                self._on_bidir_x_offset_changed, get_spinrow_float(r)
+            ),
+        )
+        group.add(self.bidir_x_offset_row)
+
         self.invert_row = Adw.SwitchRow(
             title=_("Invert"),
             subtitle=_("Engrave white areas instead of black areas"),
         )
-        self.invert_row.set_active(producer.invert)
+        self.invert_row.set_active(self.step.invert)
         self.invert_row.connect("notify::active", self._on_invert_changed)
         group.add(self.invert_row)
 
@@ -385,6 +422,12 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             if width_px <= 0 or height_px <= 0:
                 continue
 
+            max_px = 256
+            if width_px > max_px or height_px > max_px:
+                scale = min(max_px / width_px, max_px / height_px)
+                width_px = max(int(width_px * scale), 1)
+                height_px = max(int(height_px * scale), 1)
+
             surface = workpiece.render_to_pixels(width_px, height_px)
             if not surface:
                 continue
@@ -407,27 +450,21 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
         self.histogram_preview.set_auto_points(auto_black, auto_white)
 
     def _commit_power_range_change(self):
-        """Commits the min/max power to the model via command(s)."""
+        """Commits the min/max power to the step via commands."""
         min_p = self.min_power_adj.get_value() / 100.0
         max_p = self.max_power_adj.get_value() / 100.0
 
-        params = self.target_dict.setdefault("params", {})
-        min_changed = abs(params.get("min_power", 0.0) - min_p) > 1e-6
-        max_changed = abs(params.get("max_power", 0.0) - max_p) > 1e-6
+        min_changed = abs(self.step.min_power - min_p) > 1e-6
+        max_changed = abs(self.step.max_power - max_p) > 1e-6
 
         if not min_changed and not max_changed:
             return
 
         with self.history_manager.transaction(_("Change Power Range")):
             if min_changed:
-                self.editor.step.set_step_param(
-                    params, "min_power", min_p, _("Change Min Power")
-                )
+                self.set_step_property("min_power", min_p)
             if max_changed:
-                self.editor.step.set_step_param(
-                    params, "max_power", max_p, _("Change Max Power")
-                )
-        self.step.updated.send(self.step)
+                self.set_step_property("max_power", max_p)
 
     def _on_min_power_scale_changed(self, scale: Gtk.Scale):
         new_min_value = self.min_power_adj.get_value()
@@ -509,7 +546,7 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
     def _on_dither_algorithm_changed(self, row, pspec):
         selected_idx = row.get_selected()
         selected_algo = list(DitherAlgorithm)[selected_idx]
-        self._on_param_changed("dither_algorithm", selected_algo.value)
+        self._on_param_changed("dither_algorithm", selected_algo)
 
     def _on_threshold_changed(self, scale):
         value = int(scale.get_value())
@@ -526,6 +563,11 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             self.angle_scale.get_value(), cross_hatch
         )
         self._on_param_changed("cross_hatch", cross_hatch)
+
+    def _on_scan_mode_changed(self, row, pspec):
+        selected_idx = row.get_selected()
+        selected_mode = _SCAN_MODES[selected_idx]
+        self._on_param_changed("scan_mode", selected_mode.name)
 
     def _update_power_labels(self, invert: bool):
         """Update min/max power labels based on invert setting."""
@@ -563,12 +605,8 @@ class RasterSettingsWidget(DebounceMixin, StepComponentSettingsWidget):
             value = None
         self._on_param_changed("sample_interval_mm", value)
 
+    def _on_bidir_x_offset_changed(self, value: Optional[float]):
+        self._on_param_changed("bidir_x_offset_mm", value or 0.0)
+
     def _on_param_changed(self, key: str, value: Any):
-        target_dict = self.target_dict.setdefault("params", {})
-        self.editor.step.set_step_param(
-            target_dict=target_dict,
-            key=key,
-            new_value=value,
-            name=_("Change engraving setting"),
-            on_change_callback=lambda: self.step.updated.send(self.step),
-        )
+        self.set_step_property(key, value)
