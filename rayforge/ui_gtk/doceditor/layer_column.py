@@ -433,7 +433,9 @@ class LayerColumn(Gtk.Box):
         toplevel = self.get_ancestor(Gtk.Window)
         if not toplevel:
             return
-        dialog = LayerSettingsDialog(self.layer, transient_for=toplevel)
+        dialog = LayerSettingsDialog(
+            self.layer, transient_for=toplevel, editor=self.editor
+        )
         dialog.present()
 
     def _on_delete_clicked(self, button):
@@ -726,6 +728,8 @@ class LayerColumn(Gtk.Box):
         return (50.0, 50.0)
 
     def _on_drop_accept(self, drop_target, drop):
+        if LayerColumn.dragging:
+            return False
         formats = drop.get_formats() if drop else None
         logger.debug(
             "Accept(%s): formats=%s",
