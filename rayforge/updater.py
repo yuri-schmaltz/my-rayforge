@@ -1,14 +1,14 @@
-import asyncio
+import json
 import logging
 import webbrowser
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Optional
 
-import aiohttp
 from blinker import Signal
 
 from . import __version__
 from .const import DOWNLOAD_URL, GITHUB_RELEASES_API
+from .shared.util.http import resilient_async_get
 from .shared.util.versioning import is_newer_version
 
 if TYPE_CHECKING:
@@ -25,9 +25,6 @@ class AppUpdateChecker:
     """
 
     notification_requested = Signal()
-    RETRYABLE_HTTP_STATUSES = {429, 500, 502, 503, 504}
-    MAX_FETCH_ATTEMPTS = 3
-    FETCH_BACKOFF_SECONDS = 0.75
 
     def __init__(self, task_mgr: "TaskManager", context: "RayforgeContext"):
         self._task_mgr = task_mgr
@@ -83,60 +80,25 @@ class AppUpdateChecker:
             ctx.set_message(_("Rayforge is up to date."))
 
     async def _fetch_latest_release(self) -> Optional[dict]:
-        headers = {
-            "Accept": "application/vnd.github+json",
-            "User-Agent": "rayforge-updater",
-        }
-        timeout = aiohttp.ClientTimeout(total=15)
+        """
+        Fetch the latest release info from the GitHub Releases API.
 
-        for attempt in range(1, self.MAX_FETCH_ATTEMPTS + 1):
-            try:
-                async with aiohttp.ClientSession(headers=headers) as session:
-                    async with session.get(
-                        GITHUB_RELEASES_API,
-                        timeout=timeout,
-                    ) as response:
-                        if response.status == 200:
-                            payload = await response.json(
-                                content_type=None
-                            )
-                            if isinstance(payload, dict):
-                                return payload
-                            logger.warning(
-                                "GitHub API payload is not an object"
-                            )
-                            return None
-
-                        should_retry = (
-                            response.status in self.RETRYABLE_HTTP_STATUSES
-                            and attempt < self.MAX_FETCH_ATTEMPTS
-                        )
-                        if should_retry:
-                            logger.warning(
-                                "GitHub API returned status %s "
-                                "(attempt %s/%s)",
-                                response.status,
-                                attempt,
-                                self.MAX_FETCH_ATTEMPTS,
-                            )
-                            await asyncio.sleep(self.FETCH_BACKOFF_SECONDS)
-                            continue
-
-                        logger.warning(
-                            f"GitHub API returned status {response.status}"
-                        )
-                        return None
-            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
-                if attempt < self.MAX_FETCH_ATTEMPTS:
-                    logger.warning(
-                        "Error fetching release info (attempt %s/%s): %s",
-                        attempt,
-                        self.MAX_FETCH_ATTEMPTS,
-                        e,
-                    )
-                    await asyncio.sleep(self.FETCH_BACKOFF_SECONDS)
-                    continue
-                logger.error(f"Error fetching release info: {e}")
-                return None
-
-        return None
+        Retries on transient HTTP and network failures via
+        ``resilient_async_get`` (3 attempts, 0.75s backoff by default).
+        Returns ``None`` on any failure; never raises.
+        """
+        body = await resilient_async_get(
+            GITHUB_RELEASES_API,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        if body is None:
+            return None
+        try:
+            payload = json.loads(body)
+        except (ValueError, TypeError) as e:
+            logger.warning(f"Failed to parse GitHub release payload: {e}")
+            return None
+        if not isinstance(payload, dict):
+            logger.warning("GitHub API payload is not an object")
+            return None
+        return payload
