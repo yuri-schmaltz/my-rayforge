@@ -34,23 +34,23 @@ class AddonAuthor:
 @dataclass
 class AddonLicense:
     """
-    Represents licensing information for an addon.
+    Represents licensing information for an addon (informational only).
+
+    The application no longer enforces license validation or gating;
+    this dataclass is kept as passive metadata so addon manifests
+    can still declare their license terms.
 
     Attributes:
-        name: SPDX license identifier (e.g., "MIT", "BSL-1.1").
-        required: Whether a license is required for use.
-        purchase_url: URL to purchase a license.
-        product_id: Product identifier for license validation.
-        product_ids: List of product identifiers for license validation.
-        patreon_tier_ids: List of Patreon tier IDs that grant access.
+        name: SPDX license identifier (e.g., "MIT", "GPL-3.0").
+        required: Whether the addon author marks the license as
+            required for use (informational; not enforced).
+        purchase_url: URL where a license can be acquired
+            (informational; not enforced).
     """
 
     name: str = ""
     required: bool = False
     purchase_url: str = ""
-    product_id: str = ""
-    product_ids: List[str] = field(default_factory=list)
-    patreon_tier_ids: List[str] = field(default_factory=list)
 
     @classmethod
     def from_dict(
@@ -61,19 +61,10 @@ class AddonLicense:
             return None
         if not isinstance(data, dict):
             return None
-        tier_ids = data.get("patreon_tier_ids", [])
-        if tier_ids is None:
-            tier_ids = []
-        product_ids = data.get("product_ids", [])
-        if product_ids is None:
-            product_ids = []
         return cls(
             name=data.get("name", ""),
             required=bool(data.get("required", False)),
             purchase_url=data.get("purchase_url", ""),
-            product_id=data.get("product_id", ""),
-            product_ids=product_ids if isinstance(product_ids, list) else [],
-            patreon_tier_ids=tier_ids if isinstance(tier_ids, list) else [],
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -85,20 +76,7 @@ class AddonLicense:
             result["required"] = self.required
         if self.purchase_url:
             result["purchase_url"] = self.purchase_url
-        if self.product_id:
-            result["product_id"] = self.product_id
-        if self.product_ids:
-            result["product_ids"] = self.product_ids
-        if self.patreon_tier_ids:
-            result["patreon_tier_ids"] = self.patreon_tier_ids
         return result
-
-    def get_all_product_ids(self) -> List[str]:
-        """Returns all product IDs (both single and list)."""
-        ids = list(self.product_ids)
-        if self.product_id:
-            ids.append(self.product_id)
-        return ids
 
 
 @dataclass
@@ -249,8 +227,6 @@ class Addon:
         """
         self.root_path = path
         self.metadata = metadata
-        self.license_message: str = ""
-        self.purchase_url: str = ""
 
     @classmethod
     def load_from_directory(

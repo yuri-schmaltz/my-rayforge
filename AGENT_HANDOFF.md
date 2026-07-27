@@ -47,7 +47,6 @@
 Todos os arquivos do commit `ec792907` ("Enhance UI and Resilience Features") sobreviveram o merge intactos:
 - `rayforge/shared/util/http.py` (226 linhas) — `resilient_get`/`resilient_post` com retry+backoff
 - `rayforge/updater.py` — retry logic no AppUpdateChecker (3 tentativas, 0.75s backoff)
-- `rayforge/license/gumroad_provider.py` + `patreon_provider.py` — usam `resilient_get`
 - `rayforge/addon_mgr/addon_manager.py` — cache-fallback + `resilient_get`
 - `rayforge/core/expression/evaluator.py` — AST-based whitelisted evaluator
 - `tests/shared/util/test_http.py` (252) + `tests/test_resilience.py` (311) + `tests/test_updater.py` (78)
@@ -58,7 +57,7 @@ Todos os arquivos do commit `ec792907` ("Enhance UI and Resilience Features") so
 - 0 syntax errors (AST parse em `rayforge/` e `tests/`)
 - `python3 demo_run.py` roda end-to-end (config + version + addon manager)
 - `rayforge.shared.util.http` import + smoke test OK
-- Updater, license providers, addon_manager parseam e importam o resilience layer
+- Updater, addon_manager parseam e importam o resilience layer
 
 ### ✅ Git & Versionamento (resolvido anteriormente)
 - Push via HTTPS com `GITHUB_PUSH_TOKEN` (sandbox Linux)
@@ -228,7 +227,6 @@ rayforge/
   ├── addon_mgr/                   # Plugin system (com cache-fallback)
   ├── camera/                      # v4l.py novo em 1.9.0
   ├── doceditor/                   # editor + array/ (novo 1.9.0)
-  ├── license/                     # Gumroad, Patreon (resilientes)
   ├── shared/util/                 # http.py (resilience), localized, versioning
   └── ui_gtk/                      # GTK4 GUI
 ```
@@ -375,7 +373,6 @@ pixi run rayforge     # inicia a GUI
 Uma vez com a GUI aberta, testar estes fluxos:
 
 ### Resilience layer
-- **License provider**: Settings → Add license → tentar com chave inválida. O retry deve ficar invisível.
 - **Update check**: Settings → About → "Check for updates". Com internet lenta, deve mostrar "update available" depois de alguns segundos (não falhar imediato).
 - **Addon registry**: Addon Manager → Refresh. Em rede instável, deve carregar.
 
@@ -409,7 +406,7 @@ pixi run format        # black + isort
 
 Se quiser ver o resilience layer em ação:
 
-1. **Desligar a internet** durante 30 segundos enquanto o app faz alguma coisa (update check, license validation, etc.). Esperado: retry em background, eventual falha silenciosa, log estruturado.
+1. **Desligar a internet** durante 30 segundos enquanto o app faz alguma coisa (update check, addon registry fetch, etc.). Esperado: retry em background, eventual falha silenciosa, log estruturado.
 
 2. **Configurar DNS quebrado** (ex: `127.0.0.1` como DNS): o app deve continuar funcionando offline (todas as features locais), retry falha silenciosamente nos calls de rede.
 
