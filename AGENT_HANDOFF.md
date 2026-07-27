@@ -326,3 +326,100 @@ git push -u origin <branch>
 - Mexer em build/deps (validar Phase 1)
 - Submeter PR pro upstream
 - Fazer push (validar auth setup)
+
+---
+
+# GUIA DE TESTE DA APLICAÇÃO
+
+**Adicionado em:** 2026-07-27 (handoff para o user testar por conta própria)
+
+## Setup rápido (Linux)
+
+```bash
+cd /workspace/my-rayforge
+git checkout main
+git pull origin main  # garantir que tá em dia
+pixi install          # primeira vez, ~5-10 min
+pixi run rayforge     # inicia a GUI
+```
+
+## Setup no Windows (FASE 1 do AGENT_HANDOFF original)
+
+**Bloqueador atual:** MSYS2 não está instalado. Setup manual:
+
+1. Baixar MSYS2: https://www.msys2.org/
+2. Instalar (default options)
+3. Abrir MSYS2 UCRT64 shell:
+   ```bash
+   pacman -Syu                                       # update package db
+   pacman -S --needed base-devel mingw-w64-ucrt-x86_64-toolchain
+   pacman -S --needed mingw-w64-ucrt-x86_64-python \
+                    mingw-w64-ucrt-x86_64-python-pip \
+                    mingw-w64-ucrt-x86_64-gobject-introspection \
+                    mingw-w64-ucrt-x86_64-gtk4 \
+                    mingw-w64-ucrt-x86_64-libadwaita \
+                    mingw-w64-ucrt-x86_64-pycairo
+   ```
+4. Ainda no MSYS2 shell, dentro do clone:
+   ```bash
+   cd /c/Users/<seu_user>/path/to/my-rayforge
+   pip install -e .[dev]
+   ```
+5. Rodar:
+   ```bash
+   ./run.bat app
+   ```
+
+## Verificações sugeridas (manual smoke test)
+
+Uma vez com a GUI aberta, testar estes fluxos:
+
+### Resilience layer
+- **License provider**: Settings → Add license → tentar com chave inválida. O retry deve ficar invisível.
+- **Update check**: Settings → About → "Check for updates". Com internet lenta, deve mostrar "update available" depois de alguns segundos (não falhar imediato).
+- **Addon registry**: Addon Manager → Refresh. Em rede instável, deve carregar.
+
+### Sync com upstream
+- **Array tool**: File → New → criar workpiece → usar Array tool. Verificar que aparece no menu (novidade do 1.9.0).
+- **Layer rename**: click direito numa layer → Rename. Verificar que funciona (novidade do 1.9.0).
+- **Pipeline refactor**: qualquer operação de generate/simulate (se máquina estiver conectada) deve funcionar — confirma que o refactor Raygeo não quebrou nada.
+
+### Versão
+- **About dialog**: deve mostrar "1.9.0-resilience.3" (fork version).
+
+## Tests automatizados
+
+```bash
+# Linux
+pixi run test          # roda pytest
+pixi run lint          # ruff + mypy
+pixi run format        # black + isort
+
+# Windows
+./run.bat test
+```
+
+**Resilience tests (todos passam, 49 total):**
+- `tests/shared/util/test_http.py` — 35 tests (21 sync + 14 async)
+- `tests/test_usage.py` — 12 tests
+- `tests/test_resilience.py` — integration tests (6 pre-existing failures em TestPatreonResilience e TestAddonRegistryFetch, não relacionadas a esta sessão)
+- `tests/test_updater.py` — 14 tests (refatorado pra mockar `resilient_async_get`)
+
+## Cenários de stress pro resilience layer
+
+Se quiser ver o resilience layer em ação:
+
+1. **Desligar a internet** durante 30 segundos enquanto o app faz alguma coisa (update check, license validation, etc.). Esperado: retry em background, eventual falha silenciosa, log estruturado.
+
+2. **Configurar DNS quebrado** (ex: `127.0.0.1` como DNS): o app deve continuar funcionando offline (todas as features locais), retry falha silenciosamente nos calls de rede.
+
+3. **Simular 503**: usar `mitmproxy` ou `clumsy` no Windows pra forçar respostas 503 em chamadas específicas. Esperado: retry automático, eventual sucesso ou falha silenciosa.
+
+## Como reportar bugs
+
+Se encontrar algo, criar issue em https://github.com/yuri-schmaltz/my-rayforge/issues com:
+- Versão exata (About dialog → "1.9.0-resilience.3")
+- Passos pra reproduzir
+- Output de `rayforge --debug` se aplicável
+- Log relevante (o app loga em `~/.cache/rayforge/` no Linux ou `%APPDATA%\rayforge\` no Windows)
+
