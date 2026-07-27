@@ -13,10 +13,13 @@ from typing import (
 )
 
 from blinker import Signal
+from raygeo.cnc.execution.specs import ComputePayload
 from raygeo.geo import Matrix
 from raygeo.ops import Ops
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.contour import ContourSpec
+from raygeo.ops.part import Part
 from raygeo.ops.state import AirAssistMode
-from raygeo.ops.types import SectionType
 
 from ..pipeline.transformer.registry import transformer_registry
 from ..shared.units.formatter import format_value
@@ -28,11 +31,10 @@ if TYPE_CHECKING:
     from ..context import RayforgeContext
     from ..machine.models.laser import Laser
     from ..machine.models.machine import Machine
-    from ..pipeline.artifact import WorkPieceArtifact
     from ..pipeline.stage.assembler_helpers import MachineDefaults
     from .layer import Layer
-    from .workpiece import WorkPiece
     from .workflow import Workflow
+    from .workpiece import WorkPiece
 
 
 logger = logging.getLogger(__name__)
@@ -63,12 +65,6 @@ class Step(DocItem, ABC):
     CAPABILITIES: Tuple[Capability, ...] = ()
     PRODUCER_CLASS: ClassVar[Any] = None
     ASSEMBLER_NAME: ClassVar[str] = ""
-    IS_VECTOR: ClassVar[bool] = True
-    NORMALIZE_WINDINGS: ClassVar[bool] = False
-    SPLIT_CONTOURS: ClassVar[bool] = False
-    SET_POWER: ClassVar[bool] = False
-    ALWAYS_WRAP: ClassVar[bool] = False
-    SECTION_TYPE: ClassVar[SectionType] = SectionType.VECTOR_OUTLINE
 
     def __init__(
         self,
@@ -174,20 +170,6 @@ class Step(DocItem, ABC):
             f"{cls.__name__}.create() must be implemented by subclass"
         )
 
-    def prepare(
-        self,
-        workpiece: "WorkPiece",
-        settings: Dict[str, Any],
-        resolved_params: Dict[str, Any],
-    ) -> None:
-        """
-        Run once before chunked processing begins.
-
-        Override in subclasses to compute global state (e.g. raster
-        auto-levels). The base implementation is a no-op.
-        """
-        pass
-
     def get_assembler_kwargs(
         self,
         machine_defaults: "MachineDefaults",
@@ -195,6 +177,53 @@ class Step(DocItem, ABC):
     ) -> Dict[str, Any]:
         """Build the kwargs dict for :meth:`~.AssemblerRegistry.assemble`."""
         return {}
+
+    def build_compute_payload(
+        self,
+        machine_defaults: "MachineDefaults",
+        workpiece: "WorkPiece",
+    ) -> "Tuple[Part, ComputePayload]":
+        """
+        Build the raygeo :class:`Part` and :class:`ComputePayload` for
+        a workpiece compute node of the new intent pipeline.
+
+        The base implementation returns a default payload wrapping a
+        bare :class:`ContourSpec` assembler and a :class:`Part`
+        built from the workpiece's vector geometry (or an empty
+        :class:`Part` when the workpiece has no boundaries).  Step
+        kinds with a real raygeo assembler override this to populate
+        the assembler spec from their :meth:`get_assembler_kwargs`
+        and to attach an image source for raster steps (see
+        :class:`ContourStep`, :class:`EngraveStep`).
+
+        :param machine_defaults: Resolved machine-level defaults.
+        :param workpiece: The workpiece this compute node runs against.
+        :returns: ``(part, payload)`` for ``StageSpec.Compute``.
+        """
+        part = workpiece.to_part()
+        if part is None:
+            part = Part(size_mm=workpiece.size)
+        return part, ComputePayload(assembler=Assembler(ContourSpec()))
+
+    def assembler_token_params(
+        self,
+        machine_defaults: "MachineDefaults",
+        workpiece: "WorkPiece",
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Return a JSON-serialisable dict of the assembler spec
+        parameters that this step resolves for *machine_defaults*.
+
+        The value is folded into the workpiece compute token so that
+        changes to step-specific assembler inputs (e.g. ``cut_side``
+        for ContourStep) invalidate the cache even when the generic
+        step parameters are unchanged.
+
+        The base implementation returns :data:`None`, leaving the
+        compute token unaffected.  Step kinds that wire a real
+        assembler spec override this (see :class:`ContourStep`).
+        """
+        return None
 
     def create_initial_ops(self) -> "Ops":
         """Build the initial Ops object with step-wide machine settings."""
@@ -210,45 +239,6 @@ class Step(DocItem, ABC):
         if self.pulse_width:
             ops.set_pulse_width(self.pulse_width)
         return ops
-
-    def should_skip_workpiece(self, workpiece: "WorkPiece") -> bool:
-        """Return True if this step should skip the given workpiece entirely.
-
-        Override in subclasses that need to bail out early (e.g. raster
-        steps skip workpieces with no fills).
-        """
-        return False
-
-    def requires_full_render(self) -> bool:
-        """Return True if this step needs a full bitmap render before assembly.
-
-        The base implementation returns False. Steps that rasterize the
-        entire workpiece before operating on it (e.g. shrinkwrap) should
-        override to return True.
-        """
-        return False
-
-    def assemble_on_surface(
-        self,
-        workpiece: "WorkPiece",
-        laser: "Laser",
-        generation_id: int,
-        surface: Any = None,
-        pixels_per_mm: Optional[Tuple[float, float]] = None,
-        *,
-        machine_defaults: "MachineDefaults",
-        y_offset_mm: float = 0.0,
-        computed_auto_levels: Optional[Tuple[int, int]] = None,
-    ) -> "WorkPieceArtifact":
-        """Run the assembler on a surface (or vector data) and return an
-        artifact.
-
-        Subclasses must override this.  The base implementation raises
-        :class:`NotImplementedError`.
-        """
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement assemble_on_surface"
-        )
 
     def to_dict(self) -> Dict:
         """Serializes the step and its configuration to a dictionary."""

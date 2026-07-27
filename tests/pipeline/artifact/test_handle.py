@@ -13,11 +13,10 @@ def test_workpiece_handle_serialization_round_trip():
     back.
     """
     handle = WorkPieceArtifactHandle(
-        shm_name="test_shm_123",
+        key="test_shm_123",
         handle_class_name="WorkPieceArtifactHandle",
         artifact_type_name="WorkPieceArtifact",
         is_scalable=False,
-        source_coordinate_system_name="PIXEL_SPACE",
         source_dimensions=(1024, 768),
         time_estimate=123.4,
         generation_size=(100.0, 75.0),
@@ -51,7 +50,7 @@ def test_step_ops_handle_serialization_round_trip():
     back.
     """
     handle = StepOpsArtifactHandle(
-        shm_name="test_shm_ops_456",
+        key="test_shm_ops_456",
         handle_class_name="StepOpsArtifactHandle",
         artifact_type_name="StepOpsArtifact",
         array_metadata={

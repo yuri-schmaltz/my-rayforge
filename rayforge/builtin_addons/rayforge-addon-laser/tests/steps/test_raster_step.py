@@ -1,11 +1,16 @@
 from unittest.mock import MagicMock, patch
 
-import numpy as np
 import pytest
 from laser_essentials.steps import EngraveStep
 
+from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.raster import RasterSpec
+from raygeo.ops.part import Part
+
 from rayforge.core.capability import ENGRAVE
 from rayforge.core.step_registry import step_registry
+from rayforge.core.workpiece import WorkPiece
 from rayforge.pipeline.stage.assembler_helpers import MachineDefaults
 
 
@@ -104,63 +109,32 @@ class TestEngraveStep:
         assert restored.dot_width_correction_mm == 0.05
 
 
-class TestAssembleOnSurfaceAutoDefaults:
-    """
-    assemble_on_surface must resolve dot_width_correction_mm the same
-    way line_interval_mm/sample_interval_mm already do: None falls back
-    to a laser-spot-size-derived value actually used at generation
-    time, an explicit override is passed through unchanged.
-    """
+class TestEngraveComputePayload:
+    """Verifies EngraveStep's build_compute_payload (B3)."""
 
-    def _run(self, step, machine_defaults, laser_spot_size_mm):
-        laser = MagicMock()
-        laser.uid = "laser-1"
-        laser.spot_size_mm = laser_spot_size_mm
+    def test_build_compute_payload_returns_raster_spec(self, machine_defaults):
+        step = EngraveStep(name="engrave")
+        step.min_power = 0.1
+        step.max_power = 0.9
+        wp = WorkPiece(name="wp")
+        wp.set_size(10.0, 10.0)
 
-        surface = MagicMock()
-        surface.get_width.return_value = 10
-        surface.get_height.return_value = 10
+        with patch.object(WorkPiece, "render_to_pixels", return_value=None):
+            part, payload = step.build_compute_payload(machine_defaults, wp)
 
-        workpiece = MagicMock()
-        workpiece.size = (10.0, 10.0)
-        workpiece.bbox = (0.0, 0.0, 10.0, 10.0)
-        workpiece.uid = "wp-1"
+        assert isinstance(part, Part)
+        assert isinstance(payload, ComputePayload)
+        assert isinstance(payload.assembler, Assembler)
+        spec = payload.assembler.spec
+        assert isinstance(spec, RasterSpec)
+        assert spec.min_power == 0.1
+        assert spec.max_power == 0.9
+        assert spec.mode == "power_modulated"
 
-        fake_image = np.zeros((10, 10), dtype=np.uint8)
-        fake_alpha = np.ones((10, 10), dtype=np.float32)
-
-        with (
-            patch(
-                "laser_essentials.steps.raster_step.preprocess_raster_image",
-                return_value=(fake_image, fake_alpha),
-            ),
-            patch("laser_essentials.steps.raster_step.make_artifact"),
-            patch(
-                "laser_essentials.steps.raster_step.assembler_registry"
-            ) as mock_registry,
-        ):
-            mock_result = MagicMock()
-            mock_result.ops = MagicMock(len=MagicMock(return_value=0))
-            mock_registry.assemble.return_value = mock_result
-
-            step.assemble_on_surface(
-                workpiece,
-                laser,
-                generation_id=1,
-                surface=surface,
-                pixels_per_mm=(1.0, 1.0),
-                machine_defaults=machine_defaults,
-            )
-
-        return mock_registry.assemble.call_args.kwargs
-
-    def test_auto_default_uses_half_spot_size(self, machine_defaults):
-        step = EngraveStep(name="Test")
-        kwargs = self._run(step, machine_defaults, (0.2, 0.15))
-        assert kwargs["dot_width_correction_mm"] == pytest.approx(0.1)
-
-    def test_explicit_override_is_respected(self, machine_defaults):
-        step = EngraveStep(name="Test")
-        step.dot_width_correction_mm = 0.5  # type: ignore[assignment]
-        kwargs = self._run(step, machine_defaults, (0.2, 0.15))
-        assert kwargs["dot_width_correction_mm"] == pytest.approx(0.5)
+    def test_assembler_token_params_mirrors_kwargs(self, machine_defaults):
+        step = EngraveStep(name="engrave")
+        wp = WorkPiece(name="wp")
+        wp.set_size(10.0, 10.0)
+        token = step.assembler_token_params(machine_defaults, wp)
+        kwargs = step.get_assembler_kwargs(machine_defaults, wp)
+        assert token == kwargs

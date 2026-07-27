@@ -1,26 +1,25 @@
 from __future__ import annotations
 
 from gettext import gettext as _
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
+
+from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.frame import FrameSpec
+from raygeo.ops.part import Part
 
 from rayforge.core.capability import CUT, SCORE, WITH_KERF, Capability
-from rayforge.core.step import Step
-from rayforge.pipeline.assembler.registry import assembler_registry
 from rayforge.core.cut_side import CutSide
+from rayforge.core.step import Step
 from rayforge.pipeline.stage.assembler_helpers import (
     MachineDefaults,
-    build_part_vector,
-    make_artifact,
-    wrap_assembler_result,
+    build_part_vector_with_raster_fallback,
 )
 from rayforge.pipeline.transformer.registry import transformer_registry
-from raygeo.ops import Ops
 
 if TYPE_CHECKING:
     from rayforge.context import RayforgeContext
     from rayforge.core.workpiece import WorkPiece
-    from rayforge.machine.models.laser import Laser
-    from rayforge.pipeline.artifact import WorkPieceArtifact
 
 
 class FrameStep(Step):
@@ -28,7 +27,6 @@ class FrameStep(Step):
     ICON = "step-frame-symbolic"
     CAPABILITIES: Tuple[Capability, ...] = (CUT, SCORE, WITH_KERF)
     ASSEMBLER_NAME = "frame"
-    SET_POWER = True
 
     def __init__(
         self, name: Optional[str] = None, typelabel: Optional[str] = None
@@ -54,44 +52,35 @@ class FrameStep(Step):
         kwargs["kerf_mm"] = machine_defaults.kerf_mm
         return kwargs
 
-    def assemble_on_surface(
+    def build_compute_payload(
         self,
+        machine_defaults: MachineDefaults,
         workpiece: "WorkPiece",
-        laser: "Laser",
-        generation_id: int,
-        surface: Any = None,
-        pixels_per_mm: Optional[Tuple[float, float]] = None,
-        *,
-        machine_defaults: "MachineDefaults",
-        y_offset_mm: float = 0.0,
-        computed_auto_levels: Optional[Tuple[int, int]] = None,
-    ) -> "WorkPieceArtifact":
-        use_surface = surface is not None and (
-            not workpiece.boundaries or workpiece.boundaries.is_empty()
+    ) -> "Tuple[Part, ComputePayload]":
+        """Build a :class:`Part` (from the workpiece's vector
+        geometry) and a :class:`ComputePayload` carrying a
+        :class:`FrameSpec`.
+
+        When the workpiece has no vector boundaries, the source is
+        rendered to pixels and traced into geometry before assembling.
+        """
+        part = build_part_vector_with_raster_fallback(
+            workpiece, self.pixels_per_mm
         )
-        part = build_part_vector(
-            workpiece,
-            surface=surface if use_surface else None,
-            normalize_windings=self.NORMALIZE_WINDINGS,
-        )
-        if part is None or not part.has_geometry():
-            return make_artifact(
-                Ops(), workpiece, generation_id, is_vector=self.IS_VECTOR
-            )
         kwargs = self.get_assembler_kwargs(machine_defaults, workpiece)
-        result = assembler_registry.assemble(
-            self.ASSEMBLER_NAME, part, **kwargs
+        spec = FrameSpec(
+            kerf_mm=kwargs["kerf_mm"],
+            path_offset_mm=kwargs["path_offset_mm"],
+            cut_side=kwargs["cut_side"],
         )
-        set_power = machine_defaults.step_power if self.SET_POWER else None
-        return wrap_assembler_result(
-            result,
-            workpiece,
-            laser,
-            generation_id,
-            split_contours=self.SPLIT_CONTOURS,
-            set_power=set_power,
-            is_vector=self.IS_VECTOR,
-        )
+        return part, ComputePayload(assembler=Assembler(spec))
+
+    def assembler_token_params(
+        self,
+        machine_defaults: MachineDefaults,
+        workpiece: "WorkPiece",
+    ) -> Optional[dict]:
+        return self.get_assembler_kwargs(machine_defaults, workpiece)
 
     def to_dict(self) -> dict:
         data = super().to_dict()
