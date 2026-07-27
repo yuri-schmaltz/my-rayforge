@@ -2,8 +2,8 @@
 
 **Data:** 2026-07-27  
 **Repositório:** yuri-schmaltz/my-rayforge (fork de barebaric/rayforge)  
-**Commit Atual:** `18dd174f` - "Sync upstream 1.9.0 → 1.9.0+target-architecture (2026-07-27) (#4)"  
-**Versão:** `1.9.0-resilience.3` (fork patch — git tag)  
+**Commit Atual:** `d5562896` - "Add testing guide to AGENT_HANDOFF (#7)"  
+**Versão:** `1.9.0+resilience.3` (fork patch — git tag)  
 
 ---
 
@@ -76,7 +76,7 @@ Todos os arquivos do commit `ec792907` ("Enhance UI and Resilience Features") so
 | Item | Estado |
 |------|--------|
 | Sincronização com upstream | ✅ Em dia (1.9.0+target-architecture, 2026-07-27) |
-| Versão do fork | ✅ `1.9.0-resilience.3` (via git tag, semver prerelease) |
+| Versão do fork | ✅ `1.9.0+resilience.3` (via git tag, semver build metadata) |
 | Resilience layer | ✅ HTTP util (sync+async) + 4 call sites refatorados + 35 tests |
 | PRs upstream em flight | `barebaric/rayforge#321` (resilient http util — OPEN) |
 | Resilience layer local | ✅ Preservado, testado |
@@ -422,4 +422,93 @@ Se encontrar algo, criar issue em https://github.com/yuri-schmaltz/my-rayforge/i
 - Passos pra reproduzir
 - Output de `rayforge --debug` se aplicável
 - Log relevante (o app loga em `~/.cache/rayforge/` no Linux ou `%APPDATA%\rayforge\` no Windows)
+
+
+---
+
+# GUIA DE BUILD DO INSTALADOR
+
+**Adicionado em:** 2026-07-27 (h4 session)
+
+Esta seção cobre como buildar o fork como instalador distribuível.
+
+## Versão
+
+O fork usa o scheme `1.9.0+resilience.3`:
+- **+ (não -)**: semver build metadata (não prerelease), válido em:
+  - pip/PyPI (PEP 440 local version)
+  - apt/deb (mapeado pra `~`)
+  - macOS bundle / Windows NSIS
+  - setuptools-git-versioning (que strip `+` na sanitização)
+- **Comportamento:** fork `1.9.0+resilience.3 == 1.9.0` em semver comparison (build metadata ignorado). Update checker NÃO mostra notificação spurious. Releases reais do upstream (1.9.1+) ainda são detectadas.
+
+## Build do wheel (PyPI) — testado em 2026-07-27
+
+```bash
+cd /workspace/my-rayforge
+pip install build
+python3 -m build --wheel --outdir dist/
+python3 -m build --sdist --outdir dist/
+# → dist/rayforge-1.9.0+resilience.3-py3-none-any.whl
+# → dist/rayforge-1.9.0+resilience.3.tar.gz
+```
+
+Validado: o wheel tem 1230 files, 5.6 MB, inclui o resilience layer em `rayforge/shared/util/http.py`.
+
+## Build do .deb (Linux)
+
+```bash
+pixi run build-deb
+# → dist/rayforge_1.9.0+resilience.3-1~local1_amd64.deb
+```
+
+**Nota:** o `+` no version vira `~` no deb, então o deb vai ser nomeado `rayforge_1.9.0~resilience.3-1~local1_amd64.deb`. Isso é correto per Debian policy.
+
+## Build do snap (Linux)
+
+```bash
+snapcraft
+# → *.snap (precisa rodar fora do pixi)
+```
+
+## Build do .exe (Windows)
+
+```bash
+# No MSYS2 UCRT64 shell:
+bash scripts/win/win_setup.sh     # primeira vez (~30 min)
+bash scripts/win/win_build.sh     # PyInstaller + NSIS
+# → dist/rayforge-v1.9.0+resilience.3-installer.exe
+```
+
+**Nota sobre o prefixo `v`:** o `win_build.sh` adiciona `v` antes do version (`rayforge-v${CLEAN_VERSION}-installer.exe`). Para o nosso `1.9.0+resilience.3`, o `+` vai virar `+` no filename (Windows aceita `+` em filenames, mas PowerShell pode interpretar como wildcard).
+
+## Build do .dmg (macOS)
+
+```bash
+./scripts/mac/mac_setup.sh --install
+./scripts/mac/mac_build.sh
+# Selecionar opção 5 (Build + Bundle + DMG)
+# → dist/Rayforge.dmg
+```
+
+**CI workflow:** `.github/workflows/build-macos-universal.yml` (363 linhas, 5 jobs: version, build-intel, build-arm, merge-universal, release).
+
+## CI workflows existentes
+
+Todos os workflows estão em `.github/workflows/`:
+
+| Workflow | Função | Trigger |
+|---|---|---|
+| `lint-test.yml` | Ruff + mypy + pytest | push, PR |
+| `security-perf.yml` | SCA + perf gates (dependabot já incluso) | push, PR |
+| `build-exe.yml` | Windows installer | push, PR, tag |
+| `build-macos-universal.yml` | macOS Intel + ARM + DMG | push, PR, tag |
+| `publish-to-pypi.yml` | Build + publish wheel/sdist no PyPI | push, tag (barebaric only) |
+| `publish-to-snap-store.yml` | Build + publish snap | push, tag (barebaric only) |
+| `publish-deb.yml` | Build .deb + upload PPA | push, tag (barebaric only) |
+| `download-stats.yml` | Atualiza stats do GitHub | scheduled |
+| `stale.yml` / `unstale.yml` | Marca/desmarca issues stale | scheduled |
+| `website.yml` | Build website | push website/, tag |
+
+**Nota:** os workflows `publish-to-*` só rodam no repo `barebaric/rayforge` (gateado por `if: github.repository == 'barebaric/rayforge'`). No fork, esses ficam skip.
 
