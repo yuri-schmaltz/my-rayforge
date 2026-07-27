@@ -1,26 +1,24 @@
 from __future__ import annotations
 
 from gettext import gettext as _
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
+
+from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.geo import Matrix
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.wavefront import AdaptiveWavefrontSpec
+from raygeo.ops.part import Part
 
 from rayforge.core.capability import CUT, Capability
 from rayforge.core.step import Step
-from rayforge.pipeline.assembler.registry import assembler_registry
 from rayforge.pipeline.stage.assembler_helpers import (
     MachineDefaults,
-    build_part_vector,
-    make_artifact,
-    wrap_assembler_result,
 )
 from rayforge.pipeline.transformer.registry import transformer_registry
-from raygeo.ops import Ops
-
 
 if TYPE_CHECKING:
     from rayforge.context import RayforgeContext
     from rayforge.core.workpiece import WorkPiece
-    from rayforge.machine.models.laser import Laser
-    from rayforge.pipeline.artifact import WorkPieceArtifact
 
 
 class WavefrontStep(Step):
@@ -28,7 +26,6 @@ class WavefrontStep(Step):
     ICON = "step-wavefront-symbolic"
     CAPABILITIES: Tuple[Capability, ...] = (CUT,)
     ASSEMBLER_NAME = "wavefront"
-    NORMALIZE_WINDINGS = True
 
     def __init__(
         self, name: Optional[str] = None, typelabel: Optional[str] = None
@@ -56,44 +53,30 @@ class WavefrontStep(Step):
         kwargs["cut_power"] = machine_defaults.step_power
         return kwargs
 
-    def assemble_on_surface(
+    def build_compute_payload(
         self,
+        machine_defaults: MachineDefaults,
         workpiece: "WorkPiece",
-        laser: "Laser",
-        generation_id: int,
-        surface: Any = None,
-        pixels_per_mm: Optional[Tuple[float, float]] = None,
-        *,
-        machine_defaults: "MachineDefaults",
-        y_offset_mm: float = 0.0,
-        computed_auto_levels: Optional[Tuple[int, int]] = None,
-    ) -> "WorkPieceArtifact":
-        use_surface = surface is not None and (
-            not workpiece.boundaries or workpiece.boundaries.is_empty()
-        )
-        part = build_part_vector(
-            workpiece,
-            surface=surface if use_surface else None,
-            normalize_windings=self.NORMALIZE_WINDINGS,
-        )
-        if part is None or not part.has_geometry():
-            return make_artifact(
-                Ops(), workpiece, generation_id, is_vector=self.IS_VECTOR
-            )
+    ) -> "Tuple[Part, ComputePayload]":
+        """Build a :class:`Part` with normalised-winding vector
+        geometry and a :class:`ComputePayload` carrying an
+        :class:`AdaptiveWavefrontSpec`."""
+        part = _build_wavefront_part(workpiece)
         kwargs = self.get_assembler_kwargs(machine_defaults, workpiece)
-        result = assembler_registry.assemble(
-            self.ASSEMBLER_NAME, part, **kwargs
+        spec = AdaptiveWavefrontSpec(
+            kwargs["step_over"],
+            0.0,
+            kwargs["area_tolerance"],
+            kwargs["precision"],
         )
-        set_power = machine_defaults.step_power if self.SET_POWER else None
-        return wrap_assembler_result(
-            result,
-            workpiece,
-            laser,
-            generation_id,
-            split_contours=self.SPLIT_CONTOURS,
-            set_power=set_power,
-            is_vector=self.IS_VECTOR,
-        )
+        return part, ComputePayload(assembler=Assembler(spec))
+
+    def assembler_token_params(
+        self,
+        machine_defaults: MachineDefaults,
+        workpiece: "WorkPiece",
+    ) -> Optional[dict]:
+        return self.get_assembler_kwargs(machine_defaults, workpiece)
 
     def to_dict(self) -> dict:
         result = super().to_dict()
@@ -150,3 +133,22 @@ class WavefrontStep(Step):
             for var in cap.varset:
                 setattr(step, var.key, var.default)
         return step
+
+
+def _build_wavefront_part(workpiece: "WorkPiece") -> Part:
+    """Build a :class:`Part` with normalised-winding vector geometry
+    for the wavefront assembler.
+
+    Mirrors :func:`build_part_vector` with ``normalize_windings=True``
+    but lives here so the compute-payload construction is
+    self-contained for the raygeo intent pipeline.
+    """
+    boundaries = workpiece.boundaries
+    if boundaries is None or boundaries.is_empty():
+        return Part(size_mm=workpiece.size)
+    scaled = boundaries.copy()
+    w, h = workpiece.size
+    if w > 0 and h > 0:
+        scaled.transform(Matrix.scale(w, h))
+    scaled.normalize_winding_orders()
+    return Part(geometry=scaled, size_mm=(w, h))
