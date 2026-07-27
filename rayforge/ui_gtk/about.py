@@ -284,13 +284,6 @@ class AboutDialog(PatchedDialogWindow):
         )
         links_box.append(issues_button)
 
-        donate_button = Gtk.Button.new_with_label(_("Donate"))
-        donate_button.connect(
-            "clicked",
-            lambda _: webbrowser.open("https://www.patreon.com/c/knipknap"),
-        )
-        links_box.append(donate_button)
-
         prefgroup = Adw.PreferencesGroup()
         content_box.append(prefgroup)
 

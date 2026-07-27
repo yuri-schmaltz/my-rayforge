@@ -20,22 +20,12 @@ HEARTS_PROJECT = (
     Path(__file__).parent.parent.parent / "tests" / "assets" / "pretty.ryp"
 )
 
-PRODUCT_ID = "A56heLPCXT6uPUpnmpnZYQ=="
-
-
 def _ensure_addon_loaded():
     from rayforge.context import get_context
 
     ctx = get_context()
     if "deepnest" in ctx.addon_mgr.loaded_addons:
         return
-
-    def _add_license():
-        ctx.license_validator.add_gumroad_license(
-            PRODUCT_ID, "TESTKEY-deepnest"
-        )
-
-    run_on_main_thread(_add_license)
 
     if "deepnest" not in ctx.addon_mgr.loaded_addons:
         raise RuntimeError("Failed to load deepnest addon")
