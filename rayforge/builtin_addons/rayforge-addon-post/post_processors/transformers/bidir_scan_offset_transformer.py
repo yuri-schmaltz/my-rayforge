@@ -1,14 +1,11 @@
 from __future__ import annotations
 
-import math
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from raygeo.ops import Ops
-from raygeo.ops.types import CommandCategory, CommandType
+from raygeo.ops.transform.bidir_scan_offset import BidirScanOffsetSpec
 
 from rayforge.pipeline.transformer.base import ExecutionPhase, OpsTransformer
-from rayforge.shared.tasker.progress import ProgressContext
 
 if TYPE_CHECKING:
     from raygeo.geo import Geometry
@@ -47,53 +44,14 @@ class BidirScanOffsetTransformer(OpsTransformer):
             "scan-direction skew."
         )
 
-    def run(
+    def to_spec(
         self,
-        ops: Ops,
-        workpiece: Optional["WorkPiece"] = None,
-        context: Optional[ProgressContext] = None,
-        stock_geometries: Optional[List["Geometry"]] = None,
-        settings: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        offset_mm = settings.get("bidir_x_offset_mm", 0.0) if settings else 0.0
-        if not self.enabled or math.isclose(offset_mm, 0.0):
-            return
-
-        source = ops.copy()
-        ops.clear()
-        n = source.len()
-        idx = 0
-        while idx < n:
-            if source.command_type(idx) == CommandType.MOVE_TO:
-                move_end = source.endpoint(idx)
-                j = idx + 1
-                while j < n and source.category(j) == CommandCategory.STATE:
-                    j += 1
-                if j < n and source.is_scanline(j):
-                    scan_end = source.endpoint(j)
-                    if scan_end[0] < move_end[0]:
-                        ops.move_to(
-                            move_end[0] + offset_mm,
-                            move_end[1],
-                            move_end[2],
-                            extra=source.extra_axes(idx),
-                        )
-                        for k in range(idx + 1, j):
-                            ops.transfer_command_from(source, k)
-                        ops.scan_to(
-                            scan_end[0] + offset_mm,
-                            scan_end[1],
-                            scan_end[2],
-                            power_values=list(source.scanline_data(j)),
-                            extra=source.extra_axes(j),
-                        )
-                    else:
-                        for k in range(idx, j + 1):
-                            ops.transfer_command_from(source, k)
-                    idx = j + 1
-                    continue
-            ops.transfer_command_from(source, idx)
-            idx += 1
+        workpiece: Optional["WorkPiece"],
+        stock_geometries: Optional[List["Geometry"]],
+        settings: Optional[Dict[str, Any]],
+    ) -> BidirScanOffsetSpec:
+        offset = settings.get("bidir_x_offset_mm", 0.0) if settings else 0.0
+        return BidirScanOffsetSpec(offset_mm=offset)
 
     def to_dict(self) -> Dict[str, Any]:
         return {**super().to_dict()}
