@@ -3,8 +3,6 @@ from __future__ import annotations
 from gettext import gettext as _
 from typing import (
     TYPE_CHECKING,
-    Any,
-    Dict,
     List,
     Optional,
     Protocol,
@@ -13,29 +11,26 @@ from typing import (
 )
 
 import numpy as np
-from raygeo.ops import Ops
-from raygeo.ops.types import SectionType
+from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.raster import RasterSpec
+from raygeo.ops.part import Part
+from raygeo.ops.part.image_source import WholeImageSource
 
 from rayforge.core.capability import ENGRAVE, Capability
 from rayforge.core.step import Step
 from rayforge.image.dither import DitherAlgorithm
-from rayforge.pipeline.assembler.registry import assembler_registry
 from rayforge.pipeline.stage.assembler_helpers import (
     DepthMode,
     MachineDefaults,
-    build_part_raster,
     compute_raster_auto_levels,
-    make_artifact,
     preprocess_raster_image,
 )
 from rayforge.pipeline.transformer.registry import transformer_registry
 
-
 if TYPE_CHECKING:
     from rayforge.context import RayforgeContext
     from rayforge.core.workpiece import WorkPiece
-    from rayforge.machine.models.laser import Laser
-    from rayforge.pipeline.artifact import WorkPieceArtifact
 
     class OverscanTransformerType(Protocol):
         @staticmethod
@@ -49,9 +44,6 @@ class EngraveStep(Step):
     ICON = "step-raster-symbolic"
     CAPABILITIES: Tuple[Capability, ...] = (ENGRAVE,)
     ASSEMBLER_NAME = "raster"
-    IS_VECTOR = False
-    ALWAYS_WRAP = True
-    SECTION_TYPE = SectionType.RASTER_FILL
 
     def __init__(
         self, name: Optional[str] = None, typelabel: Optional[str] = None
@@ -88,6 +80,18 @@ class EngraveStep(Step):
         except KeyError:
             return None
 
+    def is_position_sensitive(self) -> bool:
+        """The raster assembler bakes ``workpiece.bbox`` into its
+        output via ``offset_x_mm`` / ``offset_y_mm`` so the compute
+        result depends on the workpiece's absolute world position
+        (not just on per-workpiece transformers like CropTransformer).
+        Returning True ensures the compute token folds in
+        ``transform_revision`` so a pure move invalidates the
+        workpiece compute cache rather than leaving stale,
+        wrong-position ops to be re-displaced by the aggregate's new
+        placement matrix."""
+        return True
+
     def get_assembler_kwargs(
         self,
         machine_defaults: MachineDefaults,
@@ -117,6 +121,67 @@ class EngraveStep(Step):
             "z_step_down": self.z_step_down,
             "angle_increment": self.angle_increment,
         }
+
+    def build_compute_payload(
+        self,
+        machine_defaults: MachineDefaults,
+        workpiece: "WorkPiece",
+    ) -> "Tuple[Part, ComputePayload]":
+        """Build a :class:`Part` with the preprocessed raster image
+        attached as a :class:`WholeImageSource`, and a
+        :class:`ComputePayload` carrying a :class:`RasterSpec`.
+
+        Rendering and preprocessing (dither / auto-levels / depth
+        mode) happen here, on the calling thread, so the Rust
+        assembler on the rayon worker only reads slabs from the
+        attached image source.
+        """
+        part, alpha = _build_raster_part(self, machine_defaults, workpiece)
+        kwargs = self.get_assembler_kwargs(machine_defaults, workpiece)
+        depth_mode = DepthMode[self.depth_mode]
+        spot_x = machine_defaults.tool_radius * 2.0
+        line_interval = (
+            kwargs["line_interval_mm"] or machine_defaults.line_interval_mm
+        )
+        sample_interval = kwargs["sample_interval_mm"] or spot_x
+        dot_width = (
+            kwargs["dot_width_correction_mm"]
+            if kwargs["dot_width_correction_mm"] is not None
+            else spot_x / 2.0
+        )
+        x_off, y_off, _w, _h = workpiece.bbox
+        alpha_arr = (
+            (alpha * 255).astype(np.uint8).tobytes()
+            if alpha is not None
+            else None
+        )
+        spec = RasterSpec(
+            mode=depth_mode.raygeo_name,
+            line_interval_mm=line_interval,
+            sample_interval_mm=sample_interval,
+            min_power=kwargs["min_power"],
+            max_power=kwargs["max_power"],
+            step_power=kwargs["step_power"],
+            num_power_levels=kwargs["num_power_levels"],
+            angle=kwargs["angle"],
+            offset_x_mm=x_off,
+            offset_y_mm=y_off,
+            scan_mode=kwargs["scan_mode"],
+            cross_hatch=kwargs["cross_hatch"],
+            num_depth_levels=kwargs["num_depth_levels"],
+            z_step_down=kwargs["z_step_down"],
+            angle_increment=kwargs["angle_increment"],
+            dot_width_correction_mm=dot_width,
+            alpha=alpha_arr,
+        )
+        return part, ComputePayload(assembler=Assembler(spec))
+
+    def assembler_token_params(
+        self,
+        machine_defaults: MachineDefaults,
+        workpiece: "WorkPiece",
+    ) -> Optional[dict]:
+        return self.get_assembler_kwargs(machine_defaults, workpiece)
 
     def to_dict(self) -> dict:
         result = super().to_dict()
@@ -176,144 +241,6 @@ class EngraveStep(Step):
             step.dither_algorithm = DitherAlgorithm(dither_val)
         step.bidir_x_offset_mm = data.get("bidir_x_offset_mm", 0.0)
         return step
-
-    def prepare(
-        self,
-        workpiece: "WorkPiece",
-        settings: Dict[str, Any],
-        resolved_params: Dict[str, Any],
-    ) -> None:
-        self._computed_auto_levels = None
-        if not self.auto_levels:
-            return
-        self._computed_auto_levels = compute_raster_auto_levels(
-            workpiece,
-            settings["pixels_per_mm"],
-            invert=self.invert,
-        )
-
-    def should_skip_workpiece(self, workpiece: "WorkPiece") -> bool:
-        fills = workpiece.fills
-        return fills is not None and len(fills) == 0
-
-    def assemble_on_surface(
-        self,
-        workpiece: "WorkPiece",
-        laser: "Laser",
-        generation_id: int,
-        surface: Any = None,
-        pixels_per_mm: Optional[Tuple[float, float]] = None,
-        *,
-        machine_defaults: "MachineDefaults",
-        y_offset_mm: float = 0.0,
-        computed_auto_levels: Optional[Tuple[int, int]] = None,
-    ) -> "WorkPieceArtifact":
-        assert pixels_per_mm is not None
-        assert surface is not None
-
-        part = build_part_raster(workpiece, pixels_per_mm)
-        rp = self.get_assembler_kwargs(machine_defaults, workpiece)
-
-        width_px = surface.get_width()
-        height_px = surface.get_height()
-
-        depth_mode = DepthMode[self.depth_mode]
-
-        if width_px == 0 or height_px == 0:
-            final_ops = Ops()
-            final_ops.ops_section_start(
-                self.SECTION_TYPE,
-                workpiece.uid,
-                raster_mode=depth_mode.raster_mode,
-            )
-            final_ops.ops_section_end(
-                self.SECTION_TYPE,
-                raster_mode=depth_mode.raster_mode,
-            )
-            return make_artifact(
-                final_ops,
-                workpiece,
-                generation_id,
-                is_vector=False,
-                source_dimensions=(0, 0),
-            )
-
-        image, alpha = preprocess_raster_image(
-            surface,
-            mode=depth_mode,
-            invert=self.invert,
-            auto_levels=self.auto_levels,
-            computed_auto_levels=computed_auto_levels,
-            black_point=self.black_point,
-            white_point=self.white_point,
-            threshold=self.threshold,
-            dither_algorithm=self.dither_algorithm,
-            laser_spot_x_mm=laser.spot_size_mm[0],
-            pixels_per_mm_x=pixels_per_mm[0],
-        )
-        if image is None:
-            return make_artifact(
-                Ops(),
-                workpiece,
-                generation_id,
-                is_vector=False,
-                source_dimensions=(width_px, height_px),
-            )
-        part.image = image
-
-        spot_y = laser.spot_size_mm[1]
-        line_interval_mm = rp.get("line_interval_mm") or spot_y
-        x_offset_mm = workpiece.bbox[0]
-        y_off_mm = workpiece.bbox[1] + y_offset_mm
-        sample_interval_mm = (
-            rp.get("sample_interval_mm") or laser.spot_size_mm[0]
-        )
-        dot_width_correction_mm = (
-            rp.get("dot_width_correction_mm")
-            if rp.get("dot_width_correction_mm") is not None
-            else laser.spot_size_mm[0] / 2.0
-        )
-        step_power = machine_defaults.step_power
-        alpha_arr = (
-            (alpha * 255).astype(np.uint8) if alpha is not None else None
-        )
-
-        result = assembler_registry.assemble(
-            self.ASSEMBLER_NAME,
-            part,
-            alpha=alpha_arr,
-            mode=depth_mode.raygeo_name,
-            line_interval_mm=line_interval_mm,
-            sample_interval_mm=sample_interval_mm,
-            min_power=rp.get("min_power", 0),
-            max_power=rp.get("max_power", 100),
-            step_power=step_power,
-            num_power_levels=rp.get("num_power_levels", 256),
-            angle=self.scan_angle,
-            offset_x_mm=x_offset_mm,
-            offset_y_mm=y_off_mm,
-            scan_mode=rp.get("scan_mode", "segmented").lower(),
-            cross_hatch=rp.get("cross_hatch", False),
-            num_depth_levels=rp.get("num_depth_levels", 1),
-            z_step_down=rp.get("z_step_down", 0.0),
-            angle_increment=rp.get("angle_increment", 0),
-            dot_width_correction_mm=dot_width_correction_mm,
-        )
-
-        final_ops = result.ops
-        if final_ops.len() > 2:
-            head_ops = Ops()
-            head_ops.set_head(laser.uid)
-            head_ops.extend(final_ops)
-            final_ops = head_ops
-
-        return make_artifact(
-            final_ops,
-            workpiece,
-            generation_id,
-            is_vector=self.IS_VECTOR,
-            source_dimensions=(width_px, height_px),
-        )
 
     @classmethod
     def get_default_transformers_dicts(cls) -> Tuple[List, List]:
@@ -376,3 +303,79 @@ class EngraveStep(Step):
                 t["distance_mm"] = auto_distance
 
         return step
+
+
+def _build_raster_part(
+    step: "EngraveStep",
+    machine_defaults: MachineDefaults,
+    workpiece: "WorkPiece",
+) -> Tuple[Part, Optional[np.ndarray]]:
+    """Render and preprocess the workpiece into a :class:`Part`
+    carrying a :class:`WholeImageSource`, and return the alpha
+    channel separately so the caller can fold it into the
+    :class:`RasterSpec`.
+
+    The rendering resolution is clamped to
+    :data:`MAX_RASTER_RENDER_PIXELS` to bound memory.  Auto-levels
+    are precomputed here (see target-architecture.md B3.3) so all
+    slabs see consistent black/white points.
+    """
+    size = workpiece.size
+    if size[0] <= 0 or size[1] <= 0:
+        return Part(size_mm=size), None
+
+    spot_x = machine_defaults.tool_radius * 2.0
+    spot_y = machine_defaults.line_interval_mm
+    px_per_mm_x = 1.0 / (step.sample_interval_mm or spot_x)
+    px_per_mm_y = 1.0 / spot_y
+
+    target_w = int(size[0] * px_per_mm_x)
+    target_h = int(size[1] * px_per_mm_y)
+    num_pixels = target_w * target_h
+    if num_pixels > MAX_RASTER_RENDER_PIXELS:
+        scale = (MAX_RASTER_RENDER_PIXELS / num_pixels) ** 0.5
+        target_w = max(1, int(target_w * scale))
+        target_h = max(1, int(target_h * scale))
+        px_per_mm_x = target_w / size[0]
+        px_per_mm_y = target_h / size[1]
+
+    surface = workpiece.render_to_pixels(target_w, target_h)
+    if surface is None:
+        return Part(size_mm=size), None
+
+    depth_mode = DepthMode[step.depth_mode]
+
+    computed_auto_levels = None
+    if step.auto_levels:
+        computed_auto_levels = compute_raster_auto_levels(
+            workpiece,
+            (px_per_mm_x, px_per_mm_y),
+            invert=step.invert,
+        )
+
+    image, alpha = preprocess_raster_image(
+        surface,
+        mode=depth_mode,
+        invert=step.invert,
+        auto_levels=step.auto_levels,
+        computed_auto_levels=computed_auto_levels,
+        black_point=step.black_point,
+        white_point=step.white_point,
+        threshold=step.threshold,
+        dither_algorithm=step.dither_algorithm,
+        laser_spot_x_mm=spot_x,
+        pixels_per_mm_x=px_per_mm_x,
+    )
+    surface.flush()
+    if image is None:
+        return Part(size_mm=size), None
+
+    part = Part(
+        size_mm=size,
+        pixels_per_mm=(px_per_mm_x, px_per_mm_y),
+    )
+    part.image_source = WholeImageSource(image)
+    return part, alpha
+
+
+MAX_RASTER_RENDER_PIXELS = 16 * 1024 * 1024

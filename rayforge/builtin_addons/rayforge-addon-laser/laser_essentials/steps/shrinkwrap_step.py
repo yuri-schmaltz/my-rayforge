@@ -1,30 +1,28 @@
 from __future__ import annotations
 
 from gettext import gettext as _
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, List, Optional, Tuple, cast
 
 import numpy as np
+from raygeo.cnc.execution.specs import ComputePayload
+from raygeo.ops.assembly import Assembler
+from raygeo.ops.assembly.shrinkwrap import ShrinkwrapSpec
+from raygeo.ops.part import Part
+from raygeo.ops.part.image_source import WholeImageSource
 
 from rayforge.core.capability import CUT, SCORE, WITH_KERF, Capability
-from rayforge.core.step import Step
-from rayforge.pipeline.assembler.registry import assembler_registry
 from rayforge.core.cut_side import CutSide
+from rayforge.core.step import Step
+from rayforge.image.tracing import prepare_surface
 from rayforge.pipeline.stage.assembler_helpers import (
     MachineDefaults,
     build_part_vector,
-    make_artifact,
-    wrap_assembler_result,
 )
 from rayforge.pipeline.transformer.registry import transformer_registry
-from rayforge.image.tracing import prepare_surface
-from raygeo.ops import Ops
-
 
 if TYPE_CHECKING:
     from rayforge.context import RayforgeContext
     from rayforge.core.workpiece import WorkPiece
-    from rayforge.machine.models.laser import Laser
-    from rayforge.pipeline.artifact import WorkPieceArtifact
 
 
 class ShrinkWrapStep(Step):
@@ -32,7 +30,6 @@ class ShrinkWrapStep(Step):
     ICON = "step-shrinkwrap-symbolic"
     CAPABILITIES: Tuple[Capability, ...] = (CUT, SCORE, WITH_KERF)
     ASSEMBLER_NAME = "shrinkwrap"
-    SET_POWER = True
 
     def __init__(
         self, name: Optional[str] = None, typelabel: Optional[str] = None
@@ -65,58 +62,33 @@ class ShrinkWrapStep(Step):
         kwargs["supports_curves"] = machine_defaults.supports_curves
         return kwargs
 
-    def assemble_on_surface(
+    def build_compute_payload(
         self,
+        machine_defaults: MachineDefaults,
         workpiece: "WorkPiece",
-        laser: "Laser",
-        generation_id: int,
-        surface: Any = None,
-        pixels_per_mm: Optional[Tuple[float, float]] = None,
-        *,
-        machine_defaults: "MachineDefaults",
-        y_offset_mm: float = 0.0,
-        computed_auto_levels: Optional[Tuple[int, int]] = None,
-    ) -> "WorkPieceArtifact":
-        part = build_part_vector(
-            workpiece,
-            surface=surface,
-            normalize_windings=self.NORMALIZE_WINDINGS,
-        )
-
-        if surface is not None:
-            assert part is not None
-            boolean_image = prepare_surface(surface)
-            if not np.any(boolean_image):
-                return make_artifact(
-                    Ops(),
-                    workpiece,
-                    generation_id,
-                    is_vector=self.IS_VECTOR,
-                )
-            part.image = boolean_image
-
-        if part is None or not part.has_geometry():
-            return make_artifact(
-                Ops(), workpiece, generation_id, is_vector=self.IS_VECTOR
-            )
-
+    ) -> "Tuple[Part, ComputePayload]":
+        """Build a :class:`Part` with vector geometry and a boolean
+        image, and a :class:`ComputePayload` carrying a
+        :class:`ShrinkwrapSpec`."""
+        part = _build_shrinkwrap_part(workpiece)
         kwargs = self.get_assembler_kwargs(machine_defaults, workpiece)
-        result = assembler_registry.assemble(
-            self.ASSEMBLER_NAME, part, **kwargs
+        spec = ShrinkwrapSpec(
+            gravity=kwargs["gravity"],
+            kerf_mm=kwargs["kerf_mm"],
+            path_offset_mm=kwargs["path_offset_mm"],
+            cut_side=kwargs["cut_side"],
+            arc_tolerance=kwargs["arc_tolerance"],
+            allow_arcs=kwargs["allow_arcs"],
+            supports_curves=kwargs["supports_curves"],
         )
-        set_power = machine_defaults.step_power if self.SET_POWER else None
-        return wrap_assembler_result(
-            result,
-            workpiece,
-            laser,
-            generation_id,
-            split_contours=self.SPLIT_CONTOURS,
-            set_power=set_power,
-            is_vector=self.IS_VECTOR,
-        )
+        return part, ComputePayload(assembler=Assembler(spec))
 
-    def requires_full_render(self) -> bool:
-        return True
+    def assembler_token_params(
+        self,
+        machine_defaults: MachineDefaults,
+        workpiece: "WorkPiece",
+    ) -> Optional[dict]:
+        return self.get_assembler_kwargs(machine_defaults, workpiece)
 
     def to_dict(self) -> dict:
         result = super().to_dict()
@@ -201,3 +173,34 @@ class ShrinkWrapStep(Step):
                     t["lead_out_mm"] = auto_distance
 
         return step
+
+
+def _build_shrinkwrap_part(workpiece: "WorkPiece") -> Part:
+    """Build a :class:`Part` for the shrinkwrap assembler.
+
+    The shrinkwrap assembler needs both vector geometry (for the
+    boundary constraint) and a boolean image (for the hull
+    computation).  This function always renders the workpiece to a
+    surface and prepares the boolean image, then attaches it as a
+    :class:`WholeImageSource` alongside any vector geometry.
+    """
+    size = workpiece.size
+    if size[0] <= 0 or size[1] <= 0:
+        return Part(size_mm=size)
+
+    px_per_mm = (50.0, 50.0)
+    target_w = max(1, int(size[0] * px_per_mm[0]))
+    target_h = max(1, int(size[1] * px_per_mm[1]))
+    surface = workpiece.render_to_pixels(target_w, target_h)
+    if surface is None:
+        return Part(size_mm=size)
+
+    boolean = prepare_surface(surface)
+    if not np.any(boolean):
+        return Part(size_mm=size)
+
+    part = build_part_vector(workpiece)
+    if part is None or not part.has_geometry():
+        part = Part(size_mm=size)
+    part.image_source = WholeImageSource(boolean)
+    return part
