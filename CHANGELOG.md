@@ -5,6 +5,66 @@ All notable changes to Rayforge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 1.9.0-resilience.3 (fork only)
+
+This release exists only on the `yuri-schmaltz/my-rayforge` fork. It is based on
+upstream `barebaric/rayforge` 1.9.0 + the `target-architecture` pipeline refactor,
+with the fork's resilience layer on top. See `AGENT_HANDOFF.md` for the full
+divergence list.
+
+### Added
+
+- `rayforge/shared/util/http.py`: four small retry-on-transient-failure HTTP
+  helpers used throughout the codebase
+  - `resilient_get`, `resilient_post` (sync, stdlib `urllib`)
+  - `resilient_async_get`, `resilient_async_post` (async, `aiohttp`)
+  - All four: retry on `429, 500, 502, 503, 504` and network errors; return
+    `None` on unrecoverable failure; log structured `extra` fields for RCA
+    filtering; POST variants default to `max_attempts=1` to avoid duplicate
+    submissions
+- Comprehensive test coverage (35 tests in `tests/shared/util/test_http.py`):
+  21 sync tests + 14 async tests, all mocked — no network access required
+- `tests/test_resilience.py`: integration tests for the license providers and
+  addon manager, validating retry/cache-fallback behaviour
+- `tests/test_usage.py`: tests for the analytics POST refactor (this release)
+- `.github/dependabot.yml` and `.github/workflows/security-perf.yml`: SCA +
+  performance gates on every PR
+
+### Changed
+
+- `rayforge/updater.py`: refactored to use `resilient_async_get`; the inline
+  aiohttp retry loop is removed. All retry behaviour now lives in one module
+- `rayforge/addon_mgr/addon_manager.py`: addon registry fetch uses
+  `resilient_get`
+- `rayforge/license/gumroad_provider.py`: validation uses `resilient_post`
+  with a cache fallback so license status is preserved across transient
+  network failures
+- `rayforge/license/patreon_provider.py`: same pattern as Gumroad
+- `rayforge/usage.py`: analytics POST uses `resilient_post` with one retry,
+  bounded by the umami cache token to prevent double-counting
+- `rayforge/core/expression/evaluator.py`: replaced bare `eval()` with an
+  AST-whitelisted evaluator (refactor from 1.9.0-resilience.1, preserved
+  through syncs)
+- UI: dock area, dock layout, icon tab widget, and toolbar styling
+  improvements (CSS-only, no logic changes)
+
+### Synced from upstream
+
+- Upstream 1.9.0 (31 commits) — PR #1
+- Upstream `target-architecture` (14 commits) — pipeline refactor to
+  raygeo intent orchestration, raygeo 1.24.0 → 1.25.0, removed dead
+  SHM-era event handlers — PR #4
+
+### Fork version
+
+This release is tagged `1.9.0-resilience.3` on the fork. The version is
+reported in the About dialog and used by the update checker. The
+prerelease suffix (`.3`) means semver treats it as older than upstream
+1.9.0, so the update checker will notify that a newer upstream release
+is available — this is intentional, informing users that they can sync.
+
+---
+
 ## 1.9.0
 
 ### Added
