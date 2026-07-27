@@ -4,11 +4,10 @@ import math
 from gettext import gettext as _
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
-from raygeo.ops import Ops
+from raygeo.ops.transform.multipass import MultiPassSpec
 
 from rayforge.core.workpiece import WorkPiece
 from rayforge.pipeline.transformer.base import ExecutionPhase, OpsTransformer
-from rayforge.shared.tasker.progress import ProgressContext
 
 if TYPE_CHECKING:
     from raygeo.geo import Geometry
@@ -85,44 +84,13 @@ class MultiPassTransformer(OpsTransformer):
             "Repeats the path multiple times, optionally stepping down in Z."
         )
 
-    def run(
+    def to_spec(
         self,
-        ops: Ops,
-        workpiece: Optional[WorkPiece] = None,
-        context: Optional[ProgressContext] = None,
-        stock_geometries: Optional[List["Geometry"]] = None,
-        settings: Optional[Dict[str, Any]] = None,
-    ) -> None:
-        """
-        Executes the multi-pass transformation on the Ops object.
-
-        Args:
-            ops: The Ops object to transform in-place.
-            context: Execution context for cancellation (not used here).
-        """
-        # No-op if only one pass and no Z movement is needed.
-        if self.passes <= 1 and self._z_step_down == 0.0:
-            return
-
-        # No-op if there are no commands to duplicate.
-        if ops.is_empty():
-            return
-
-        # Make a pristine copy of the original commands for subsequent passes.
-        original_ops = ops.copy()
-
-        # Generate and append subsequent passes
-        for i in range(1, self.passes):
-            # Create a fresh copy for this pass
-            pass_ops = original_ops.copy()
-
-            # Apply Z step-down if configured
-            if self._z_step_down != 0.0:
-                z_offset = i * self._z_step_down
-                # Translate by a negative amount to move down the Z axis
-                pass_ops.translate(0, 0, -abs(z_offset))
-
-            ops.extend(pass_ops)
+        workpiece: Optional[WorkPiece],
+        stock_geometries: Optional[List["Geometry"]],
+        settings: Optional[Dict[str, Any]],
+    ) -> MultiPassSpec:
+        return MultiPassSpec(passes=self.passes, z_step_down=self.z_step_down)
 
     def to_dict(self) -> Dict[str, Any]:
         """Serializes the transformer's configuration to a dictionary."""
