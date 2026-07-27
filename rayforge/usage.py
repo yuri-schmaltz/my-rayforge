@@ -3,13 +3,12 @@ import locale
 import logging
 import platform
 import threading
-import urllib.error
-import urllib.request
 import uuid
 from typing import Optional
 
 from . import __version__
 from .config import UMAMI_URL, UMAMI_WEBSITE_ID
+from .shared.util.http import resilient_post
 
 logger = logging.getLogger(__name__)
 
@@ -130,24 +129,24 @@ class UsageTracker:
                 if self._cache_token:
                     headers["x-umami-cache"] = self._cache_token
 
-                req = urllib.request.Request(
-                    UMAMI_URL, data=data, headers=headers, method="POST"
+                # POST with one retry on transient failure. The umami
+                # endpoint handles duplicate events via the
+                # x-umami-cache token, so a single retry is safe.
+                response_body = resilient_post(
+                    UMAMI_URL,
+                    data=data,
+                    headers=headers,
+                    timeout=5,
+                    max_attempts=2,
                 )
-                with urllib.request.urlopen(req, timeout=5) as response:
-                    response_body = response.read().decode("utf-8")
-                    try:
-                        resp_json = json.loads(response_body)
-                        if resp_json and "cache" in resp_json:
-                            self._cache_token = resp_json["cache"]
-                    except json.JSONDecodeError:
-                        pass
-            except urllib.error.HTTPError as e:
-                error_body = e.read().decode("utf-8")
-                logger.warning(
-                    f"Usage tracking request failed: {e.code} {error_body}"
-                )
-            except urllib.error.URLError as e:
-                logger.warning(f"Usage tracking request failed: {e}")
+                if response_body is None:
+                    return
+                try:
+                    resp_json = json.loads(response_body)
+                    if resp_json and "cache" in resp_json:
+                        self._cache_token = resp_json["cache"]
+                except (json.JSONDecodeError, ValueError):
+                    pass
             except Exception as e:
                 logger.warning(f"Usage tracking error: {e}")
 
