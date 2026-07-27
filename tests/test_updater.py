@@ -1,41 +1,19 @@
+"""
+Tests for AppUpdateChecker.
+
+The retry/network behavior of ``_fetch_latest_release`` is delegated to
+``rayforge.shared.util.http.resilient_async_get`` and is covered in
+``tests/shared/util/test_http.py``.  These tests focus on:
+  * the high-level check_on_startup / _check_worker orchestration
+  * JSON payload parsing inside _fetch_latest_release
+"""
+
+import json
 from unittest.mock import MagicMock, patch
 
-import aiohttp
 import pytest
 
 from rayforge.updater import AppUpdateChecker
-
-
-class _DummyResponse:
-    def __init__(self, status, payload=None):
-        self.status = status
-        self._payload = payload or {}
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    async def json(self, content_type=None):
-        return self._payload
-
-
-class _DummySession:
-    def __init__(self, items):
-        self._items = list(items)
-
-    async def __aenter__(self):
-        return self
-
-    async def __aexit__(self, exc_type, exc, tb):
-        return False
-
-    def get(self, *args, **kwargs):
-        item = self._items.pop(0)
-        if isinstance(item, Exception):
-            raise item
-        return item
 
 
 @pytest.fixture
@@ -158,44 +136,45 @@ class TestCheckWorker:
 
 @pytest.mark.asyncio
 class TestFetchLatestRelease:
-    async def test_retries_on_transient_status(self, checker):
-        checker.FETCH_BACKOFF_SECONDS = 0
-        sessions = [
-            _DummySession([_DummyResponse(503)]),
-            _DummySession([
-                _DummyResponse(200, {"tag_name": "1.2.3"})
-            ]),
-        ]
+    async def test_returns_parsed_dict_on_success(self, checker):
+        payload = {"tag_name": "1.2.3"}
         with patch(
-            "rayforge.updater.aiohttp.ClientSession",
-            side_effect=sessions,
+            "rayforge.updater.resilient_async_get",
+            return_value=json.dumps(payload).encode(),
         ):
             result = await checker._fetch_latest_release()
+        assert result == payload
 
-        assert result == {"tag_name": "1.2.3"}
-
-    async def test_retries_on_client_error_then_succeeds(self, checker):
-        checker.FETCH_BACKOFF_SECONDS = 0
-        sessions = [
-            _DummySession([aiohttp.ClientError("boom")]),
-            _DummySession([
-                _DummyResponse(200, {"tag_name": "2.0.0"})
-            ]),
-        ]
+    async def test_returns_none_when_util_returns_none(self, checker):
         with patch(
-            "rayforge.updater.aiohttp.ClientSession",
-            side_effect=sessions,
+            "rayforge.updater.resilient_async_get", return_value=None
         ):
             result = await checker._fetch_latest_release()
-
-        assert result == {"tag_name": "2.0.0"}
-
-    async def test_non_retryable_status_returns_none(self, checker):
-        sessions = [_DummySession([_DummyResponse(404)])]
-        with patch(
-            "rayforge.updater.aiohttp.ClientSession",
-            side_effect=sessions,
-        ):
-            result = await checker._fetch_latest_release()
-
         assert result is None
+
+    async def test_returns_none_on_invalid_json(self, checker):
+        with patch(
+            "rayforge.updater.resilient_async_get",
+            return_value=b"not json {{{",
+        ):
+            result = await checker._fetch_latest_release()
+        assert result is None
+
+    async def test_returns_none_on_non_object_payload(self, checker):
+        # JSON list, not a dict — should be rejected
+        with patch(
+            "rayforge.updater.resilient_async_get",
+            return_value=b'["not", "an", "object"]',
+        ):
+            result = await checker._fetch_latest_release()
+        assert result is None
+
+    async def test_passes_correct_headers(self, checker):
+        with patch(
+            "rayforge.updater.resilient_async_get",
+            return_value=b'{"tag_name": "1.0.0"}',
+        ) as mock_get:
+            await checker._fetch_latest_release()
+        # The util is called with the GitHub Accept header
+        kwargs = mock_get.call_args.kwargs
+        assert kwargs["headers"]["Accept"] == "application/vnd.github+json"
