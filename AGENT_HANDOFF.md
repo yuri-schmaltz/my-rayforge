@@ -1,15 +1,33 @@
 # Handoff Document - Rayforge Application Status
 
-**Data:** 2026-07-26  
+**Data:** 2026-07-27  
 **Repositório:** yuri-schmaltz/my-rayforge (fork de barebaric/rayforge)  
-**Commit Atual:** `d92dab6a` - "Merge upstream 1.8.4 → 1.9.0 (#1)"  
-**Versão:** 1.9.0 (em sync com upstream `fefdbc65`)  
+**Commit Atual:** `18dd174f` - "Sync upstream 1.9.0 → 1.9.0+target-architecture (2026-07-27) (#4)"  
+**Versão:** `1.9.0-resilience.3` (fork patch — git tag)  
 
 ---
 
-## O QUE FOI FEITO (atualizado em 2026-07-26)
+## O QUE FOI FEITO (atualizado em 2026-07-27)
 
-### ✅ Sync com upstream (FASE 5)
+### ✅ Sync upstream 1.9.0 → 1.9.0+target-architecture (FASE 6)
+- **Merge de 14 commits do upstream**, incluindo o `target-architecture` PR #319 (refactor massivo do pipeline pra raygeo intent orchestration)
+- 157 files: +5673 / -21125 (majoritariamente testes reescritos contra a nova arquitetura)
+- **Zero conflitos** — áreas ortogonais (resilience layer não toca pipeline)
+- PR: https://github.com/yuri-schmaltz/my-rayforge/pull/4
+- SHA: `18dd174f`
+- Tudo do upstream novo no fork: pipeline refactor, raygeo 1.25.0, removido SHM-era, etc.
+- Tag bumped: `1.9.0-resilience.1` → `.2` → `.3` (cada PR de resilience marca nova tag)
+
+### ✅ Async resilience layer (PR #3 — merged)
+- **`rayforge/shared/util/http.py` agora tem 4 helpers** (não 2):
+  - `resilient_get` / `resilient_post` (sync, urllib)
+  - `resilient_async_get` / `resilient_async_post` (async, aiohttp)
+- **`rayforge/updater.py` refatorado**: usa `resilient_async_get` em vez de retry loop inline do aiohttp
+- 11 testes novos pra async helpers (test_total 35 = 21 sync http + 14 async http + 14 updater)
+- Removido: `MAX_FETCH_ATTEMPTS`, `FETCH_BACKOFF_SECONDS`, `RETRYABLE_HTTP_STATUSES` do updater (concentrados no util)
+- PR: https://github.com/yuri-schmaltz/my-rayforge/pull/3
+
+### ✅ Sync com upstream 1.8.4 → 1.9.0 (FASE 5)
 - **Merge de `barebaric/rayforge` 1.8.4 → 1.9.0**
   - 31 commits do upstream integrados (138 files, +8228 / -2471)
   - **Zero conflitos** — áreas de mudança ortogonais
@@ -57,13 +75,16 @@ Todos os arquivos do commit `ec792907` ("Enhance UI and Resilience Features") so
 
 | Item | Estado |
 |------|--------|
-| Sincronização com upstream | ✅ Em dia (1.9.0) |
+| Sincronização com upstream | ✅ Em dia (1.9.0+target-architecture, 2026-07-27) |
+| Versão do fork | ✅ `1.9.0-resilience.3` (via git tag, semver prerelease) |
+| Resilience layer | ✅ HTTP util (sync+async) + 4 call sites refatorados + 35 tests |
+| PRs upstream em flight | `barebaric/rayforge#321` (resilient http util — OPEN) |
 | Resilience layer local | ✅ Preservado, testado |
 | Code syntax | ✅ Limpo |
 | Smoke test (`demo_run.py`) | ✅ Passa |
 | GUI em Linux | ✅ Roda (precisa GTK4 + raygeo via pixi) |
 | GUI em Windows | ❌ Bloqueado (MSYS2 não instalado) |
-| Suite de tests completa | ⚠️ Não rodada pós-merge |
+| Suite de tests completa | ⚠️ Não rodada pós-merge (35 resilience tests OK local) |
 
 ---
 
@@ -129,16 +150,25 @@ pixi run format       # black
 - Se quiser marcar o fork com release próprio: `python scripts/bump_version.py small`
 - Mas como o fork é só sync + resilience layer (não um release independente), talvez pular
 
-### FASE 5: PR pro upstream (OPCIONAL mas recomendado)
+### FASE 5: PR pro upstream (OPCIONAL mas recomendado) — ✅ FEITO
 
-**Tarefa 5.1 - Submeter resilience layer pro `barebaric/rayforge`**
-- A `rayforge/shared/util/http.py` é genérica (retry/backoff puro, sem deps específicas)
-- Provavelmente interessa ao upstream (mesmo problema que eles devem ter)
-- Próximos passos:
-  1. Criar worktree `feature/resilient-http-utils` a partir de `upstream/main`
-  2. Cherry-pick ou portar `rayforge/shared/util/http.py` + tests
-  3. Refatorar `updater.py`, license providers, addon manager pra usar
-  4. Abrir PR no upstream com rationale
+**Tarefa 5.1 - Submeter resilience layer pro `barebaric/rayforge`** ✅ ENVIADO
+- PR #320 (sync only) foi criado e depois **fechado em favor de #321** (consolidação)
+- PR #321 aberto: https://github.com/barebaric/rayforge/pull/321
+  - Conteúdo: `rayforge/shared/util/http.py` (4 helpers sync+async) + tests + refactor do `updater.py`
+  - Status: open, mergeable, sem reviewers ainda
+  - Reviewer: @barebaric (mantenedor upstream)
+- Próximos passos quando aprovar:
+  1. Cherry-pick do upstream `feature/resilient-async-http` branch pro fork
+  2. Rebase linear do fork's `main` (stack: 1 → 2 → 3 → 4)
+  3. Bump da tag pra `1.9.0-resilience.4`
+
+### FASE 6: Sync com upstream (RECORRENTE) — ✅ FEITO
+
+**Tarefa 6.1 - Sincronizar com upstream periodicamente**
+- Workflow: criar worktree `feature/sync-upstream-YYYY-MM-DD` → `git merge upstream/main` → push → abrir PR → merge
+- Último sync: 2026-07-27 (PR #4) — 14 commits do upstream, incluindo `target-architecture` (refactor massivo do pipeline)
+- Resultado: fork tá em 1.9.0+target-architecture com resilience layer preservado
 
 ---
 
