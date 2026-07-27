@@ -250,3 +250,292 @@ class TestResilientPost:
 
         assert result == body
         assert call_count == 2
+
+
+# ---------------------------------------------------------------------------
+# Async helpers (resilient_async_get / resilient_async_post)
+#
+# These tests use lightweight aiohttp mocks instead of pulling in
+# aioresponses.  The dummy objects implement only the protocol surface that
+# resilient_async_get/resilient_async_post actually use.
+# ---------------------------------------------------------------------------
+
+import pytest
+
+from rayforge.shared.util.http import (
+    resilient_async_get,
+    resilient_async_post,
+)
+
+
+class _DummyAsyncResponse:
+    def __init__(self, status, body=b""):
+        self.status = status
+        self._body = body
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    async def read(self):
+        return self._body
+
+
+class _DummyAsyncSession:
+    """
+    Mimics aiohttp.ClientSession enough for resilient_async_get/post.
+
+    The ``responses`` queue yields response objects or raises
+    ClientError/TimeoutError on demand.  When a request fires, the next
+    item in the queue is consumed; this lets a test script a sequence
+    of 503, 503, 200-style behaviour.
+    """
+
+    def __init__(self, items, headers_seen=None):
+        self._items = list(items)
+        self._headers_seen = headers_seen
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        return False
+
+    def get(self, *args, **kwargs):
+        if self._headers_seen is not None:
+            self._headers_seen.append(kwargs.get("headers"))
+        return self._next()
+
+    def post(self, *args, **kwargs):
+        if self._headers_seen is not None:
+            self._headers_seen.append(kwargs.get("headers"))
+        return self._next()
+
+    def _next(self):
+        if not self._items:
+            raise AssertionError("No more scripted responses")
+        item = self._items.pop(0)
+        if isinstance(item, BaseException):
+            raise item
+        return item
+
+
+def _client_error(message="boom"):
+    import aiohttp
+
+    return aiohttp.ClientError(message)
+
+
+def _timeout_error():
+    return asyncio.TimeoutError()
+
+
+import asyncio  # noqa: E402  -- placed after fixtures that use it
+
+
+class TestResilientAsyncGetSuccess:
+    @pytest.mark.asyncio
+    async def test_returns_body_on_200(self):
+        body = b'{"ok": true}'
+        session = _DummyAsyncSession([_DummyAsyncResponse(200, body)])
+        with patch(
+            "rayforge.shared.util.http.aiohttp.ClientSession",
+            return_value=session,
+        ):
+            result = await resilient_async_get(
+                "http://example.com/api", max_attempts=1, backoff=0
+            )
+        assert result == body
+
+    @pytest.mark.asyncio
+    async def test_merges_default_user_agent(self):
+        # Capture the kwargs passed to ClientSession so we can assert
+        # that default + caller-provided headers were merged correctly.
+        captured_kwargs = []
+
+        def _capture(*args, **kwargs):
+            captured_kwargs.append(kwargs)
+            return _DummyAsyncSession([_DummyAsyncResponse(200, b"ok")])
+
+        with patch(
+            "rayforge.shared.util.http.aiohttp.ClientSession",
+            side_effect=_capture,
+        ):
+            await resilient_async_get(
+                "http://example.com",
+                headers={"X-Custom": "yes"},
+                max_attempts=1,
+                backoff=0,
+            )
+        session_headers = captured_kwargs[0]["headers"]
+        assert session_headers["User-Agent"] == "rayforge"
+        assert session_headers["X-Custom"] == "yes"
+
+
+class TestResilientAsyncGetHttpErrors:
+    @pytest.mark.asyncio
+    async def test_retry_on_5xx_then_succeed(self):
+        body = b"recovered"
+        session = _DummyAsyncSession(
+            [
+                _DummyAsyncResponse(503),
+                _DummyAsyncResponse(500),
+                _DummyAsyncResponse(200, body),
+            ]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result == body
+
+    @pytest.mark.asyncio
+    async def test_no_retry_on_4xx(self):
+        session = _DummyAsyncSession([_DummyAsyncResponse(404)])
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_returns_none_when_attempts_exhausted(self):
+        session = _DummyAsyncSession(
+            [
+                _DummyAsyncResponse(503),
+                _DummyAsyncResponse(503),
+                _DummyAsyncResponse(503),
+            ]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result is None
+
+
+class TestResilientAsyncGetNetworkErrors:
+    @pytest.mark.asyncio
+    async def test_retry_on_client_error(self):
+        body = b"recovered"
+        session = _DummyAsyncSession(
+            [_client_error(), _client_error(), _DummyAsyncResponse(200, body)]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result == body
+
+    @pytest.mark.asyncio
+    async def test_retry_on_timeout(self):
+        body = b"recovered"
+        session = _DummyAsyncSession(
+            [_timeout_error(), _DummyAsyncResponse(200, body)]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result == body
+
+    @pytest.mark.asyncio
+    async def test_returns_none_after_all_attempts_fail(self):
+        session = _DummyAsyncSession(
+            [
+                _client_error(),
+                _client_error(),
+                _client_error(),
+            ]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_get(
+                "http://example.com",
+                max_attempts=3,
+                backoff=0,
+            )
+        assert result is None
+
+
+class TestResilientAsyncPost:
+    @pytest.mark.asyncio
+    async def test_default_max_attempts_is_1(self):
+        """POST should not retry by default to avoid duplicates."""
+        session = _DummyAsyncSession(
+            [_DummyAsyncResponse(503), _DummyAsyncResponse(200, b"ok")]
+        )
+        with (
+            patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ),
+            patch("rayforge.shared.util.http.asyncio.sleep"),
+        ):
+            result = await resilient_async_post(
+                "http://example.com", data=b"payload"
+            )
+        assert result is None  # first 503, no retry
+
+    @pytest.mark.asyncio
+    async def test_post_2xx_returns_body(self):
+        for status in (200, 201, 204):
+            session = _DummyAsyncSession([_DummyAsyncResponse(status, b"x")])
+            with patch(
+                "rayforge.shared.util.http.aiohttp.ClientSession",
+                return_value=session,
+            ):
+                result = await resilient_async_post(
+                    "http://example.com",
+                    data=b"payload",
+                    max_attempts=1,
+                    backoff=0,
+                )
+            assert result == b"x"
