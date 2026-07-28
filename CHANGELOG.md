@@ -7,8 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased (fork only)
 
-This entry tracks the removal of monetization and AI features from the
-`yuri-schmaltz/my-rayforge` fork.
+Nothing new in this fork yet.
+
+## 1.9.0+resilience.4 (fork only)
+
+This release exists only on the `yuri-schmaltz/rayforge` fork (renamed
+from `my-rayforge`). It is based on upstream `barebaric/rayforge` 1.9.0
+with the fork's resilience layer on top, plus the user-driven
+"Strip monetization and AI integration" change and follow-up fixes that
+unblock the CI build pipeline.
+
+GitHub Release:
+<https://github.com/yuri-schmaltz/rayforge/releases/tag/1.9.0%2Bresilience.4>
 
 ### Removed
 
@@ -36,6 +46,81 @@ This entry tracks the removal of monetization and AI features from the
   - Removed `tests/config/ai.yaml` and `tests/test_resilience.py`
     (the latter covered the now-deleted license providers)
   - Removed `tests/license/` (Gumroad/Patreon provider tests)
+
+### Added
+
+- `rayforge/core/expression/evaluator.py`: the AST-whitelisted sandboxed
+  expression evaluator now supports public attribute access on objects in
+  the namespace (e.g. ``d.year``, ``d.isoformat()``) and subscripts
+  (``a[0]``, ``uuid4()[:8]``). This is required by the sketcher text
+  templates (e.g. ``{d.isoformat()}``) and analytics helpers
+  (``uuid4()[:8]``). Dunder / private attribute access (``__class__``,
+  ``__mro__``, etc.) is still rejected as a defence against sandbox
+  escape.
+
+### Changed
+
+- **Version scheme**: ``1.9.0-resilience.3`` → ``1.9.0+resilience.4``.
+  The ``+`` (semver build metadata) is preferred over the ``-`` (semver
+  prerelease) because:
+  - ``pip`` / PEP 440 honours build metadata, so
+    ``pip install rayforge==1.9.0+resilience.4`` works.
+  - The update checker treats ``1.9.0`` < ``fork`` as ``False`` (no
+    spurious "new version" notifications), and ``1.9.1`` > ``fork``
+    still works correctly when upstream ships a real release.
+  - The ``-`` form was breaking ``setuptools-git-versioning``.
+
+### Fixed
+
+- **CI lint** (`rayforge/ui_gtk/mainwindow.py`): remove the unused
+  ``import webbrowser`` left behind by PR #9 (Strip monetization)
+  after the donation menu was deleted.
+- **CI lint** (`tests/shared/util/test_http.py`): fix ``E402 module
+  level import not at top of file`` — move the ``import pytest`` and
+  ``from rayforge.shared.util.http import ...`` blocks to the top of
+  the file in canonical order.
+- **CI type check** (`tests/core/expression/test_expression_evaluator.py`):
+  use ``dict | None`` instead of ``dict = None`` for the ``_blocked``
+  helper signature (PEP 604 union, matches the rest of the codebase).
+- **CI test failures** (`tests/addon_mgr/test_addon_manager.py`): three
+  pre-existing failures that came from the migration of
+  ``_download_addon_zip`` to ``resilient_get`` and the removal of
+  ``license_required_addons`` in PR #9.
+  - ``test_download_addon_zip_http_error``: make ``urlopen`` raise
+    ``HTTPError(404)`` (the new wrapper catches it and returns
+    ``None``) instead of returning a Mock with ``status=404``.
+  - ``test_download_addon_zip_network_failure``: use
+    ``urllib.error.URLError`` instead of bare ``Exception`` (only the
+    former is caught by ``resilient_get``).
+  - ``test_get_all_addons_combines_all_categories``: drop the
+    ``license_required_addons`` category (removed by PR #9), expect
+    3 categories instead of 4.
+
+### Synced from upstream
+
+- Upstream ``barebaric/main`` is kept in sync via the
+  ``9a075901 Merge branch 'barebaric:main' into main`` commit.
+
+### Release assets
+
+- ``rayforge-1.9.0+resilience.4-py3-none-any.whl`` (5.4 MB) — universal
+  Python wheel, all platforms
+- ``rayforge-1.9.0+resilience.4.tar.gz`` (4.7 MB) — Python sdist
+- ``rayforge-1.9.0+resilience.4-macos-universal.dmg`` (237.7 MB) —
+  macOS universal binary (Intel + Apple Silicon)
+- ``rayforge-v1.9.0+resilience.4-installer.exe`` (235.7 MB) — Windows
+  NSIS installer
+
+### Fork version
+
+This release is tagged ``1.9.0+resilience.4`` on the fork. The version
+is reported in the About dialog and used by the update checker. The
+``+`` (build metadata) means semver treats it as the same version as
+``1.9.0`` (no spurious "new version" notifications), but
+``1.9.1`` > ``fork`` still works correctly when upstream ships a real
+release.
+
+---
 
 ## 1.9.0-resilience.3 (fork only)
 

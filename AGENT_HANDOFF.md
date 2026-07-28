@@ -1,9 +1,10 @@
 # Handoff Document - Rayforge Application Status
 
-**Data:** 2026-07-27  
-**Repositório:** yuri-schmaltz/my-rayforge (fork de barebaric/rayforge)  
-**Commit Atual:** `d5562896` - "Add testing guide to AGENT_HANDOFF (#7)"  
-**Versão:** `1.9.0+resilience.3` (fork patch — git tag)  
+**Data:** 2026-07-28  
+**Repositório:** yuri-schmaltz/rayforge (fork de barebaric/rayforge; renomeado de my-rayforge)  
+**Commit Atual:** `9e9f2e10` - "fix(tests): align addon download tests with resilient_get + PR #9 (#12)"  
+**Versão:** `1.9.0+resilience.4` (fork patch — git tag)  
+**Release:** https://github.com/yuri-schmaltz/rayforge/releases/tag/1.9.0%2Bresilience.4  
 
 ---
 
@@ -75,7 +76,7 @@ Todos os arquivos do commit `ec792907` ("Enhance UI and Resilience Features") so
 | Item | Estado |
 |------|--------|
 | Sincronização com upstream | ✅ Em dia (1.9.0+target-architecture, 2026-07-27) |
-| Versão do fork | ✅ `1.9.0+resilience.3` (via git tag, semver build metadata) |
+| Versão do fork | ✅ `1.9.0+resilience.4` (via git tag, semver build metadata) |
 | Resilience layer | ✅ HTTP util (sync+async) + 4 call sites refatorados + 35 tests |
 | PRs upstream em flight | `barebaric/rayforge#321` (resilient http util — OPEN) |
 | Resilience layer local | ✅ Preservado, testado |
@@ -431,13 +432,13 @@ Esta seção cobre como buildar o fork como instalador distribuível.
 
 ## Versão
 
-O fork usa o scheme `1.9.0+resilience.3`:
+O fork usa o scheme `1.9.0+resilience.4`:
 - **+ (não -)**: semver build metadata (não prerelease), válido em:
   - pip/PyPI (PEP 440 local version)
   - apt/deb (mapeado pra `~`)
   - macOS bundle / Windows NSIS
   - setuptools-git-versioning (que strip `+` na sanitização)
-- **Comportamento:** fork `1.9.0+resilience.3 == 1.9.0` em semver comparison (build metadata ignorado). Update checker NÃO mostra notificação spurious. Releases reais do upstream (1.9.1+) ainda são detectadas.
+- **Comportamento:** fork `1.9.0+resilience.4 == 1.9.0` em semver comparison (build metadata ignorado). Update checker NÃO mostra notificação spurious. Releases reais do upstream (1.9.1+) ainda são detectadas.
 
 ## Build do wheel (PyPI) — testado em 2026-07-27
 
@@ -446,8 +447,8 @@ cd /workspace/my-rayforge
 pip install build
 python3 -m build --wheel --outdir dist/
 python3 -m build --sdist --outdir dist/
-# → dist/rayforge-1.9.0+resilience.3-py3-none-any.whl
-# → dist/rayforge-1.9.0+resilience.3.tar.gz
+# → dist/rayforge-1.9.0+resilience.4-py3-none-any.whl
+# → dist/rayforge-1.9.0+resilience.4.tar.gz
 ```
 
 Validado: o wheel tem 1230 files, 5.6 MB, inclui o resilience layer em `rayforge/shared/util/http.py`.
@@ -456,7 +457,7 @@ Validado: o wheel tem 1230 files, 5.6 MB, inclui o resilience layer em `rayforge
 
 ```bash
 pixi run build-deb
-# → dist/rayforge_1.9.0+resilience.3-1~local1_amd64.deb
+# → dist/rayforge_1.9.0+resilience.4-1~local1_amd64.deb
 ```
 
 **Nota:** o `+` no version vira `~` no deb, então o deb vai ser nomeado `rayforge_1.9.0~resilience.3-1~local1_amd64.deb`. Isso é correto per Debian policy.
@@ -474,10 +475,10 @@ snapcraft
 # No MSYS2 UCRT64 shell:
 bash scripts/win/win_setup.sh     # primeira vez (~30 min)
 bash scripts/win/win_build.sh     # PyInstaller + NSIS
-# → dist/rayforge-v1.9.0+resilience.3-installer.exe
+# → dist/rayforge-v1.9.0+resilience.4-installer.exe
 ```
 
-**Nota sobre o prefixo `v`:** o `win_build.sh` adiciona `v` antes do version (`rayforge-v${CLEAN_VERSION}-installer.exe`). Para o nosso `1.9.0+resilience.3`, o `+` vai virar `+` no filename (Windows aceita `+` em filenames, mas PowerShell pode interpretar como wildcard).
+**Nota sobre o prefixo `v`:** o `win_build.sh` adiciona `v` antes do version (`rayforge-v${CLEAN_VERSION}-installer.exe`). Para o nosso `1.9.0+resilience.4`, o `+` vai virar `+` no filename (Windows aceita `+` em filenames, mas PowerShell pode interpretar como wildcard).
 
 ## Build do .dmg (macOS)
 
