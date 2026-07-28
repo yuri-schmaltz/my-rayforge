@@ -12,6 +12,11 @@ MATH_CONTEXT = {
 }
 
 # AST node types explicitly permitted in user expressions.
+#
+# The whitelist keeps out constructs that could escape the sandbox
+# (imports, comprehensions, lambdas, comprehensions, generators,
+#  assignment expressions, async nodes, etc.) while still allowing
+# rich expression syntax including attribute access and slicing.
 _ALLOWED_EXPR_NODES = frozenset(
     {
         ast.Expression,
@@ -44,6 +49,31 @@ _ALLOWED_EXPR_NODES = frozenset(
         ast.Call,
         ast.Tuple,
         ast.List,
+        ast.Attribute,
+        ast.Subscript,
+        ast.Slice,
+        ast.Index,  # py<3.9 only
+    }
+)
+
+# Names of builtins that must never be reachable from a sandboxed
+# expression, even if the user shadows them in the namespace. This
+# is a defence-in-depth check on top of the AST whitelist.
+_FORBIDDEN_BUILTIN_NAMES = frozenset(
+    {
+        "eval",
+        "exec",
+        "compile",
+        "open",
+        "__import__",
+        "input",
+        "globals",
+        "locals",
+        "vars",
+        "dir",
+        "getattr",
+        "setattr",
+        "delattr",
     }
 )
 
@@ -139,9 +169,25 @@ def _eval_node(node: ast.AST, namespace: Dict[str, Any]) -> Any:
         return _eval_node(node.orelse, namespace)
     if isinstance(node, ast.Call):
         func = _eval_node(node.func, namespace)
-        if func not in MATH_CONTEXT.values():
+        # Reject calls to dangerous builtins even if the user
+        # attempted to inject them via the namespace.
+        func_name = getattr(func, "__name__", None)
+        if func_name in _FORBIDDEN_BUILTIN_NAMES:
             raise ValueError(
-                "Only math functions are allowed in expressions"
+                f"Function '{func_name}' is not allowed"
+            )
+        # Allow calling:
+        #   * math functions from MATH_CONTEXT
+        #   * callables the user injected via the namespace
+        #     (e.g. lambdas, helper functions)
+        #   * methods bound to objects in the namespace
+        #     (e.g. ``d.isoformat()``)
+        # The AST whitelist already blocks access to
+        # ``__class__`` and other dunder attrs, so reaching
+        # dangerous callables that way is not possible.
+        if not callable(func):
+            raise ValueError(
+                f"Object is not callable: {type(func).__name__}"
             )
         if node.keywords:
             raise ValueError(
@@ -149,6 +195,43 @@ def _eval_node(node: ast.AST, namespace: Dict[str, Any]) -> Any:
             )
         args = [_eval_node(a, namespace) for a in node.args]
         return func(*args)
+    if isinstance(node, ast.Attribute):
+        # Reject dunder / private attribute access as a safety
+        # measure. Public attribute access on namespace values
+        # is permitted (e.g. ``d.year``, ``d.isoformat``).
+        if node.attr.startswith("_"):
+            raise ValueError(
+                f"Attribute access to '{node.attr}' is not allowed"
+            )
+        value = _eval_node(node.value, namespace)
+        return getattr(value, node.attr)
+    if isinstance(node, ast.Subscript):
+        container = _eval_node(node.value, namespace)
+        # ``ast.Index`` wraps the slice on Python < 3.9; unwrap it
+        # for compatibility. Newer versions produce the slice
+        # directly.
+        slice_node = node.slice
+        if hasattr(ast, "Index") and isinstance(slice_node, ast.Index):
+            slice_node = slice_node.value  # type: ignore[attr-defined]
+        key = _eval_node(slice_node, namespace)
+        return container[key]
+    if isinstance(node, ast.Slice):
+        lower = (
+            _eval_node(node.lower, namespace)
+            if node.lower is not None
+            else None
+        )
+        upper = (
+            _eval_node(node.upper, namespace)
+            if node.upper is not None
+            else None
+        )
+        step = (
+            _eval_node(node.step, namespace)
+            if node.step is not None
+            else None
+        )
+        return slice(lower, upper, step)
     if isinstance(node, (ast.Tuple, ast.List)):
         return [_eval_node(e, namespace) for e in node.elts]
     raise ValueError(f"Unsupported node: {type(node).__name__}")
@@ -168,8 +251,12 @@ def safe_evaluate(expression: str, context: Dict[str, Any]) -> float:
     Evaluates a mathematical expression string using a specific context
     (variable names) and standard math functions.
 
-    Uses an AST whitelist instead of eval() so attribute access,
-    imports, and other unsafe constructs are rejected before execution.
+    Uses an AST whitelist instead of ``eval()`` so unsafe constructs
+    (imports, comprehensions, lambdas, dunder access, etc.) are
+    rejected before execution. Public attribute access on objects
+    in the namespace is permitted (e.g. ``d.year``, ``d.isoformat()``)
+    so that sketcher text templates can use ``{date.today().isoformat()}``
+    style expressions. Dunder / private attribute access is blocked.
 
     Args:
         expression: The string to evaluate (e.g., "width / 2 + 5").
@@ -196,4 +283,3 @@ def safe_evaluate(expression: str, context: Dict[str, Any]) -> float:
             "Failed to evaluate expression '%s': %s", expression, e
         )
         raise ValueError(f"Invalid expression: {e}") from e
-
