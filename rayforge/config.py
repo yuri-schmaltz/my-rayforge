@@ -28,9 +28,7 @@ DIALECT_DIR.mkdir(parents=True, exist_ok=True)
 
 CONFIG_FILE = CONFIG_DIR / "config.yaml"
 ADDONS_DIR = CONFIG_DIR / "addons"
-LICENSES_DIR = CONFIG_DIR / "licenses"
 ADDON_DATA_DIR = CONFIG_DIR / "addon_data"
-AI_CONFIG_FILE = CONFIG_DIR / "ai.yaml"
 
 
 def get_addon_data_dir(addon_name: str) -> Path:
@@ -66,11 +64,6 @@ USER_RECIPES_DIR = CONFIG_DIR / "recipes"
 ADDON_REGISTRY_URL = (
     "https://raw.githubusercontent.com/barebaric/rayforge-registry/"
     "main/registry.yaml"
-)
-
-PATREON_CLIENT_ID = os.environ.get(
-    "RAYFORGE_PATREON_CLIENT_ID",
-    "nx7wTdFBp5Cc3NtMU4xYK7mkzlaqLg5hXgLlY6WAtAMq62je5WDE_x8ewrrCvJ34",
 )
 
 UMAMI_URL = "https://analytics.barebaric.com/api/send"

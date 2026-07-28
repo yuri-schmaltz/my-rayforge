@@ -11,7 +11,6 @@ from ...addon_mgr.addon_manager import UpdateStatus
 from ...context import get_context
 from ..icons import get_icon
 from ..shared.patched_dialog_window import PatchedDialogWindow
-from .license_dialog import LicenseRequiredDialog
 
 logger = logging.getLogger(__name__)
 
@@ -130,28 +129,6 @@ class AddonRegistryDialog(PatchedDialogWindow):
         thread = threading.Thread(target=_thread_target, daemon=True)
         thread.start()
 
-    def _is_license_valid(self, addon: AddonMetadata) -> bool:
-        """Check if user already has a valid license for this addon."""
-        license_config = addon.license
-        if not license_config or not license_config.required:
-            return True
-
-        context = get_context()
-        validator = context.license_validator
-        if not validator:
-            return False
-
-        result = validator.validate(addon.name, license_config.to_dict())
-        return result.status.value == "valid"
-
-    def _get_product_ids(self, addon: AddonMetadata) -> List[str]:
-        """Extract product IDs from addon license config."""
-        license_config = addon.license
-        if not license_config:
-            return []
-
-        return license_config.get_all_product_ids()
-
     def _populate_list(self, data: List[AddonMetadata]):
         """Populates the list box with registry items."""
         while child := self.list_box.get_row_at_index(0):
@@ -183,19 +160,10 @@ class AddonRegistryDialog(PatchedDialogWindow):
             btn = Gtk.Button(valign=Gtk.Align.CENTER)
             status, local_ver = context.addon_mgr.check_update_status(addon)
 
-            license_config = addon.license
-            is_premium = license_config and license_config.required
-            has_license = self._is_license_valid(addon)
-
             if status == UpdateStatus.NOT_INSTALLED:
-                if is_premium and not has_license:
-                    btn.set_label(_("Unlock"))
-                    btn.get_style_context().add_class("suggested-action")
-                    btn.connect("clicked", self._on_unlock_clicked, addon)
-                else:
-                    btn.set_label(_("Install"))
-                    btn.get_style_context().add_class("suggested-action")
-                    btn.connect("clicked", self._on_install_clicked, addon)
+                btn.set_label(_("Install"))
+                btn.get_style_context().add_class("suggested-action")
+                btn.connect("clicked", self._on_install_clicked, addon)
             elif status == UpdateStatus.UPDATE_AVAILABLE:
                 btn.set_label(_("Update"))
                 btn.get_style_context().add_class("suggested-action")
@@ -228,28 +196,6 @@ class AddonRegistryDialog(PatchedDialogWindow):
         if addon_meta:
             self.close()
             self.on_install_callback(addon_meta)
-
-    def _on_unlock_clicked(self, btn, addon_meta: AddonMetadata):
-        """Handle click on Unlock button for premium addon."""
-        product_ids = self._get_product_ids(addon_meta)
-        purchase_url = None
-        if addon_meta.license:
-            purchase_url = addon_meta.license.purchase_url
-
-        display_name = addon_meta.display_name or addon_meta.name
-
-        def on_license_added():
-            self.close()
-            self.on_install_callback(addon_meta)
-
-        dialog = LicenseRequiredDialog(
-            addon_name=display_name,
-            product_ids=product_ids,
-            purchase_url=purchase_url,
-            on_license_added=on_license_added,
-        )
-        dialog.set_transient_for(self)
-        dialog.present()
 
     def _on_manual_install_clicked(self, btn):
         """Allows manual URL entry if not in registry."""

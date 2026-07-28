@@ -5,6 +5,38 @@ All notable changes to Rayforge will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased (fork only)
+
+This entry tracks the removal of monetization and AI features from the
+`yuri-schmaltz/my-rayforge` fork.
+
+### Removed
+
+- **License providers (Gumroad, Patreon)** — the app no longer ships or
+  enforces a paid license system
+  - Deleted `rayforge/license/` (Gumroad/Patreon providers, validator)
+  - Deleted `rayforge/ui_gtk/addon_manager/license_dialog.py`
+  - Deleted `rayforge/ui_gtk/settings/license_settings_page.py`
+  - Removed `AddonState.LICENSE_REQUIRED`, `license_required_addons`,
+    `license_validator` parameter, and `_check_license` /
+    `recheck_license` methods from `AddonManager`
+  - Removed the "Donate" menu item, the Patreon link from the About
+    dialog, and the `scripts/media/update_supporters.py` Patreon
+    supporters sync script
+  - Removed `LICENSES_DIR` and `PATREON_CLIENT_ID` from `rayforge/config.py`
+  - `AddonLicense` schema simplified to passive metadata
+    (`name` / `required` / `purchase_url`); not enforced by the app
+- **AI / OpenAI integration** — the app no longer ships the AI service
+  - Deleted `rayforge/core/ai/` (service, OpenAI provider, config)
+  - Deleted `rayforge/ui_gtk/settings/ai_settings_page.py`
+  - Deleted the `rayforge-addon-ai-workpiece` built-in addon
+  - Removed `ai_service` / `ai_config_mgr` properties and shutdown hook
+    from `RayforgeContext`
+  - Removed `AI_CONFIG_FILE` from `rayforge/config.py`
+  - Removed `tests/config/ai.yaml` and `tests/test_resilience.py`
+    (the latter covered the now-deleted license providers)
+  - Removed `tests/license/` (Gumroad/Patreon provider tests)
+
 ## 1.9.0-resilience.3 (fork only)
 
 This release exists only on the `yuri-schmaltz/my-rayforge` fork. It is based on
