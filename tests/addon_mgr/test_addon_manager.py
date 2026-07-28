@@ -1,6 +1,7 @@
 import io
 import sys
 import tempfile
+import urllib.error
 import zipfile
 from pathlib import Path
 from typing import List, Optional
@@ -810,13 +811,20 @@ class TestAddonManagerHelpers:
 
     def test_download_addon_zip_http_error(self, manager, tmp_path):
         """Test that _download_addon_zip returns False on HTTP error."""
-        with patch("urllib.request.urlopen") as mock_urlopen:
-            mock_resp = Mock()
-            mock_resp.status = 404
-            mock_resp.__enter__ = Mock(return_value=mock_resp)
-            mock_resp.__exit__ = Mock(return_value=False)
-            mock_urlopen.return_value = mock_resp
-
+        # resilient_get() catches ``urllib.error.HTTPError`` and
+        # returns ``None``; ``_download_addon_zip`` then returns
+        # ``False``. We need to make ``urlopen`` *raise* an
+        # ``HTTPError``, not return a Mock, because the previous
+        # call shape pre-resilient_get checked ``resp.status``
+        # manually.
+        http_err = urllib.error.HTTPError(
+            url="https://github.com",
+            code=404,
+            msg="Not Found",
+            hdrs={},  # type: ignore[arg-type]
+            fp=None,
+        )
+        with patch("urllib.request.urlopen", side_effect=http_err):
             dest = tmp_path / "output"
             dest.mkdir()
             result = manager._download_addon_zip(
@@ -826,10 +834,12 @@ class TestAddonManagerHelpers:
 
     def test_download_addon_zip_network_failure(self, manager, tmp_path):
         """Test that _download_addon_zip returns False on network error."""
-        with patch(
-            "urllib.request.urlopen",
-            side_effect=Exception("Connection refused"),
-        ):
+        # resilient_get() catches ``urllib.error.URLError`` and
+        # returns ``None``; ``_download_addon_zip`` then returns
+        # ``False``. A bare ``Exception`` is not caught by
+        # resilient_get and would bubble up.
+        url_err = urllib.error.URLError("Connection refused")
+        with patch("urllib.request.urlopen", side_effect=url_err):
             dest = tmp_path / "output"
             dest.mkdir()
             result = manager._download_addon_zip(
@@ -867,7 +877,13 @@ class TestAddonManagerHelpers:
         assert result == {}
 
     def test_get_all_addons_combines_all_categories(self, manager):
-        """Test get_all_addons combines all addon categories."""
+        """Test get_all_addons combines all addon categories.
+
+        The ``license_required_addons`` category was removed by
+        PR #9 (Strip monetization and AI integration) along with
+        the Gumroad / Patreon license providers. We now expect
+        three categories instead of four.
+        """
         manager.loaded_addons["loaded"] = create_mock_addon(name="loaded")
         manager.disabled_addons["disabled"] = create_mock_addon(
             name="disabled"
@@ -875,17 +891,13 @@ class TestAddonManagerHelpers:
         manager.incompatible_addons["incomp"] = create_mock_addon(
             name="incomp"
         )
-        manager.license_required_addons["licensed"] = create_mock_addon(
-            name="licensed"
-        )
 
         result = manager.get_all_addons()
 
-        assert len(result) == 4
+        assert len(result) == 3
         assert "loaded" in result
         assert "disabled" in result
         assert "incomp" in result
-        assert "licensed" in result
 
     def test_get_all_addons_returns_copy(self, manager):
         """Test get_all_addons returns a copy, not internal dict."""
