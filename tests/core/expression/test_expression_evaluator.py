@@ -108,8 +108,41 @@ class TestASTSecurityHardening:
     def test_dict_comprehension_blocked(self):
         self._blocked("{k: v for k, v in items}", {"items": []})
 
-    def test_subscript_blocked(self):
-        self._blocked("a[0]", {"a": [1, 2, 3]})
+    def test_subscript_allowed(self):
+        # Subscript is now allowed for legitimate slicing
+        # (e.g. ``uuid4()[:8]`` in text templates). The
+        # ``ast.Slice`` node + key allowlist mean we can only
+        # read public container values, not write to them.
+        # ``a[0]`` is a legitimate read.
+        result = evaluator.safe_evaluate("a[0]", {"a": [1, 2, 3]})
+        assert result == 1.0
+
+    def test_subscript_dunder_blocked(self):
+        # ``a.__class__`` must still be blocked because the
+        # attribute name starts with ``_``.
+        self._blocked("a.__class__", {"a": [1, 2, 3]})
+
+    def test_attribute_public_allowed(self):
+        # Public attribute access (e.g. ``d.year``) is allowed
+        # for namespace values like ``datetime.date``.
+        import datetime
+        d = datetime.date(2026, 1, 1)
+        result = evaluator.safe_evaluate("d.year", {"d": d})
+        assert result == 2026.0
+
+    def test_attribute_method_call_allowed(self):
+        # Method calls on public attributes are allowed for
+        # objects in the namespace (e.g. ``d.isoformat()``).
+        # Note: ``safe_evaluate`` is for math expressions and
+        # will raise ``ValueError`` if the result is not
+        # numeric. The ``ExpressionMap`` (template use case)
+        # does not coerce to float and works with any type.
+        import datetime
+        d = datetime.date(2026, 1, 1)
+        # Numeric attribute via method call: ``str(d.year)`` is
+        # the kind of mixed expression a template might use.
+        result = evaluator._ast_evaluate("d.isoformat()", {"d": d})
+        assert result == "2026-01-01"
 
     def test_augmented_assignment_blocked(self):
         self._blocked("x += 1")
