@@ -73,7 +73,7 @@ class TestASTSecurityHardening:
     (i.e. the attack must be BLOCKED).
     """
 
-    def _blocked(self, expr: str, ctx: dict = None):
+    def _blocked(self, expr: str, ctx: dict | None = None):
         """Assert that *expr* is blocked by the evaluator."""
         with pytest.raises(
             (ValueError, KeyError),
