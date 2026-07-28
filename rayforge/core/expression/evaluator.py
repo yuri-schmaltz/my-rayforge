@@ -204,7 +204,18 @@ def _eval_node(node: ast.AST, namespace: Dict[str, Any]) -> Any:
                 f"Attribute access to '{node.attr}' is not allowed"
             )
         value = _eval_node(node.value, namespace)
-        return getattr(value, node.attr)
+        try:
+            return getattr(value, node.attr)
+        except AttributeError as exc:
+            # Convert ``AttributeError`` to ``ValueError`` so
+            # ``safe_evaluate``'s exception handler can catch it
+            # uniformly. Without this, missing attributes on
+            # namespace values would propagate as
+            # ``AttributeError`` to the caller.
+            raise ValueError(
+                f"Namespace value of type {type(value).__name__} "
+                f"has no attribute '{node.attr}'"
+            ) from exc
     if isinstance(node, ast.Subscript):
         container = _eval_node(node.value, namespace)
         # ``ast.Index`` wraps the slice on Python < 3.9; unwrap it
