@@ -2331,9 +2331,6 @@ class MainWindow(Adw.ApplicationWindow):
         dialog = AboutDialog(transient_for=self)
         dialog.present()
 
-    def on_donate_clicked(self, action, param):
-        webbrowser.open("https://www.patreon.com/c/knipknap")
-
     def on_save_debug_log(self, action, param):
         DebugLogDialog(
             parent=self,

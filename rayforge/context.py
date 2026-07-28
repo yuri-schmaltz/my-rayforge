@@ -8,14 +8,11 @@ if TYPE_CHECKING:
     from .addon_mgr.addon_manager import AddonManager
     from .camera.manager import CameraManager
     from .core.addon_config import AddonConfig
-    from .core.ai.ai_service import AIService
-    from .core.ai.config import AIConfigManager
     from .core.config import Config, ConfigManager
     from .core.library_manager import LibraryManager
     from .core.model_manager import ModelManager
     from .core.recipe_manager import RecipeManager
     from .debug import DebugDumpManager
-    from .license import LicenseValidator
     from .machine.device.manager import DeviceProfileManager
     from .machine.models.dialect_manager import DialectManager
     from .machine.models.machine import Machine
@@ -54,10 +51,7 @@ class RayforgeContext:
         self._dialect_mgr: Optional["DialectManager"] = None
         self._plugin_mgr: Optional["pluggy.PluginManager"] = None
         self._addon_config: Optional["AddonConfig"] = None
-        self._license_validator: Optional["LicenseValidator"] = None
         self._addon_mgr: Optional["AddonManager"] = None
-        self._ai_service: Optional["AIService"] = None
-        self._ai_config_mgr: Optional["AIConfigManager"] = None
         self._machine_mgr: Optional["MachineManager"] = None
         self._config_mgr: Optional["ConfigManager"] = None
         self._config: Optional["Config"] = None
@@ -98,18 +92,6 @@ class RayforgeContext:
         return self._plugin_mgr
 
     @property
-    def license_validator(self) -> "LicenseValidator":
-        """Returns the license validator."""
-        if self._license_validator is None:
-            from .config import LICENSES_DIR, PATREON_CLIENT_ID
-            from .license import LicenseValidator
-
-            self._license_validator = LicenseValidator(
-                LICENSES_DIR, PATREON_CLIENT_ID
-            )
-        return self._license_validator
-
-    @property
     def addon_config(self) -> "AddonConfig":
         """Returns the addon configuration."""
         if self._addon_config is None:
@@ -138,7 +120,6 @@ class RayforgeContext:
                 self.plugin_mgr,
                 task_mgr,
                 self.addon_config,
-                license_validator=self.license_validator,
             )
             self._load_addons_and_call_hooks()
         return self._addon_mgr
@@ -174,29 +155,6 @@ class RayforgeContext:
         self.plugin_mgr.hook.rayforge_init(context=self)
 
         logger.info(f"Addons loaded (headless={self._headless})")
-
-    @property
-    def ai_service(self) -> "AIService":
-        """Returns the AI service."""
-        if self._ai_service is None:
-            from .core.ai.ai_service import AIService
-
-            self._ai_service = AIService()
-            _ = self.ai_config_mgr
-        return self._ai_service
-
-    @property
-    def ai_config_mgr(self) -> "AIConfigManager":
-        """Returns the AI configuration manager."""
-        if self._ai_config_mgr is None:
-            from .config import AI_CONFIG_FILE
-            from .core.ai.config import AIConfigManager
-
-            self._ai_config_mgr = AIConfigManager(
-                AI_CONFIG_FILE, self.ai_service
-            )
-            self._ai_config_mgr.load()
-        return self._ai_config_mgr
 
     @property
     def machine_mgr(self) -> "MachineManager":
@@ -377,8 +335,6 @@ class RayforgeContext:
             self._camera_mgr.shutdown()
         if self._machine_mgr:
             await self._machine_mgr.shutdown()
-        if self._ai_service:
-            await self._ai_service.close_all()
         self.artifact_store.shutdown()
         logger.info("RayforgeContext shutdown complete.")
 

@@ -35,7 +35,6 @@ from ..core.addon_config import AddonConfig
 from ..core.addon_config import AddonState as ConfigAddonState
 from ..core.hooks import PLUGIN_API_VERSION
 from ..core.registration import call_registration_hooks
-from ..license import LicenseValidator
 from ..shared.util.http import resilient_get
 from ..shared.util.po_compiler import compile_po_to_mo, needs_compilation
 from ..shared.util.versioning import (
@@ -106,7 +105,6 @@ class AddonState(Enum):
     LOAD_ERROR = "load_error"
     NOT_INSTALLED = "not_installed"
     INCOMPATIBLE = "incompatible"
-    LICENSE_REQUIRED = "license_required"
 
 
 class UpdateStatus(Enum):
@@ -132,7 +130,6 @@ class AddonManager:
         addon_config: Optional[AddonConfig] = None,
         is_job_active_callback: Optional[Callable[[], bool]] = None,
         registries: Optional[Dict[str, "AddonRegistry"]] = None,
-        license_validator: Optional[LicenseValidator] = None,
     ):
         """
         Args:
@@ -151,8 +148,6 @@ class AddonManager:
                 hook parameter names to registry instances. Expected keys:
                 'step_registry', 'widget_registry',
                 'menu_registry', 'layout_registry'.
-            license_validator (Optional[LicenseValidator]): License validator
-                for checking paid addon licenses.
         """
         self.addon_dirs = addon_dirs
         self.install_dir = install_dir
@@ -164,20 +159,11 @@ class AddonManager:
         self.loaded_addons: Dict[str, Addon] = {}
         self.incompatible_addons: Dict[str, Addon] = {}
         self.disabled_addons: Dict[str, Addon] = {}
-        self.license_required_addons: Dict[str, Addon] = {}
         self._pending_unloads: Set[str] = set()
         self._load_errors: Dict[str, str] = {}
         self._task_mgr = task_mgr
-        self.license_validator = license_validator
 
         self.addon_state_changed = Signal()
-
-        if license_validator:
-            license_validator.changed.connect(self._on_license_changed)
-
-    def _on_license_changed(self, sender):
-        for addon_name in list(self.license_required_addons.keys()):
-            self.recheck_license(addon_name)
 
     def set_registries(self, registries: Dict[str, AddonRegistry]):
         """
@@ -313,7 +299,6 @@ class AddonManager:
             self.loaded_addons.get(addon_id)
             or self.disabled_addons.get(addon_id)
             or self.incompatible_addons.get(addon_id)
-            or self.license_required_addons.get(addon_id)
         )
 
     def check_update_status(
@@ -544,16 +529,6 @@ class AddonManager:
                 self.incompatible_addons[addon_name] = addon
                 return
 
-            allowed, message, purchase_url = self._check_license(addon)
-            if not allowed:
-                logger.info(
-                    f"Addon '{addon_name}' requires license: {message}"
-                )
-                addon.license_message = message
-                addon.purchase_url = purchase_url
-                self.license_required_addons[addon_name] = addon
-                return
-
             self.compile_translations(addon_path)
 
             locale_dir = addon_path / "locale"
@@ -598,25 +573,6 @@ class AddonManager:
         ):
             return UpdateStatus.UP_TO_DATE
         return UpdateStatus.INCOMPATIBLE
-
-    def _check_license(self, addon: Addon) -> Tuple[bool, str, str]:
-        """
-        Check if addon requires and has valid license.
-
-        Returns:
-            Tuple of (is_allowed, message, purchase_url)
-        """
-        if not self.license_validator:
-            return True, "", ""
-
-        license_config = addon.metadata.license
-
-        if not license_config or not license_config.required:
-            return True, "", ""
-
-        return self.license_validator.check_license(
-            addon.metadata.name, license_config.to_dict()
-        )
 
     def _import_and_register(self, addon: Addon, entry_point: Optional[str]):
         """
@@ -971,7 +927,6 @@ class AddonManager:
             self.loaded_addons.get(addon_name)
             or self.incompatible_addons.get(addon_name)
             or self.disabled_addons.get(addon_name)
-            or self.license_required_addons.get(addon_name)
         )
         if not addon:
             logger.warning(
@@ -1038,8 +993,6 @@ class AddonManager:
                 del self.incompatible_addons[addon_name]
             if addon_name in self.disabled_addons:
                 del self.disabled_addons[addon_name]
-            if addon_name in self.license_required_addons:
-                del self.license_required_addons[addon_name]
             if addon_name in self._load_errors:
                 del self._load_errors[addon_name]
             self._pending_unloads.discard(addon_name)
@@ -1367,7 +1320,7 @@ class AddonManager:
         Get the current state of an addon.
 
         Returns one of: 'enabled', 'disabled', 'pending_unload',
-        'load_error', 'incompatible', 'license_required', 'not_installed'
+        'load_error', 'incompatible', 'not_installed'
         """
         if addon_name in self._pending_unloads:
             return AddonState.PENDING_UNLOAD.value
@@ -1379,8 +1332,6 @@ class AddonManager:
             return AddonState.DISABLED.value
         if addon_name in self.incompatible_addons:
             return AddonState.INCOMPATIBLE.value
-        if addon_name in self.license_required_addons:
-            return AddonState.LICENSE_REQUIRED.value
         return AddonState.NOT_INSTALLED.value
 
     def get_addon_error(self, addon_name: str) -> Optional[str]:
@@ -1529,64 +1480,17 @@ class AddonManager:
         enabled.append(addon_name)
         return True, enabled
 
-    def get_license_required_addon(self, addon_name: str) -> Optional[Addon]:
-        """
-        Get an addon that requires a license.
-
-        Returns:
-            The Addon object if found in license_required_addons, else None.
-        """
-        return self.license_required_addons.get(addon_name)
-
-    def recheck_license(self, addon_name: str) -> Tuple[bool, str]:
-        """
-        Recheck the license for an addon and attempt to load it if valid.
-
-        Returns:
-            Tuple of (success, message).
-        """
-        addon = self.license_required_addons.get(addon_name)
-        if not addon:
-            return False, "Addon not in license-required state"
-
-        allowed, message, _ = self._check_license(addon)
-        if not allowed:
-            return False, message
-
-        del self.license_required_addons[addon_name]
-
-        self._import_and_register(addon, addon.metadata.provides.worker)
-        self._import_and_register(addon, addon.metadata.provides.frontend)
-
-        if addon_name in self.loaded_addons:
-            call_registration_hooks(
-                self.plugin_mgr, registries=self.registries
-            )
-            return True, "License validated, addon loaded successfully"
-
-        return False, "Failed to load addon after license validation"
-
-    def get_all_license_required_addons(self) -> Dict[str, Addon]:
-        """
-        Get all addons that require a license.
-
-        Returns:
-            Dict of addon_name -> Addon for all license-required addons.
-        """
-        return dict(self.license_required_addons)
-
     def get_all_addons(self) -> Dict[str, Addon]:
         """
         Get all addons from all categories.
 
         Returns:
             Dict of addon_name -> Addon for all addons (loaded,
-            license-required, disabled, and incompatible).
+            disabled, and incompatible).
         """
         all_addons = {}
         for source in [
             self.loaded_addons,
-            self.license_required_addons,
             self.disabled_addons,
             self.incompatible_addons,
         ]:
