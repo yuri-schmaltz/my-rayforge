@@ -5,11 +5,18 @@ Uses mock patching of urllib.request.urlopen and HTTP error types
 so no real network calls are made.
 """
 
+import pytest
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError, URLError
 
+# Async helpers (resilient_async_get / resilient_async_post) use
+# lightweight aiohttp mocks instead of pulling in aioresponses.
+# The dummy objects implement only the protocol surface that
+# resilient_async_get/resilient_async_post actually use.
 from rayforge.shared.util.http import (
     RETRYABLE_HTTP_STATUSES,
+    resilient_async_get,
+    resilient_async_post,
     resilient_get,
     resilient_post,
 )
@@ -250,22 +257,6 @@ class TestResilientPost:
 
         assert result == body
         assert call_count == 2
-
-
-# ---------------------------------------------------------------------------
-# Async helpers (resilient_async_get / resilient_async_post)
-#
-# These tests use lightweight aiohttp mocks instead of pulling in
-# aioresponses.  The dummy objects implement only the protocol surface that
-# resilient_async_get/resilient_async_post actually use.
-# ---------------------------------------------------------------------------
-
-import pytest
-
-from rayforge.shared.util.http import (
-    resilient_async_get,
-    resilient_async_post,
-)
 
 
 class _DummyAsyncResponse:

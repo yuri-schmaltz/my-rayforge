@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import webbrowser
 from concurrent.futures import Future
 from gettext import gettext as _
 from pathlib import Path
