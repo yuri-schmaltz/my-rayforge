@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess
 import sys
 from typing import Optional
@@ -7,6 +8,14 @@ __dir__ = os.path.dirname(__file__)
 
 
 def get_version_from_git() -> Optional[str]:
+    # Resolve ``git`` to an absolute path so that the subprocess call
+    # uses a fully-qualified executable (avoids partial-path warnings
+    # from S607 and is more robust on systems with restricted PATH,
+    # e.g. snap-confined environments).
+    git = shutil.which("git")
+    if git is None:
+        return None
+
     kwargs = {
         "stderr": subprocess.DEVNULL,
         "cwd": __dir__,
@@ -15,8 +24,13 @@ def get_version_from_git() -> Optional[str]:
         kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
 
     try:
+        # ``git`` is resolved via ``shutil.which`` and the second
+        # argument is a hardcoded constant, so there is no
+        # untrusted input here. S603 is a false positive.
         # Use **kwargs to pass the arguments
-        output = subprocess.check_output(["git", "describe"], **kwargs)
+        output = subprocess.check_output(  # noqa: S603
+            [git, "describe"], **kwargs
+        )
     except (
         subprocess.CalledProcessError,
         FileNotFoundError,

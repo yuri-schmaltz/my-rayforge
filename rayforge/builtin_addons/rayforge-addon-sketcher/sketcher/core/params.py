@@ -1,11 +1,21 @@
 import math
 from typing import Any, Dict, Optional, Union
 
+from rayforge.core.expression import safe_evaluate
+
 
 class ParameterContext:
     """
     Manages named parameters and evaluates string expressions
     (e.g. 'width / 2').
+
+    Expression evaluation uses the AST-whitelisted
+    :func:`rayforge.core.expression.safe_evaluate` to defend against
+    sandbox-escape attacks via the object model
+    (``__class__.__mro__[1].__subclasses__()`` and similar). Dunder /
+    private attribute access is rejected by the evaluator. See
+    ``rayforge/core/expression/evaluator.py`` for the full security
+    analysis and test coverage.
     """
 
     def __init__(self) -> None:
@@ -13,7 +23,9 @@ class ParameterContext:
         self._cache: Dict[str, Any] = {}
         self._dirty: bool = False
 
-        # Safe math context
+        # Safe math context (kept for backward compat — actual
+        # evaluation is done by ``safe_evaluate`` which provides its
+        # own vetted context).
         self._math_context = {
             k: v for k, v in vars(math).items() if not k.startswith("_")
         }
@@ -65,7 +77,10 @@ class ParameterContext:
             ctx.update(self._cache)
 
         try:
-            return eval(str(expression), {"__builtins__": None}, ctx)
+            # ``safe_evaluate`` uses an AST whitelist and rejects
+            # dunder / private attribute access, preventing the
+            # classic Python sandbox-escape vectors.
+            return safe_evaluate(str(expression), ctx)
         except Exception:
             return 0.0
 
@@ -104,11 +119,16 @@ class ParameterContext:
                     # The context for eval needs math and solved variables
                     eval_ctx = self._math_context.copy()
                     eval_ctx.update(self._cache)
-                    val = eval(expr, {"__builtins__": None}, eval_ctx)
+                    # ``safe_evaluate`` raises ``ValueError`` on
+                    # unresolved names or invalid syntax; we map both
+                    # to "dependency missing" so the next pass can
+                    # try again.
+                    val = safe_evaluate(expr, eval_ctx)
                     self._cache[name] = val
                     progress = True
-                except (NameError, TypeError, SyntaxError):
-                    # Dependency missing, try next pass
+                except ValueError:
+                    # Dependency missing or unsupported construct —
+                    # try again on the next pass.
                     pass
 
             if not progress:

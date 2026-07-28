@@ -142,3 +142,100 @@ def test_get_with_default(params):
     assert params.get("does_not_exist_either", default=-1.0) == -1.0
     # Test that existing keys don't use the provided default
     assert params.get("exists", default=99.0) == 42.0
+
+
+# ---------------------------------------------------------------------------
+# Security regression tests
+#
+# ParameterContext historically used ``eval()`` with ``{"__builtins__": None}``
+# as the "sandbox". That sandbox is bypassable via attribute access on
+# objects in the namespace (e.g. ``().__class__.__mro__[1].__subclasses__()``).
+# The class now uses the AST-whitelisted ``safe_evaluate`` from
+# ``rayforge.core.expression``, which rejects dunder / private attribute
+# access. These tests pin that property.
+# ---------------------------------------------------------------------------
+
+
+class TestParameterContextSandboxHardening:
+    """
+    Regression tests ensuring that the AST-hardened
+    ``safe_evaluate`` blocks sandbox-escape attempts via
+    ``__class__``/``__mro__``/``__subclasses__`` etc.
+    """
+
+    def test_dunder_attribute_blocked(self, params):
+        # The classic Python sandbox escape — should be blocked.
+        params.set("evil", "().__class__")
+        assert params.get("evil") == 0.0
+
+    def test_dunder_mro_blocked(self, params):
+        params.set("evil", "().__class__.__mro__")
+        assert params.get("evil") == 0.0
+
+    def test_dunder_subclasses_blocked(self, params):
+        # A more complete attack vector
+        params.set("evil", "().__class__.__base__.__subclasses__()")
+        assert params.get("evil") == 0.0
+
+    def test_builtins_blocked(self, params):
+        # ``__builtins__`` is not accessible via attribute (would
+        # normally allow reaching ``eval``/``__import__``)
+        params.set("evil", "(1).__class__.__init__.__globals__")
+        assert params.get("evil") == 0.0
+
+    def test_arbitrary_eval_blocked(self, params):
+        params.set("evil", "eval('1+1')")
+        assert params.get("evil") == 0.0
+
+    def test_arbitrary_exec_blocked(self, params):
+        params.set("evil", "exec('print(1)')")
+        assert params.get("evil") == 0.0
+
+    def test_import_blocked(self, params):
+        params.set("evil", "__import__('os')")
+        assert params.get("evil") == 0.0
+
+    def test_lambda_blocked(self, params):
+        params.set("evil", "(lambda: 1)()")
+        assert params.get("evil") == 0.0
+
+    def test_comprehension_blocked(self, params):
+        params.set("evil", "[x for x in range(10)]")
+        assert params.get("evil") == 0.0
+
+    def test_attribute_access_on_string_blocked(self, params):
+        # Even if a string slips into the cache (e.g. as a default
+        # value from a sketch file), attribute access is blocked.
+        params.set("name", "hello")
+        params.set("evil", "name.upper()")
+        assert params.get("evil") == 0.0
+
+    def test_attribute_access_on_int_blocked(self, params):
+        params.set("n", 42)
+        params.set("evil", "n.bit_length()")
+        assert params.get("evil") == 0.0
+
+    def test_arbitrary_evaluate_blocked(self, params):
+        # ``evaluate()`` uses the same hardening
+        assert params.evaluate("().__class__") == 0.0
+        assert params.evaluate("__import__('os')") == 0.0
+
+    def test_arbitrary_evaluate_attribute_blocked(self, params):
+        params.set("name", "hello")
+        assert params.evaluate("name.upper()") == 0.0
+
+    def test_legitimate_math_still_works(self, params):
+        # Sanity check: the hardening didn't break normal usage.
+        params.set("a", 10)
+        params.set("b", 20)
+        params.set("c", "a + b * 2")  # 10 + 40 = 50
+        assert params.get("c") == 50.0
+
+    def test_legitimate_math_function_still_works(self, params):
+        params.set("x", "sqrt(144)")
+        assert params.get("x") == 12.0
+
+    def test_legitimate_ternary_still_works(self, params):
+        params.set("flag", 1)
+        params.set("result", "1 if flag > 0 else -1")
+        assert params.get("result") == 1.0
