@@ -1,0 +1,125 @@
+name: Build .deb package
+
+# Fork-friendly version of publish-deb.yml: builds the Ubuntu 24.04 .deb
+# and uploads it as a workflow artifact. Does NOT publish to Launchpad PPA
+# (the upstream barebaric/rayforge owns that account).
+#
+# Triggers:
+#   - push to main
+#   - any tag
+#   - workflow_dispatch (manual)
+#
+# Output:
+#   - artifact named `rayforge-$VERSION-ubuntu24.04.deb`
+
+on:
+  push:
+    branches:
+      - "main"
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build-deb:
+    name: Build .deb for Ubuntu 24.04 (noble)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install build dependencies
+        run: >
+          sudo apt-get update && sudo apt-get install -y
+          build-essential
+          cargo
+          cython3
+          devscripts
+          debhelper
+          dh-python
+          equivs
+          jq
+          python3-all
+          python3-maturin
+          python3-numpy
+          pybuild-plugin-pyproject
+          python3-pip
+          python3-poetry-core
+          python3-pyclipper
+          pkg-config
+          rsync
+          rustc
+
+      - name: Set Version
+        id: set-version
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION=${{ github.ref_name }}
+          elif git describe --tags >/dev/null 2>&1; then
+            VERSION=$(git describe --tags)
+          else
+            VERSION="0.0.0-$(git rev-parse --short HEAD)"
+          fi
+          if [ -z "$VERSION" ]; then
+            echo "Error: No git version number found!"
+            exit 1
+          fi
+          # Strip the g<sha> suffix from `git describe` (we want a clean
+          # version for the .deb filename, not the snapshot revision).
+          CLEAN_VERSION=$(echo "$VERSION" | sed -E 's/-[0-9]+-g[0-9a-f]+$//')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "CLEAN_VERSION=$CLEAN_VERSION" >> $GITHUB_ENV
+          echo "version=$CLEAN_VERSION" >> $GITHUB_OUTPUT
+          echo "Raw version: $VERSION"
+          echo "Clean version: $CLEAN_VERSION"
+
+      - name: Build .deb package
+        id: build_deb
+        env:
+          TARGET_DISTRIBUTION: noble
+        run: |
+          chmod +x ./scripts/build-deb.sh
+          ./scripts/build-deb.sh --source
+
+          DEB_FILE_PATH=$(find dist -name "*.deb" -type f | head -n 1)
+          if [ -z "$DEB_FILE_PATH" ]; then
+            echo "::error::Build failed, no .deb file found in dist/."
+            exit 1
+          fi
+          DEB_FILENAME=$(basename "$DEB_FILE_PATH")
+          echo "Built: $DEB_FILE_PATH"
+
+          # Rename to a friendlier filename for the artifact.
+          FRIENDLY_NAME="rayforge-${CLEAN_VERSION}-ubuntu24.04.deb"
+          cp "$DEB_FILE_PATH" "dist/$FRIENDLY_NAME"
+          echo "Friendly name: $FRIENDLY_NAME"
+          echo "deb_file_path=dist/$FRIENDLY_NAME" >> $GITHUB_OUTPUT
+          echo "deb_filename=$FRIENDLY_NAME" >> $GITHUB_OUTPUT
+
+      - name: Install runtime dependencies for testing
+        run: |
+          sudo mk-build-deps --install --tool="apt-get -y" debian/control
+
+      - name: Test package installation
+        run: |
+          DEB_FILE="${{ steps.build_deb.outputs.deb_file_path }}"
+          sudo apt-get install -y "./$DEB_FILE"
+          dpkg -l rayforge
+          rayforge --version
+
+      - name: Upload .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.build_deb.outputs.deb_filename }}
+          path: ${{ steps.build_deb.outputs.deb_file_path }}
+          if-no-files-found: error
+          compression-level: 9
