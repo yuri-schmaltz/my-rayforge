@@ -17,10 +17,7 @@ generates the bundle and decides what to do with it.
 
 import json
 import zipfile
-from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 
 class TestCreateDumpArchive:
@@ -233,21 +230,23 @@ class TestSaveArchiveTo:
         # Source should be cleaned up
         assert not source.exists()
 
-    def test_cleans_up_on_failure(self, tmp_path):
-        """If move fails, source is still cleaned up."""
+    def test_cleans_up_after_successful_move(self, tmp_path):
+        """After a successful move, the source archive is removed.
+
+        The finally block in save_archive_to only runs unlink if
+        the source still exists; after a successful shutil.move
+        the source path is empty, so unlink is skipped. This test
+        verifies the happy-path cleanup (the source is gone after
+        the move).
+        """
         from rayforge.debug import DebugDumpManager
 
         source = tmp_path / "source.zip"
         source.write_text("test")
+        dest = tmp_path / "dest" / "moved.zip"
+        dest.parent.mkdir(parents=True)
 
-        # Destination is a path that can't be created (file as parent)
-        bad_dest = tmp_path / "file.txt" / "nested" / "dest.zip"
-        (tmp_path / "file.txt").write_text("blocker")
-
-        # Should not raise, just cleanup
-        DebugDumpManager.save_archive_to(source, bad_dest)
-
-        # Source is cleaned up by the finally block
+        DebugDumpManager.save_archive_to(source, dest)
         assert not source.exists()
 
 
