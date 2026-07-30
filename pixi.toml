@@ -135,6 +135,18 @@ cmd = "scripts/with_gdk.sh"
 env = { GI_TYPELIB_PATH = "$(pkgconf --variable=typelibdir gobject-introspection-1.0)"}
 cmd = "pytest -v --ignore=tests/ui_gtk"
 
+[tasks.coverage]
+# Run the backend test suite with line+branch coverage on the
+# ``rayforge`` package. Uses the ``[tool.coverage]`` configuration
+# in ``pyproject.toml``. The CI ``coverage`` job uses
+# ``--cov-fail-under=35`` (also configured in pyproject.toml) to
+# fail the build if total coverage drops below the gate.
+#
+# Local run: ``pixi run coverage``
+# With HTML report: ``pixi run coverage -- --cov-report=html``
+env = { GI_TYPELIB_PATH = "$(pkgconf --variable=typelibdir gobject-introspection-1.0)"}
+cmd = "pytest --cov=rayforge --cov-report=term-missing --cov-report=xml:coverage.xml --ignore=tests/ui_gtk"
+
 [tasks.uitest]
 env = { GI_TYPELIB_PATH = "$(pkgconf --variable=typelibdir gobject-introspection-1.0):/usr/lib/x86_64-linux-gnu/girepository-1.0"}
 cmd = "pytest -v -m ui"
