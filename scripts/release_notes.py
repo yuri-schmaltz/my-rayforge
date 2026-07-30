@@ -90,8 +90,14 @@ def parse_args() -> argparse.Namespace:
 
 def gh_request(
     url: str, token: str, params: Optional[Dict[str, str]] = None
-) -> Dict[str, Any]:
-    """GET a GitHub API endpoint."""
+) -> Any:
+    """GET a GitHub API endpoint.
+
+    Returns the parsed JSON. The shape depends on the
+    endpoint: the compare API returns a dict, the pulls
+    API returns a list of PR dicts. Use \`Any\` here so
+    callers can iterate / subscript without a cast.
+    """
     if params:
         url = url + "?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(
