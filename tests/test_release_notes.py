@@ -206,7 +206,9 @@ class TestGenerateIntegration:
 
         # Mock merge_base response
         merge_base_response = {
-            "merge_base_commit": {"sha": "abc1234567890123456789012345678901234ab"},
+            "merge_base_commit": {
+                "sha": "abc1234567890123456789012345678901234ab"
+            },
         }
         # Mock PR list response
         pr_list_response = [
