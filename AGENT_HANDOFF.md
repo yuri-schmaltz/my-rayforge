@@ -204,6 +204,33 @@ pixi run format       # black
 
 ## NOTAS TÉCNICAS
 
+### Security (LEIA antes de mexer em eval/exec/subprocess/XML)
+
+A auditoria completa tá em `SECURITY_AUDIT.md` na raiz. TL;DR pra próximo
+agente:
+
+- **PRs de security mergeados**: #13 (sketcher `safe_evaluate`), #14
+  (`usedforsecurity=False` + defusedxml LightBurn), #15 (bandit CI gate
+  + defusedxml SVG), #16 (docs).
+- **Fronteiras de segurança documentadas**: `--uiscript` em
+  `rayforge/uiscript.py` é uma feature de automação intencional
+  (`exec` de script do usuário, mesmo trust model que `python
+  -c`). NÃO usar `--uiscript` em ambiente multi-tenant. Ver
+  `SECURITY_AUDIT.md#-documented-security-boundaries` para o review
+  checklist.
+- **CI gate**: `lint-test.yml` tem um job `security` que roda
+  `bandit -c .bandit -r rayforge/`. Falha o build em HIGH severity,
+  warn em MEDIUM, info em LOW. Não ignorar B102/S102 sem justificativa
+  inline (ver `rayforge/uiscript.py:57` para o padrão).
+- **XML parsing**: LightBurn (`.lbrn`) e SVG passam por `defusedxml`.
+  Nunca usar `xml.etree.ElementTree` direto em código novo que lê
+  arquivo do usuário.
+- **Hash**: usar `usedforsecurity=False` em `hashlib.sha1` /
+  `hashlib.md5` (Python 3.9+). Pattern visto em
+  `rayforge/pipeline/intent_builder.py` pós-PR #14.
+- **Subprocess**: sempre `shutil.which()` para resolver binário, nunca
+  `shell=True`. Pattern visto em `rayforge/version.py` pós-PR #13.
+
 ### Estrutura do Projeto (atualizada 1.9.0)
 ```
 rayforge/
