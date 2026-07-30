@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import semver
+from packaging.version import InvalidVersion, Version
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +76,36 @@ def _strip_git_describe(version_str: str) -> str:
 
 
 def is_newer_version(remote_str: str, local_str: str) -> bool:
-    """Compares two version strings using semver."""
+    """Compares two version strings.
+
+    Uses PEP 440 semantics (via ``packaging.version.Version``) so the
+    fork's ``1.9.0+resilience.X`` semver-build-metadata tag scheme
+    compares correctly:
+
+    - ``1.9.0+resilience.4`` is newer than ``1.9.0`` (fork patch)
+    - ``1.9.0+resilience.4`` is newer than ``1.9.0+resilience.3``
+    - ``1.9.0+resilience.4`` is older than ``1.9.0+resilience.5``
+    - ``1.9.0+resilience.4`` is older than ``1.9.1`` (upstream wins)
+    - ``1.9.0+resilience.4`` is older than ``2.0.0`` (upstream wins)
+
+    The previous implementation used ``semver.VersionInfo`` which
+    ignores semver build metadata for ordering (per the semver
+    spec) — that meant ``1.9.0+resilience.4`` was treated as equal
+    to ``1.9.0`` and equal to ``1.9.0+resilience.3``, so the
+    auto-update checker would never notify users about fork
+    patches. PEP 440's local-version segment semantics fix this.
+
+    Falls back to ``semver.VersionInfo.parse`` for legacy callers
+    (e.g. addon manifests that may use non-PEP-440 formats), and
+    to string inequality as a last resort.
+    """
+    try:
+        remote_v = Version(remote_str)
+        local_v = Version(local_str)
+        return remote_v > local_v
+    except InvalidVersion:
+        pass
+
     try:
         remote_v = semver.VersionInfo.parse(_strip_git_describe(remote_str))
         local_v = semver.VersionInfo.parse(_strip_git_describe(local_str))
@@ -83,7 +113,7 @@ def is_newer_version(remote_str: str, local_str: str) -> bool:
     except ValueError:
         logger.warning(
             f"Could not parse versions '{remote_str}' or '{local_str}' "
-            "with semver. Falling back to string comparison."
+            "with PEP 440 or semver. Falling back to string comparison."
         )
         return remote_str != local_str
 
