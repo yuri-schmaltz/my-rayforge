@@ -65,8 +65,8 @@ try:
         "sodipodi", "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
     )
     _StdET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
-except Exception:
-    pass  # Best effort registration
+except Exception as e:  # Best effort registration
+    logger.debug("Failed to register XML namespaces: %s", e)
 
 
 def _get_margins_from_data(

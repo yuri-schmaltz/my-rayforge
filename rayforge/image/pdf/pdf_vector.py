@@ -272,8 +272,8 @@ class PdfVectorImporter(Importer):
         if self._doc is not None:
             try:
                 self._doc.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s", e)
             self._doc = None
             self._page = None
 

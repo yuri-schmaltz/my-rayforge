@@ -43,8 +43,8 @@ def _check_svg_load_capability() -> bool:
             return True
     except pyvips.Error:
         pass
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug("%s", e)
 
     return False
 

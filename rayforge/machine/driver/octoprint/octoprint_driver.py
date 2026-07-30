@@ -277,8 +277,8 @@ class OctoPrintDriver(Driver):
                     self._session_key = login.get("session")
                     self._user_name = login.get("name")
                     return
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s", e)
 
         self.state.error = DeviceError(
             code=403,

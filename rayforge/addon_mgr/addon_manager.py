@@ -1089,8 +1089,8 @@ class AddonManager:
                 data = yaml.safe_load(manifest.read_text())
                 v = data.get("version") if isinstance(data, dict) else None
                 return str(v) if v else None
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s", e)
         return None
 
     @staticmethod

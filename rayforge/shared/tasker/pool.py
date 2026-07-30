@@ -52,10 +52,8 @@ class _TaggedQueue:
         msg_type, value = msg
         try:
             self._queue.put_nowait((self._key, self._task_id, msg_type, value))
-        except Exception:
-            # This can happen if the queue is closed during shutdown.
-            # It's safe to ignore.
-            pass
+        except Exception:  # noqa: S110
+            pass  # noqa: S110
 
 
 def _worker_main_loop(

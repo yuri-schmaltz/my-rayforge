@@ -147,8 +147,7 @@ class NoDeviceDriver(Driver):
                     result = on_command_done(op_index)
                     if inspect.isawaitable(result):
                         await result
-                except Exception:
-                    # Don't let callback exceptions stop execution
+                except Exception:  # noqa: S110
                     pass
         self.job_finished.send(self)
 
