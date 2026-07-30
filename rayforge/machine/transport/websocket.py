@@ -159,9 +159,7 @@ class WebSocketTransport(Transport):
         if self._websocket is not None:
             try:
                 await self._websocket.close()
-            except Exception:
-                # Ignore errors on close, as we are tearing down the
-                # connection.
-                pass
+            except Exception:  # noqa: S110
+                pass  # close() errors are expected during teardown
             finally:
                 self._websocket = None

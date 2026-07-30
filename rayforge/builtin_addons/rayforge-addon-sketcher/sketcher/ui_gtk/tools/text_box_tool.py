@@ -631,8 +631,8 @@ class TextBoxTool(SketchTool):
                             self.live_edit_cmd.capture_state(
                                 self.text_buffer, self.cursor_pos
                             )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("%s", e)
 
             clipboard.read_text_async(None, on_paste_ready)
             return True

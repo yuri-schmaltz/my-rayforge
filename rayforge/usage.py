@@ -74,8 +74,8 @@ class UsageTracker:
             size = get_screen_size()
             if size:
                 return f"{size[0]}x{size[1]}"
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("%s", e)
         return "unknown"
 
     def set_enabled(self, enabled: bool):
