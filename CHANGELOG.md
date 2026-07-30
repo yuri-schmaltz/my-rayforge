@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased (fork only)
 
-Nothing new in this fork yet.
+### Added
+
+- **Community docs** (PR #19): `CONTRIBUTING.md` (12 KB) covering
+  dev setup, contribution workflow, coding conventions, and the
+  fork-only policy. `SECURITY.md` (7 KB) with the fork's security
+  policy, threat model, supported versions, and the documented
+  security boundaries cross-referenced from `SECURITY_AUDIT.md`.
+  `CODE_OF_CONDUCT.md` (5.5 KB) based on the Contributor Covenant
+  v2.1. `SUPPORT.md` (9 KB) troubleshooting guide for the most
+  common issues (installation, auto-update, file formats, addons,
+  networking, performance, logs and crash reports). The
+  `SECURITY.md` and `CODE_OF_CONDUCT.md` contact email is a
+  placeholder; the maintainer will need to set up a real mailbox
+  before publishing to end users.
+- **Coverage gate** (PR #20): new `coverage` job in
+  `lint-test.yml` runs `pytest --cov=rayforge` and fails the build
+  if line coverage drops below 35%. New `coverage` pixi task
+  for local runs. HTML and XML reports are uploaded as workflow
+  artifacts (30-day retention). The threshold is conservative;
+  bump it as the suite matures. Coverage badges added to
+  `README.md`.
 
 ## 1.9.0+resilience.4 (fork only)
 
@@ -119,6 +139,80 @@ is reported in the About dialog and used by the update checker. The
 ``1.9.0`` (no spurious "new version" notifications), but
 ``1.9.1`` > ``fork`` still works correctly when upstream ships a real
 release.
+
+### Post-release patches (rolled into the binary)
+
+The following PRs were merged after the ``1.9.0+resilience.4`` tag
+was created but before the next tag. They are part of the
+``1.9.0+resilience.4`` binary published to users.
+
+- **PR #13** (`fix/sketcher-params-eval`): hardened the
+  sketcher `ParameterContext` to use the AST-whitelisted
+  `rayforge.core.expression.safe_evaluate` instead of bare
+  `eval()`. The `eval()` sandbox is bypassable via attribute
+  access on namespace objects; the new evaluator rejects
+  dunder / private attribute access at the AST level. 16 new
+  regression tests cover the classic sandbox-escape vectors.
+  Also fixed a leaked `AttributeError` in `safe_evaluate` and
+  the S607 partial-path warning in `rayforge/version.py`.
+- **PR #14** (`fix/security-audit-followups`):
+  `hashlib.sha1(blob)` → `hashlib.sha1(blob, usedforsecurity=False)`
+  in `rayforge/pipeline/intent_builder.py` (Python 3.9+ idiom for
+  non-security content hashes). Switched the LightBurn XML parser
+  to `defusedxml.ElementTree` to block billion-laughs, XXE, and
+  DTD-SSRF payloads. 5 new regression tests cover the attack
+  vectors.
+- **PR #15** (`fix/ci-security-gates`): added a `security` job to
+  the `lint-test.yml` workflow that runs `bandit -c .bandit -r
+  rayforge/`. The new `.bandit` config documents the project-wide
+  skips (B101/B110/B311, etc.) and the intentional false
+  positives. Migrated the SVG XML parsers to `defusedxml`,
+  matching the LightBurn fix. Also fixed a latent pyright
+  failure in `rayforge/image/lightburn/importer.py` where
+  `defusedxml.ElementTree` was used as a type annotation but the
+  module does not expose `Element` (added `import xml.etree.ElementTree
+  as _StdET` + `Element = _StdET.Element`).
+- **PR #16** (`fix/security-boundary-docs`): added a documented
+  security-boundaries section to `SECURITY_AUDIT.md` covering
+  `--uiscript` (the intentional `exec()` of a user-supplied
+  script). The 4-point review checklist ensures the trust
+  model is preserved in future changes. Added a TL;DR
+  "Security" section to `AGENT_HANDOFF.md` so the next agent
+  has the policy in one place.
+- **PR #17** (`fix/deps-and-deb-build`): bumped GitPython
+  3.1.51 → 3.1.55 (6 CVEs), pypdf 6.13.3 → 6.14.2 (4 CVEs), and
+  cairosvg 2.8.2 → 2.9.0 (2 CVEs) to clear the SCA gate. Fixed
+  the `debian/rules` PEP 440 error that was preventing the
+  `.deb` build from completing (`+resilience.4` semver build
+  metadata was breaking the version-validation step). Fixed
+  the SCA workflow itself to use pixi-installed `pip-audit`
+  instead of the broken `python -m pip install pip-audit`
+  pattern.
+- **PR #18** (`fix/s110-debug-logging`): addressed all 17
+  ruff S110 `try-except-pass` occurrences. 10 replaced with
+  `logger.debug(...)` for diagnostic value (image importers,
+  addon manager, OctoPrint driver, history, etc.); 7 marked
+  with `# noqa: S110` where the silent pass is intentional
+  (signal-disconnect, shutdown teardown). Gotcha: the ruff
+  noqa comment must be on the `except` line, not the `pass`
+  line, and line-length 79 forces short rationale text.
+
+### Security
+
+- **Full audit** at `SECURITY_AUDIT.md` (11.5 KB) covers the
+  tools used, real issues (the sketcher `eval()` sandbox
+  escape from PR #13), intentional false positives (with
+  documentation), clean checks, recommendations, and the
+  documented security boundaries. Audit re-runs clean: 0 bandit
+  HIGH, 13 bandit MEDIUM (all intentional), 0 pip-audit
+  vulnerabilities, 0 ruff S-rules beyond the documented
+  exceptions.
+- **`--uiscript` documented as a trust boundary**: the `exec()`
+  in `rayforge/uiscript.py` is intentional (CLI flag for
+  automation, same trust model as `python -c`). The full
+  review checklist is in `SECURITY_AUDIT.md#-documented-security-boundaries`.
+  Reviewers should consult that section before approving
+  changes to the file.
 
 ---
 
