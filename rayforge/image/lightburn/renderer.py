@@ -1,7 +1,10 @@
 import logging
 import warnings
 from typing import TYPE_CHECKING, Optional, Tuple
-from xml.etree import ElementTree as ET
+
+# Use defusedxml to parse SVG content embedded in LightBurn files.
+# See the matching note in ``importer.py`` for the rationale.
+import defusedxml.ElementTree as ET
 
 from ..base_renderer import Renderer, RenderSpecification
 from ..ops_renderer import OPS_RENDERER

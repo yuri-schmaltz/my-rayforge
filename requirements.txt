@@ -23,3 +23,4 @@ svgelements==1.9.6
 trimesh==4.6.8
 vtracer==0.6.11
 websockets==14.2
+defusedxml==0.7.1
