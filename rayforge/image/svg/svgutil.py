@@ -1,7 +1,17 @@
+# flake8: noqa: E402
+
 import logging
 import warnings
 from typing import Any, Dict, List, Optional, Tuple
-from xml.etree import ElementTree as ET
+# Use defusedxml to parse untrusted SVG files. The stdlib
+# xml.etree.ElementTree is vulnerable to XML attacks (B314 in
+# bandit / S314 in ruff). SVG files are user-opened and may carry
+# billion-laughs DoS, XXE, or DTD-based SSRF payloads. Defusedxml
+# blocks all of these by default. See SECURITY_AUDIT.md.
+import defusedxml.ElementTree as ET  # noqa: E402
+import xml.etree.ElementTree as _StdET  # noqa: E402
+from defusedxml import common as _dxml  # noqa: E402
+Element = _StdET.Element  # noqa: E402
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore", DeprecationWarning)
@@ -42,14 +52,19 @@ SHAPE_TAGS = {
 }
 
 
-# Register namespaces to prevent ElementTree from mangling them (ns0:tags)
+# Register namespaces to prevent ElementTree from mangling them (ns0:tags).
+# ``register_namespace`` is a stdlib-only operation (it configures the
+# parser's namespace-prefix table); it does not parse untrusted input
+# and is therefore safe to call on the stdlib module. Defusedxml does
+# not expose ``register_namespace`` because the namespace-prefix table
+# is process-global state in the stdlib, not a per-parse setting.
 try:
-    ET.register_namespace("", SVG_NS)
-    ET.register_namespace("inkscape", INKSCAPE_NS)
-    ET.register_namespace(
+    _StdET.register_namespace("", SVG_NS)
+    _StdET.register_namespace("inkscape", INKSCAPE_NS)
+    _StdET.register_namespace(
         "sodipodi", "http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
     )
-    ET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
+    _StdET.register_namespace("xlink", "http://www.w3.org/1999/xlink")
 except Exception:
     pass  # Best effort registration
 
@@ -140,7 +155,7 @@ def _get_margins_from_data(
             (render_w - (left + w)) / render_w,
             (render_h - (top + h)) / render_h,
         )
-    except (pyvips.Error, ET.ParseError, ValueError):
+    except (pyvips.Error, ET.ParseError, ValueError, _dxml.DefusedXmlException):
         # Return zero margins if SVG is invalid or processing fails
         return 0.0, 0.0, 0.0, 0.0
 
@@ -212,7 +227,7 @@ def trim_svg(data: bytes) -> bytes:
 
         return ET.tostring(root)
 
-    except (ET.ParseError, ValueError):
+    except (ET.ParseError, ValueError, _dxml.DefusedXmlException):
         return data
 
 
@@ -231,7 +246,7 @@ def is_unitless_svg(data: bytes) -> bool:
         if meta.width is None and meta.height is None:
             return True
         return meta.width_unit in ("", "px") and meta.height_unit in ("", "px")
-    except (ValueError, ET.ParseError):
+    except (ValueError, ET.ParseError, _dxml.DefusedXmlException):
         return False
 
 
@@ -263,11 +278,11 @@ def get_natural_size(
         )
         return width_mm, height_mm
 
-    except (ValueError, ET.ParseError):
+    except (ValueError, ET.ParseError, _dxml.DefusedXmlException):
         return None
 
 
-def _get_local_tag_name(element: ET.Element) -> str:
+def _get_local_tag_name(element: Element) -> str:
     """Robustly gets the local tag name, ignoring any namespace."""
     return element.tag.rsplit("}", 1)[-1]
 
@@ -308,7 +323,7 @@ def extract_layer_manifest(data: bytes) -> List[Dict[str, Any]]:
                     f"Found layer: ID='{layer_id}', "
                     f"Name='{label}', Count={feature_count}"
                 )
-    except ET.ParseError as e:
+    except (ET.ParseError, _dxml.DefusedXmlException) as e:
         logger.error(f"Failed to parse SVG for layer extraction: {e}")
         return []
 
@@ -340,5 +355,5 @@ def filter_svg_layers(data: bytes, visible_layer_ids: List[str]) -> bytes:
         # Registering namespaces at module level helps, but ET.tostring
         # needs to know we want to preserve the environment.
         return ET.tostring(root, encoding="utf-8")
-    except ET.ParseError:
+    except (ET.ParseError, _dxml.DefusedXmlException):
         return data

@@ -1,0 +1,64 @@
+# Bandit configuration for the rayforge project.
+#
+# This file is auto-discovered by bandit when invoked from the
+# project root. See
+# https://bandit.readthedocs.io/en/latest/config.html for the full
+# schema. The pyproject.toml ``[tool.bandit]`` section is NOT
+# auto-discovered; it would need to be passed explicitly via
+# ``bandit -c pyproject.toml``. We use the .bandit file here so
+# local runs (``bandit -r rayforge/``) and the CI workflow can
+# share the same config without extra flags.
+
+# Directories to skip. The ``tests/`` tree legitimately uses
+# ``eval``, ``exec``, ``pickle``, ``mock``, etc. to set up test
+# fixtures and to mock the network stack. The same applies to
+# addon test trees (``rayforge/builtin_addons/*/tests/``).
+exclude_dirs:
+  - tests
+  - "*/tests"
+  - build
+  - dist
+  - .git
+  - .pixi
+  - .venv
+
+# Test IDs to skip project-wide. See SECURITY_AUDIT.md for the
+# full justification of each id.
+#
+#   B101 — assert_used: standard pytest pattern.
+#   B110 — try_except_pass: code-quality issue, not a security
+#          finding. The ``pass`` is intentional in the affected
+#          image importers (defensive fallback for malformed
+#          input).
+#   B311 — random: used for UI jitter (e.g. random delays to
+#          avoid thundering herd on retry), not for security.
+#   B105 — hardcoded_password_string: false positive — the
+#          "passwords" hits are documentation strings, not real
+#          secrets.
+#   B404 — subprocess_module: flagged on the *import* of the
+#          ``subprocess`` module. The actual calls in the
+#          project use the argv form (``["git", "describe"]``)
+#          with fully-qualified paths resolved via
+#          ``shutil.which()``, not ``shell=True``. Tracked in
+#          the audit.
+#   B405 — xml_etree: fires on the *import*. The actual
+#          ``fromstring`` calls all go through ``defusedxml``
+#          (since PR #14), which blocks the attack vectors.
+#   B603 — subprocess_call: argv form, not shell=True.
+#   B606 — start_process_with_no_shell: same rationale as
+#          B603.
+#
+# Per-test-ids for the intentional false positives (B102
+# exec in uiscript, B104 bind 0.0.0.0 in ruida simulator,
+# B310 urlopen in http/oauth, B324 weak hash in
+# intent_builder) are documented inline with a ``# noqa``
+# comment or in the SECURITY_AUDIT.md table.
+skips:
+  - B101
+  - B105
+  - B110
+  - B311
+  - B404
+  - B405
+  - B603
+  - B606

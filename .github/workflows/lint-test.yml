@@ -35,6 +35,74 @@ jobs:
       - name: Run flake8 Lint
         run: pixi run --frozen lint
 
+  security:
+    name: Security Lint (bandit)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install bandit
+        run: python -m pip install --quiet "bandit>=1.7,<2"
+
+      - name: Run bandit
+        # ``-c .bandit`` reads the project config. The config skips
+        # the ``tests/`` tree (which uses eval/exec/pickle as test
+        # fixtures) and skips project-wide false positives
+        # (B101 assert_used, B110 try_except_pass, B311 random,
+        # B105 hardcoded_password_string, B404/B405 import-only
+        # warnings, B603/B606 argv-form subprocess). See
+        # SECURITY_AUDIT.md for the full list and rationale.
+        #
+        # We fail the build only on ``high`` severity findings;
+        # ``medium`` findings are reported as warnings so a
+        # regression is visible in the CI log without breaking
+        # the build. The intentional false positives
+        # (B102 exec in --uiscript, B104 bind 0.0.0.0 in the
+        # ruida simulator, B310 urlopen in http/oauth, B324
+        # weak hash in intent_builder) are documented inline
+        # with ``# noqa:`` or in SECURITY_AUDIT.md.
+        run: |
+          set +e
+          echo "=== bandit HIGH severity (fails build) ==="
+          bandit -c .bandit -r rayforge/ \
+            --severity-level high \
+            --confidence-level medium \
+            --format screen
+          HIGH_RC=$?
+          echo
+          echo "=== bandit MEDIUM severity (warning only) ==="
+          bandit -c .bandit -r rayforge/ \
+            --severity-level medium \
+            --confidence-level medium \
+            --format screen
+          MEDIUM_RC=$?
+          echo
+          if [ $HIGH_RC -ne 0 ]; then
+            echo "::error::bandit found HIGH-severity issues"
+            exit $HIGH_RC
+          fi
+          if [ $MEDIUM_RC -ne 0 ]; then
+            echo "::warning::bandit found MEDIUM-severity issues — see SECURITY_AUDIT.md for false positives"
+          fi
+
+      - name: Upload bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.txt
+          retention-days: 30
+
+
   test-backend:
     name: Backend Tests
     runs-on: ubuntu-latest

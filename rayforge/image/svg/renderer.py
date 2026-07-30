@@ -1,7 +1,15 @@
+# flake8: noqa: E402
+
 import logging
 import warnings
 from typing import TYPE_CHECKING, List, Optional, Tuple
-from xml.etree import ElementTree as ET
+# Use defusedxml to parse untrusted SVG files. The stdlib
+# xml.etree.ElementTree is vulnerable to XML attacks (B314 in
+# bandit / S314 in ruff). SVG files are user-opened and may carry
+# billion-laughs DoS, XXE, or DTD-based SSRF payloads. Defusedxml
+# blocks all of these by default. See SECURITY_AUDIT.md.
+import defusedxml.ElementTree as ET  # noqa: E402
+from defusedxml import common as _dxml  # noqa: E402
 
 from raygeo.geo.types import Rect
 
@@ -151,7 +159,7 @@ class SvgRenderer(Renderer):
                     return None
 
             return image
-        except (pyvips.Error, ET.ParseError, ValueError, TypeError):
+        except (pyvips.Error, ET.ParseError, ValueError, TypeError, _dxml.DefusedXmlException):
             return None
 
 
