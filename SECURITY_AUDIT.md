@@ -70,7 +70,7 @@ trusted and the second argument is a hardcoded constant.
 
 | ID | Location | Description | Why it's safe |
 |----|----------|-------------|---------------|
-| B102 / S102 | `rayforge/uiscript.py:57` | `exec(code, script_globals)` | **Intended feature**: the `--uiscript` CLI option lets the user run a Python script with access to the app/window context. Documented at the top of the file. The user explicitly passes the script path on the command line. |
+| B102 / S102 | `rayforge/uiscript.py:57` | `exec(code, script_globals)` | **Intended feature**: the `--uiscript` CLI option lets the user run a Python script with access to the app/window context. **See [Documented security boundaries](#-documented-security-boundaries) below for the full trust model and review checklist.** The `# noqa: S102` on the call site references this section. |
 | B324 / S324 | `rayforge/pipeline/intent_builder.py:1075` | `hashlib.sha1(blob).digest()` | **Content hashing, not security**: SHA-1 is used to derive a stable 63-bit cache key from a canonical JSON payload. No adversarial input — the payload is internal to the app. Marked for future migration to `usedforsecurity=False` (Python 3.9+) for clarity. |
 | B307 / S307 | `rayforge/core/expression/evaluator.py` (PR #10) | None — already migrated to AST whitelist. | n/a |
 | B314 / S314 | `rayforge/image/lightburn/{importer,renderer}.py` (11x) | `xml.etree.ElementTree.fromstring()` | **LightBurn `.lbrn` file format is XML**, but the parser is built-in and the files come from the user's local filesystem. The threat model (user opening a malicious file) is the same as opening a malicious `.svg` or `.docx` — accepted. For higher security, the project could migrate to `defusedxml` (already in `pixi.lock` deps). |
@@ -120,6 +120,71 @@ trusted and the second argument is a hardcoded constant.
    the user-facing docs. Users who run the app in a multi-tenant
    environment should be aware that anyone with command-line access
    can execute arbitrary Python in the app's process context.
+   → **Implemented in PR #16**: see [Documented security boundaries](#-documented-security-boundaries) below and the expanded module docstring in `rayforge/uiscript.py`.
+
+## 🔒 Documented security boundaries
+
+This section captures security-sensitive features that are **intentional
+design choices**, not bugs. Each entry explains the trust model, the
+attack surface, and the review checklist for future changes. Reviewers
+should consult this section before approving changes to the affected
+files.
+
+### `--uiscript <script.py>` (rayforge/app.py:479, rayforge/uiscript.py)
+
+**What it is.** A command-line option that takes a path to a Python
+script and `exec()`s it in a background thread inside the running
+application. The script gets:
+
+- Full access to the running process (same UID, same network, same
+  filesystem, same environment).
+- A reference to the live `RayforgeApplication` instance via
+  `from rayforge.uiscript import app`.
+- A reference to the live `MainWindow` via
+  `from rayforge.uiscript import win`.
+- The script's own directory prepended to `sys.path` (removed in the
+  `finally` block after execution, so the next run starts clean).
+
+**Threat model.** This is **not a vulnerability** in single-user
+scenarios. It is the same trust model as `python -c "..."`, `bash
+./run.sh`, or any other "user runs their own script" feature. The
+script path is supplied by whoever invoked the app, and they have the
+same authority as the user running rayforge.
+
+**Where the trust boundary breaks down.** Any environment where the
+user invoking rayforge is **different** from the user who chose the
+script path:
+
+- Kiosks / shared hosts where untrusted users can pass CLI args.
+- Web services or remote shells that accept untrusted input and
+  build a `--uiscript` path from it.
+- CI runners that take untrusted PR code and execute it via
+  rayforge's `--uiscript` (use a sandboxed container, not rayforge's
+  `exec`).
+
+In these scenarios, `--uiscript` becomes a remote-code-execution
+primitive. Do not enable it.
+
+**Review checklist for changes to `rayforge/uiscript.py`:**
+
+1. The `exec()` call must still be gated on a path passed via the
+   `--uiscript` CLI option — **not** a path derived from an imported
+   file, a network response, a project asset, a manifest field, or
+   any other untrusted source.
+2. The script must run in a `daemon=True` thread (it cannot block
+   the main UI loop indefinitely) and any exception must be caught
+   and logged (current behaviour).
+3. The script's directory is added to `sys.path` only for the
+   duration of the script's execution and removed in the `finally`
+   block (no `sys.path` poisoning for subsequent runs or other
+   scripts).
+4. The `# noqa: S102` comment on the `exec()` call must reference
+   this section so the rationale survives future lint cleanups.
+
+**Related tools.** The `rayforge` CLI itself is the only entry point.
+There is no HTTP, D-Bus, IPC, or plugin surface that re-exposes
+`--uiscript` to other processes. The 5 built-in addons do **not**
+invoke `--uiscript` and have no equivalent exec primitive.
 
 ## Tools added / unlocked
 
