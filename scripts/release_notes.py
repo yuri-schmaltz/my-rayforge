@@ -115,10 +115,30 @@ def get_compare_sha(
     return data.get("merge_base_commit", {}).get("sha", "")
 
 
+def _is_valid_sha(s: str) -> bool:
+    """Check if s is a 40-char hex SHA."""
+    if not s or len(s) != 40:
+        return False
+    return all(c in "0123456789abcdefABCDEF" for c in s)
+
+
 def list_prs_between(
     repo: str, from_sha: str, to_sha: str, token: str
 ) -> List[Dict[str, Any]]:
-    """List merged PRs between two SHAs (exclusive of from_sha)."""
+    """List merged PRs between two SHAs (exclusive of from_sha).
+
+    \`to_sha\` is optional. If it's not a 40-char hex SHA (e.g.
+    the literal "HEAD"), it's ignored and all PRs newer than
+    \`from_sha\` are returned.
+
+    The same applies to \`from_sha\` and any PR's
+    \`merge_commit_sha\`: if not a valid 40-char hex, the PR
+    is included (we can't reliably compare partial SHAs).
+    """
+    # If to_sha is not a real SHA, treat it as unbounded
+    if to_sha and not _is_valid_sha(to_sha):
+        to_sha = ""
+
     url = f"https://api.github.com/repos/{repo}/pulls"
     prs = []
     page = 1
@@ -142,7 +162,14 @@ def list_prs_between(
             if not merge_sha:
                 continue
             # Filter by SHA range (string comparison on hex SHAs)
-            if from_sha and merge_sha <= from_sha:
+            # If from_sha or merge_sha aren't valid SHAs, include
+            # the PR (we can't reliably compare partial values).
+            if (
+                from_sha
+                and _is_valid_sha(from_sha)
+                and _is_valid_sha(merge_sha)
+                and merge_sha <= from_sha
+            ):
                 continue
             if to_sha and merge_sha > to_sha:
                 continue

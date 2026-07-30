@@ -7,12 +7,11 @@ the GitHub REST API. We test the pure-Python helpers
 without hitting the network.
 """
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
+from unittest.mock import patch
 
 # Add scripts/ to the path so we can import release_notes
 SCRIPTS_DIR = Path(__file__).parent.parent / "scripts"
@@ -25,26 +24,46 @@ class TestExtractSection:
     """Extract the conventional-commit section from a PR title."""
 
     def test_feat(self):
-        assert release_notes.extract_section("feat(ui): new dialog") == "Features"
+        assert (
+            release_notes.extract_section("feat(ui): new dialog")
+            == "Features"
+        )
 
     def test_fix(self):
         assert release_notes.extract_section("fix: oops") == "Bug fixes"
 
     def test_perf(self):
-        assert release_notes.extract_section("perf(render): 2x speedup") == "Performance"
+        assert (
+            release_notes.extract_section(
+                "perf(render): 2x speedup"
+            )
+            == "Performance"
+        )
 
     def test_docs(self):
-        assert release_notes.extract_section("docs: typo fix") == "Documentation"
+        assert (
+            release_notes.extract_section("docs: typo fix")
+            == "Documentation"
+        )
 
     def test_ci(self):
-        assert release_notes.extract_section("ci: new workflow") == "Continuous integration"
+        assert (
+            release_notes.extract_section("ci: new workflow")
+            == "Continuous integration"
+        )
 
     def test_with_scope(self):
-        assert release_notes.extract_section("feat(machine): add pause") == "Features"
+        assert (
+            release_notes.extract_section("feat(machine): add pause")
+            == "Features"
+        )
 
     def test_breaking_marker(self):
         # The ! is preserved but doesn't change section
-        assert release_notes.extract_section("feat(api)!: breaking") == "Features"
+        assert (
+            release_notes.extract_section("feat(api)!: breaking")
+            == "Features"
+        )
 
     def test_unknown_type(self):
         assert release_notes.extract_section("random: thing") == "Other"
@@ -187,7 +206,7 @@ class TestGenerateIntegration:
 
         # Mock merge_base response
         merge_base_response = {
-            "merge_base_commit": {"sha": "abc1234567890"},
+            "merge_base_commit": {"sha": "abc1234567890123456789012345678901234ab"},
         }
         # Mock PR list response
         pr_list_response = [
@@ -196,7 +215,7 @@ class TestGenerateIntegration:
                 "number": 1,
                 "user": {"login": "alice"},
                 "merged_at": "2026-01-01T00:00:00Z",
-                "merge_commit_sha": "def4567890",
+                "merge_commit_sha": "def4567890abcdef01234567890abcdef0123456",
                 "labels": [],
                 "body": "",
             },
@@ -205,7 +224,7 @@ class TestGenerateIntegration:
                 "number": 2,
                 "user": {"login": "bob"},
                 "merged_at": "2026-01-02T00:00:00Z",
-                "merge_commit_sha": "7890abcdef",
+                "merge_commit_sha": "7890abcdef01234567890abcdef0123456789ab",
                 "labels": [],
                 "body": "",
             },
