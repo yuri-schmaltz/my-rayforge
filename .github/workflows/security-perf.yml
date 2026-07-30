@@ -47,11 +47,23 @@ jobs:
         run: pixi install
 
       - name: Install pip-audit
-        run: pixi run python -m pip install pip-audit --quiet
+        # ``pip-audit`` is now declared as a pypi-dep in the
+        # ``[feature.test.pypi-dependencies]`` block of
+        # ``pixi.toml``, so the prior ``pixi install`` step already
+        # pulled it into the pixi env. Running it via ``pixi run``
+        # is the supported way to invoke a tool that lives in the
+        # pixi env.
+        #
+        # The previous version of this step tried
+        # ``pixi run python -m pip install pip-audit --quiet``,
+        # which fails because pixi's default env does not bundle
+        # ``pip`` (pixi uses ``uv`` internally for PyPI
+        # resolution).
+        run: pixi run pip-audit --version
 
       - name: Run pip-audit (SCA)
         run: |
-          pixi run python -m pip-audit \
+          pixi run pip-audit \
             --requirement requirements.txt \
             --format markdown \
             --output pip-audit-report.md \
@@ -61,7 +73,7 @@ jobs:
             cat pip-audit-report.md
           fi
           # Hard-fail on vulnerabilities that have a known fix
-          pixi run python -m pip-audit \
+          pixi run pip-audit \
             --requirement requirements.txt \
             --fix --dry-run \
             --progress-spinner off
