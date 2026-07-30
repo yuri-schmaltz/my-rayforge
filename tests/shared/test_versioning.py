@@ -333,6 +333,67 @@ class TestIsNewerVersion:
     def test_invalid_versions_fallback(self):
         assert is_newer_version("2.0.0", "1.0.0") is True
 
+    def test_fork_patch_is_newer_than_upstream_base(self):
+        # The fork's resilience patch should be considered newer
+        # than the upstream 1.9.0 base release.
+        assert is_newer_version("1.9.0+resilience.4", "1.9.0") is True
+
+    def test_fork_patches_compare_correctly(self):
+        # resilience.4 should be newer than resilience.3 and older
+        # than resilience.5.
+        assert (
+            is_newer_version("1.9.0+resilience.4", "1.9.0+resilience.3")
+            is True
+        )
+        assert (
+            is_newer_version("1.9.0+resilience.3", "1.9.0+resilience.4")
+            is False
+        )
+        assert (
+            is_newer_version("1.9.0+resilience.5", "1.9.0+resilience.4")
+            is True
+        )
+        assert (
+            is_newer_version("1.9.0+resilience.4", "1.9.0+resilience.5")
+            is False
+        )
+
+    def test_upstream_release_beats_fork_patch(self):
+        # When upstream ships a real release (1.9.1, 2.0.0), it
+        # should be considered newer than the fork's resilience.4
+        # patch. This is the whole point of using build metadata
+        # instead of a prerelease tag (1.9.0-resilience.4 would
+        # lose to 1.9.1 in semver).
+        assert (
+            is_newer_version("1.9.1", "1.9.0+resilience.4")
+            is True
+        )
+        assert (
+            is_newer_version("1.9.0+resilience.4", "1.9.1")
+            is False
+        )
+        assert is_newer_version("2.0.0", "1.9.0+resilience.4") is True
+        assert is_newer_version("1.9.0+resilience.4", "2.0.0") is False
+
+    def test_fork_patch_strictly_newer_than_upstream_base(self):
+        # The fork's patch is "the same version" as the base per
+        # semver (build metadata is ignored for ordering) but is
+        # strictly newer per PEP 440. This is the bug that PR #22
+        # fixes.
+        assert is_newer_version("1.9.0+resilience.4", "1.9.0") is True
+        assert is_newer_version("1.9.0", "1.9.0+resilience.4") is False
+
+    def test_equal_fork_patches(self):
+        # Same version, both directions, should not be "newer".
+        assert (
+            is_newer_version("1.9.0+resilience.4", "1.9.0+resilience.4")
+            is False
+        )
+        assert (
+            is_newer_version("1.9.0+resilience.4", "1.9.0+resilience.4")
+            is False
+        )
+
     def test_pep440_post_git_not_newer_than_older_stable(self):
         assert is_newer_version("1.5.2", "1.6.0b2.post6+git.7f927a18") is False
 
