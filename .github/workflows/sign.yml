@@ -1,0 +1,288 @@
+name: Code Sign
+
+# Code-sign the build artifacts produced by the build-deb,
+# build-exe, and build-macos-universal workflows.
+#
+# This workflow is **opt-in** by secret. If the signing credentials
+# are not configured in the fork's GitHub Actions settings, the
+# workflow exits with a "skipped" status and the build artifacts
+# are uploaded unsigned. To enable code signing:
+#
+#   1. Windows: purchase a code-signing certificate from a
+#      trusted CA (e.g. DigiCert, Sectigo, GlobalSign). Export as
+#      ``pfx`` with a strong password. Add to fork secrets:
+#      - ``WINDOWS_CERT_PFX_BASE64`` (the .pfx file, base64-encoded)
+#      - ``WINDOWS_CERT_PASSWORD`` (the .pfx password)
+#   2. macOS: enroll in the Apple Developer Program ($99/year).
+#      Generate a Developer ID Application certificate (not the
+#      Mac App Store one). Add to fork secrets:
+#      - ``MACOS_CERT_P12_BASE64`` (the .p12 file, base64-encoded)
+#      - ``MACOS_CERT_PASSWORD`` (the .p12 password)
+#      - ``MACOS_NOTARY_KEY_ID`` (App Store Connect API key ID)
+#      - ``MACOS_NOTARY_ISSUER_ID`` (App Store Connect API issuer ID)
+#      - ``MACOS_NOTARY_KEY_P8_BASE64`` (.p8 file, base64-encoded)
+#   3. Debian/Ubuntu: generate a GPG key for signing the
+#      ``Release`` file in the apt repository (Launchpad PPA
+#      uses per-account signing keys automatically; for a
+#      self-hosted apt repo, see ``debian/`` in the upstream
+#      project for the layout). Add to fork secrets:
+#      - ``DEB_GPG_PRIVATE_KEY_BASE64`` (the private key, base64)
+#      - ``DEB_GPG_PASSPHRASE``
+#
+# See ``docs/CODE_SIGNING.md`` for the full setup guide including
+# certificate purchasing, Apple notarization, and apt repo
+# configuration.
+#
+# This workflow is intentionally **non-blocking**: if the secrets
+# are not configured, the build still succeeds. The point is to
+# make the signing step available for the maintainer to enable
+# without having to write a new workflow.
+
+on:
+  workflow_run:
+    workflows: ["Build Windows Executable", "Build macOS Universal", "Build .deb package"]
+    types: [completed]
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  # Detect which secrets are configured. If none are, skip with
+  # a clear message in the job summary.
+  detect:
+    name: Detect signing configuration
+    runs-on: ubuntu-latest
+    outputs:
+      has_windows: ${{ steps.check.outputs.has_windows }}
+      has_macos: ${{ steps.check.outputs.has_macos }}
+      has_deb: ${{ steps.check.outputs.has_deb }}
+    steps:
+      - name: Check for signing secrets
+        id: check
+        env:
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          DEB_GPG_PRIVATE_KEY_BASE64: ${{ secrets.DEB_GPG_PRIVATE_KEY_BASE64 }}
+        run: |
+          if [ -n "$WINDOWS_CERT_PFX_BASE64" ]; then
+            echo "has_windows=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_windows=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$MACOS_CERT_P12_BASE64" ]; then
+            echo "has_macos=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_macos=false" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "$DEB_GPG_PRIVATE_KEY_BASE64" ]; then
+            echo "has_deb=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_deb=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "### Code signing status" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Platform | Configured? | Action |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------------|--------|" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$WINDOWS_CERT_PFX_BASE64" ]; then
+            echo "| Windows (.exe) | ✅ Yes | Will sign |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Windows (.exe) | ❌ No | Will skip (unsigned) |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$MACOS_CERT_P12_BASE64" ]; then
+            echo "| macOS (.dmg) | ✅ Yes | Will sign + notarize |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| macOS (.dmg) | ❌ No | Will skip (Gatekeeper warning expected) |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -n "$DEB_GPG_PRIVATE_KEY_BASE64" ]; then
+            echo "| Debian (.deb) | ✅ Yes | Will sign |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "| Debian (.deb) | ❌ No | Will skip (apt will warn) |" >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "To enable code signing, add the corresponding secrets in" >> "$GITHUB_STEP_SUMMARY"
+          echo "Settings → Secrets and variables → Actions. See" >> "$GITHUB_STEP_SUMMARY"
+          echo "**docs/CODE_SIGNING.md** for the full setup guide." >> "$GITHUB_STEP_SUMMARY"
+
+  sign-windows:
+    name: Sign Windows Executable
+    needs: detect
+    if: needs.detect.outputs.has_windows == 'true' && github.event.workflow_run.conclusion == 'success'
+    runs-on: windows-2025
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          run-name: ${{ github.event.workflow_run.name }}
+
+      - name: Import PFX certificate
+        shell: pwsh
+        env:
+          WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: |
+          $pfxBytes = [Convert]::FromBase64String($env:WINDOWS_CERT_PFX_BASE64)
+          $pfxPath = Join-Path $env:RUNNER_TEMP "cert.pfx"
+          [IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
+          Import-PfxCertificate -FilePath $pfxPath `
+            -Password (ConvertTo-SecureString -String $env:WINDOWS_CERT_PASSWORD -AsPlainText -Force) `
+            -CertStoreLocation Cert:\CurrentUser\My
+
+      - name: Sign .exe with signtool
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path . -Filter "*.exe" -Recurse | Select-Object -First 1
+          if (-not $exe) {
+            Write-Error "No .exe found in artifact"
+            exit 1
+          }
+          # Use the SHA-256 timestamp server (RFC 3161).
+          # signtool is part of the Windows SDK which is pre-installed
+          # on windows-2025 runners.
+          signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /a $exe.FullName
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "signtool failed with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+
+      - name: Upload signed artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayforge-windows-signed
+          path: "*.exe"
+          retention-days: 30
+
+  sign-macos:
+    name: Sign and Notarize macOS
+    needs: detect
+    if: needs.detect.outputs.has_macos == 'true' && github.event.workflow_run.conclusion == 'success'
+    runs-on: macos-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          run-name: ${{ github.event.workflow_run.name }}
+
+      - name: Import P12 certificate
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/rayforge.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/cert.p12"
+          echo "$MACOS_CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+          security create-keychain -p "$RUNNER_TEMP_pw" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$RUNNER_TEMP_pw" "$KEYCHAIN_PATH"
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+      - name: Sign .app and .dmg with codesign
+        run: |
+          # Find the .app bundle and the .dmg
+          APP_PATH=$(find . -name "*.app" -type d | head -1)
+          DMG_PATH=$(find . -name "*.dmg" | head -1)
+          if [ -z "$APP_PATH" ] || [ -z "$DMG_PATH" ]; then
+            echo "::error::No .app or .dmg found in artifact"
+            exit 1
+          fi
+          # Use the "Developer ID Application:" identity (auto-detected)
+          IDENTITY=$(security find-identity -v -p codesign | grep "Developer ID Application" | head -1 | awk -F'"' '{print $2}')
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No Developer ID Application identity found in keychain"
+            exit 1
+          fi
+          # Sign the .app bundle (deep, hardened runtime)
+          codesign --deep --force --options runtime \
+                   --sign "$IDENTITY" "$APP_PATH"
+          if [ $? -ne 0 ]; then
+            echo "::error::codesign failed"
+            exit 1
+          fi
+          # Sign the .dmg
+          codesign --force --sign "$IDENTITY" "$DMG_PATH"
+          if [ $? -ne 0 ]; then
+            echo "::error::dmg codesign failed"
+            exit 1
+          fi
+
+      - name: Notarize with Apple notary service
+        env:
+          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
+          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
+          MACOS_NOTARY_KEY_P8_BASE64: ${{ secrets.MACOS_NOTARY_KEY_P8_BASE64 }}
+        run: |
+          # Set up the notary key
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$MACOS_NOTARY_KEY_ID.p8"
+          echo "$MACOS_NOTARY_KEY_P8_BASE64" | base64 --decode > "$KEY_PATH"
+          KEY_ID="$MACOS_NOTARY_KEY_ID"
+          ISSUER="$MACOS_NOTARY_ISSUER_ID"
+          # Notarize the .dmg (this is what users actually download)
+          DMG_PATH=$(find . -name "*.dmg" | head -1)
+          xcrun notarytool submit "$DMG_PATH" \
+            --key "$KEY_PATH" \
+            --key-id "$KEY_ID" \
+            --issuer "$ISSUER" \
+            --wait
+          if [ $? -ne 0 ]; then
+            echo "::error::notarization failed"
+            exit 1
+          fi
+          # Staple the notarization ticket to the .dmg
+          xcrun stapler staple "$DMG_PATH"
+
+      - name: Upload signed+notarized artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayforge-macos-signed
+          path: "*.dmg"
+          retention-days: 30
+
+  sign-deb:
+    name: Sign Debian Package
+    needs: detect
+    if: needs.detect.outputs.has_deb == 'true' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          run-name: ${{ github.event.workflow_run.name }}
+
+      - name: Import GPG key
+        env:
+          DEB_GPG_PRIVATE_KEY_BASE64: ${{ secrets.DEB_GPG_PRIVATE_KEY_BASE64 }}
+          DEB_GPG_PASSPHRASE: ${{ secrets.DEB_GPG_PASSPHRASE }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/deb-gpg.asc"
+          echo "$DEB_GPG_PRIVATE_KEY_BASE64" | base64 --decode > "$KEY_PATH"
+          gpg --batch --yes --import "$KEY_PATH"
+          # Trust the key ultimately
+          KEY_FPR=$(gpg --list-secret-keys --with-colons | grep -E '^fpr' | head -1 | cut -d: -f10)
+          echo "$KEY_FPR:6:" | gpg --batch --yes --import-ownertrust
+
+      - name: Re-sign .deb with debsigs
+        run: |
+          DEB_PATH=$(find . -name "*.deb" | head -1)
+          if [ -z "$DEB_PATH" ]; then
+            echo "::error::No .deb found in artifact"
+            exit 1
+          fi
+          debsigs --sign="$DEB_GPG_PASSPHRASE" "$DEB_PATH"
+          if [ $? -ne 0 ]; then
+            echo "::error::debsigs failed"
+            exit 1
+          fi
+
+      - name: Upload signed .deb artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rayforge-debian-signed
+          path: "*.deb"
+          retention-days: 30
