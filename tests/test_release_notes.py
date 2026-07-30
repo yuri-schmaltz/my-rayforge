@@ -1,3 +1,4 @@
+# pyright: reportMissingImports=false
 """
 Tests for scripts/release_notes.py.
 

@@ -56,7 +56,6 @@ include = [
     "tests/**/*.py",
     "rayforge/builtin_addons/*",
     "rayforge/private_addons/*",
-    "scripts/release_notes.py",
 ]
 
 [tool.mypy]
