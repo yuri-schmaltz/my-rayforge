@@ -410,8 +410,8 @@ class DxfImporter(Importer):
                     raw_paths_by_layer[layer_name].append(
                         path.transform(transform)
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("%s", e)
 
         # 1. Collect all paths (Disordered)
         identity = ezdxf.math.Matrix44()

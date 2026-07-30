@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from typing import Iterator, List, Optional
 
@@ -10,6 +11,8 @@ from .composite_cmd import CompositeCommand
 
 # Maximum time in seconds between two commands to be considered for coalescing.
 COALESCE_THRESHOLD = 0.5
+
+logger = logging.getLogger(__name__)
 
 
 class _TransactionContextProxy:
@@ -134,10 +137,11 @@ class HistoryManager:
             for cmd in reversed(self.transaction_commands):
                 try:
                     cmd.undo()
-                except Exception:
-                    # Best effort: log this secondary error. For now, we
-                    # continue.
-                    pass
+                except Exception as e:
+                    # Best effort: log this secondary error so the user
+                    # can diagnose undo failures during rollback, then
+                    # continue with the remaining commands.
+                    logger.debug("Secondary undo error during rollback: %s", e)
             self.abort_transaction()
             # The state has changed due to the undos, so we signal.
             self.changed.send(self, command=None)
