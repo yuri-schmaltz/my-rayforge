@@ -97,6 +97,10 @@ trusted and the second argument is a hardcoded constant.
 1. **Migrate `intent_builder.py:1075` to `usedforsecurity=False`** — the
    Python 3.9+ idiom for non-security hashes. Improves clarity even
    though the current usage is safe.
+   → **Already done in PR #14** (line 1083 in the current code, off
+   by 8 lines from when the audit was written). The audit table entry
+   in the false-positives section was kept as-is for historical
+   reference.
 
 2. **Consider `defusedxml` for LightBurn XML parsing** — the project
    already pulls `defusedxml` in via pixi for tests, so the cost is
@@ -115,6 +119,12 @@ trusted and the second argument is a hardcoded constant.
    These are mostly in image importers and config loaders where the
    fallback is benign. Consider logging the exception at debug level
    so the user can diagnose failures.
+   → **Implemented in PR #18**: 10 of the 17 cases replaced with
+   `logger.debug(...)` calls (mostly image importers + a few
+   user-facing fallback paths). The remaining 7 (signal-disconnect,
+   shutdown teardown, test-driver callbacks) kept `pass` and were
+   marked with `# noqa: S110` and a short rationale. Ruff S110 now
+   reports 0 occurrences across the codebase.
 
 6. **Document the `--uiscript` feature** as a security boundary in
    the user-facing docs. Users who run the app in a multi-tenant
