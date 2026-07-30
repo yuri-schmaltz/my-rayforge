@@ -108,7 +108,16 @@ We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ## Installation
 
-For installation instructions [refer to our homepage](https://rayforge.org/docs/getting-started/installation).
+For installation instructions for the **community fork** (this
+repository), see [docs/INSTALLATION.md](docs/INSTALLATION.md).
+The fork is distributed as a `.deb` (Ubuntu), `.exe` (Windows),
+and `.dmg` (macOS) from the
+[Releases page](https://github.com/yuri-schmaltz/rayforge/releases).
+
+The upstream Rayforge homepage
+(https://rayforge.org/docs/getting-started/installation)
+documents the **upstream** install paths, not the fork's
+`.deb` / `.exe` / `.dmg`.
 
 ## Development
 
