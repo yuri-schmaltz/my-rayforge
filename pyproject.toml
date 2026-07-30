@@ -101,3 +101,41 @@ markers = [
     "stress: marks tests as stress tests that run for extended periods",
 ]
 addopts = "-m 'not ui and not stress'"
+
+# --------------------------------------------------------------------------
+# Coverage configuration (pytest-cov)
+# --------------------------------------------------------------------------
+# Run with: ``pixi run pytest --cov=rayforge --cov-report=term-missing``
+# or via the dedicated pixi task: ``pixi run coverage``.
+#
+# The coverage gate in ``.github/workflows/lint-test.yml`` (job
+# ``coverage``) fails the build if the line coverage drops below
+# ``fail_under`` for the ``rayforge`` package. The threshold is
+# intentionally set conservatively; bump it as the suite matures.
+[tool.coverage.run]
+branch = true
+source = ["rayforge"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/.pixi/*",
+    "*/build/*",
+    "*/dist/*",
+]
+
+[tool.coverage.report]
+# Fail the build if total line coverage drops below this threshold.
+# Measured on the ``rayforge`` package (excludes the built-in addons,
+# which are tested by the ``addon-test`` pixi task).
+fail_under = 35
+# Show "missing" lines for files with <100% coverage. The CI job
+# uses ``--cov-report=term-missing`` so this is informational.
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "\\.\\.\\.",
+]

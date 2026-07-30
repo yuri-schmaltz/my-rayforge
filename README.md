@@ -3,6 +3,9 @@
 [![Snap Release](https://snapcraft.io/rayforge/badge.svg)](https://snapcraft.io/rayforge)
 [![Launchpad PPA](https://img.shields.io/badge/PPA-blue)](https://launchpad.net/~knipknap/+archive/ubuntu/rayforge)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![CI Status](https://github.com/yuri-schmaltz/rayforge/actions/workflows/lint-test.yml/badge.svg)](https://github.com/yuri-schmaltz/rayforge/actions/workflows/lint-test.yml)
+[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](SECURITY_AUDIT.md)
+[![Coverage Gate](https://img.shields.io/badge/coverage-gate-blue.svg)](SUPPORT.md#support--troubleshooting)
 
 [![Get it from the Snap Store](https://snapcraft.io/en/light/install.svg)](https://snapcraft.io/rayforge)
 <a href="https://flathub.org/apps/org.rayforge.rayforge"><img alt="Get it from Flathub" src="website/static/images/flathub-badge.svg" height="55"/></a>
