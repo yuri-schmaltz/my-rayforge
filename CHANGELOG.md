@@ -29,6 +29,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   bump it as the suite matures. Coverage badges added to
   `README.md`.
 
+## 1.9.0+resilience.5 (fork only)
+
+This release exists only on the `yuri-schmaltz/rayforge` fork. It contains
+all the production-readiness changes from PRs #20-#28 (Tier 1.3, 1.5, 1.6,
+2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3 of the production roadmap) plus the
+critical Windows build fix from PR #28.
+
+### Added
+
+- **Coverage gate** (PR #20, Tier 1.3): new `coverage` job in
+  `lint-test.yml` runs `pytest --cov=rayforge` and fails the build if
+  line coverage drops below 35%. New `coverage` pixi task for local
+  runs. HTML and XML reports are uploaded as workflow artifacts
+  (30-day retention). Coverage badges added to `README.md`.
+- **Auto-update fix** (PR #22, Tier 1.6): `is_newer_version` was using
+  `semver.VersionInfo.parse`, which **ignores semver build metadata**
+  for ordering. For the fork's `1.9.0+resilience.X` tag scheme this
+  meant `1.9.0+resilience.4` was treated as equal to `1.9.0` and the
+  auto-update checker never notified users about fork patches. Fixed
+  by using `packaging.version.Version` (PEP 440), which correctly
+  compares build metadata. Adds 7 new test cases.
+- **Perf baseline** (PR #22, Tier 2.1): new `scripts/perf_baseline.py`
+  measures per-submodule import time + `is_newer_version` call time.
+  Budgets enforced (returns exit 1 if exceeded).
+- **Code signing workflow** (PR #23, Tier 2.2): new `sign.yml` workflow
+  builds, signs, and notarizes the Windows / macOS / Linux binaries
+  using certs from GitHub secrets. **Opt-in** — the workflow detects
+  which secrets are configured and signs only the corresponding
+  platform. New 9 KB `docs/CODE_SIGNING.md` guide.
+- **Diagnostic bundle** (PR #24, Tier 2.3): 10 new test cases for
+  `DebugDumpManager.create_dump_archive` and `save_archive_to`. The
+  dialog now explicitly states the privacy-respecting opt-in model
+  and lists what is in the bundle. New 4.8 KB `docs/DIAGNOSTICS.md`.
+  Source-level test that the dump manager does **not** call any
+  network function (regression guard against future auto-send).
+- **Snap store verification** (PR #25, Tier 2.4): new
+  `verify-snap.yml` workflow builds the snap, installs with
+  `--dangerous`, runs smoke tests (`--help`, `--version`, headless),
+  and uploads the .snap as a workflow artifact. New 7 KB
+  `docs/SNAP_STORE.md` submission guide.
+- **Release notes automation** (PR #26, Tier 3.1, 3.2): new
+  `scripts/release_notes.py` auto-generates Markdown release notes
+  from PR titles (categorized by Conventional Commit prefix,
+  security-sensitive PRs promoted to a top section). New
+  `.github/workflows/release-notes.yml` runs on tag push and
+  uploads the result as a workflow artifact. New 25 test cases.
+  New `docs/screenshots/README.md` guide.
+- **Installation guide** (PR #27, Tier 3.3): new `docs/INSTALLATION.md`
+  covers all install paths (.deb, .exe, .dmg, snap, Flatpak, AUR, Nix,
+  from source). Template Flatpak manifest, AUR PKGBUILD, and Nix
+  derivation provided.
+
+### Fixed
+
+- **Windows build: missing `defusedxml`** (PR #28): the Windows
+  build workflow `build-exe.yml` installs Python dependencies
+  one-by-one in `scripts/win/win_setup.sh`. PR #14 added
+  `defusedxml==0.7.1` to `requirements.txt` but missed adding it
+  to the Windows install list. **All Windows CI runs were failing
+  with `ModuleNotFoundError: No module named 'defusedxml'` since
+  PR #14.** This 1-line fix unblocks Windows builds for all
+  subsequent PRs.
+- **Auto-update version comparison** (PR #22): see "Auto-update
+  fix" above.
+- **Test cleanup** (PR #24): removed unused `pathlib.Path` and
+  `pytest` imports from `tests/test_debug.py`. Replaced an
+  over-aggressive cleanup test with a happy-path verification.
+
+### Test results
+
+- All 25 `is_newer_version` cases pass (7 new + 7 existing).
+- All 10 `DebugDumpManager` cases pass.
+- All 25 `release_notes` cases pass.
+- Backend Tests: 5058/5058 pass.
+- Coverage: 42.60% (above 35% threshold).
+- Lint: clean.
+- SCA: 0 vulnerabilities.
+- Security Lint (bandit): 0 HIGH, 13 MEDIUM (documented FPs).
+
 ## 1.9.0+resilience.4 (fork only)
 
 This release exists only on the `yuri-schmaltz/rayforge` fork (renamed
