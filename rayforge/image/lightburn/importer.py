@@ -9,7 +9,15 @@ from dataclasses import dataclass
 from gettext import gettext as _
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from xml.etree import ElementTree as ET
+
+# Use defusedxml to parse untrusted LightBurn ``.lbrn`` files. The
+# stdlib ``xml.etree.ElementTree`` is vulnerable to XML attacks
+# (billion-laughs / quadratic blowup, external entity expansion,
+# DTD-based network fetches). LightBurn files are user-opened and
+# may come from arbitrary sources, so we must defend against
+# malicious input. See bandit B314 / ruff S314.
+import defusedxml.ElementTree as ET
+from defusedxml import common as defusedxml_common
 
 from raygeo.geo import Geometry
 
@@ -416,7 +424,13 @@ class LightBurnImporter(Importer):
     def scan(self) -> ImportManifest:
         try:
             root = ET.fromstring(self.raw_data)
-        except ET.ParseError as e:
+        except (ET.ParseError, defusedxml_common.DefusedXmlException) as e:
+            # ``defusedxml`` raises ``DefusedXmlException`` (and
+            # subclasses like ``EntitiesForbidden``,
+            # ``ExternalReferenceForbidden``, etc.) when the
+            # document is malicious. Treat it the same as a
+            # parse error so the user gets a friendly message
+            # instead of a stack trace.
             logger.warning("LightBurn scan failed: %s", e)
             self.add_error(_(f"LightBurn file is invalid XML: {e}"))
             return ImportManifest(
@@ -687,7 +701,10 @@ class LightBurnImporter(Importer):
     def parse(self) -> Optional[ParsingResult]:
         try:
             root = ET.fromstring(self.raw_data)
-        except ET.ParseError as e:
+        except (ET.ParseError, defusedxml_common.DefusedXmlException) as e:
+            # See the matching comment in ``scan()`` — defusedxml
+            # raises ``DefusedXmlException`` for malicious input, which
+            # must be handled the same as a plain parse error.
             self.add_error(_(f"LightBurn file is corrupt or invalid: {e}"))
             return None
 
