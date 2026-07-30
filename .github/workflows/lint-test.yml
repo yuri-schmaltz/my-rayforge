@@ -127,6 +127,55 @@ jobs:
       - name: Run backend tests
         run: pixi run --frozen test -m "not ui and not stress" --log-cli-level=DEBUG
 
+  coverage:
+    name: Coverage Gate
+    # Runs the backend test suite with line+branch coverage on the
+    # ``rayforge`` package. Fails the build if total coverage drops
+    # below the threshold in ``[tool.coverage.report] fail_under`` in
+    # ``pyproject.toml`` (currently 35%). Uploads the XML and HTML
+    # reports as workflow artifacts so a future Codecov integration
+    # (or local review) can pick them up.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.68.1
+          frozen: true
+          cache: true
+          cache-key: pixi-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+
+      - name: Compile Translations
+        run: pixi run --frozen compile-translations
+
+      - name: Run coverage
+        # ``--cov-fail-under=35`` is also set in pyproject.toml; the
+        # explicit CLI flag is here as documentation and to make
+        # the gate obvious when reading the workflow file alone.
+        # The HTML report is uploaded as a workflow artifact.
+        run: |
+          set -euo pipefail
+          pixi run --frozen coverage \
+            -- --cov-fail-under=35 \
+               --cov-report=html:htmlcov \
+               --cov-report=xml:coverage.xml
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: |
+            coverage.xml
+            htmlcov/
+          retention-days: 30
+
   test-stress:
     name: Stress Tests
     runs-on: ubuntu-latest
