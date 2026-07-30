@@ -1,10 +1,18 @@
+# flake8: noqa: E402
+
 from __future__ import annotations
 
 import logging
 from gettext import gettext as _
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
-from xml.etree import ElementTree as ET
+# Use defusedxml to parse untrusted SVG files. The stdlib
+# xml.etree.ElementTree is vulnerable to XML attacks (B314 in
+# bandit / S314 in ruff). SVG files are user-opened and may carry
+# billion-laughs DoS, XXE, or DTD-based SSRF payloads. Defusedxml
+# blocks all of these by default. See SECURITY_AUDIT.md.
+import defusedxml.ElementTree as ET  # noqa: E402
+from defusedxml import common as _dxml  # noqa: E402
 
 from raygeo.geo import Geometry, Matrix
 from raygeo.geo.types import Rect
@@ -60,7 +68,7 @@ class SvgImporterBase(Importer):
             # malformed files and warn the user.
             try:
                 ET.fromstring(self.raw_data)
-            except ET.ParseError as e:
+            except (ET.ParseError, _dxml.DefusedXmlException) as e:
                 raise ET.ParseError(f"XML Parse Error: {e}")
 
             size_mm = get_natural_size(self.raw_data)
@@ -73,7 +81,7 @@ class SvgImporterBase(Importer):
                 )
                 for layer in layer_data
             ]
-        except ET.ParseError as e:
+        except (ET.ParseError, _dxml.DefusedXmlException) as e:
             logger.warning(f"SVG scan failed for {self.source_file.name}: {e}")
             self.add_error(f"Could not parse SVG. File may be corrupt: {e}")
         except Exception as e:
@@ -144,7 +152,7 @@ class SvgImporterBase(Importer):
                     vb_str = root.get("viewBox")
                     if vb_str:
                         metadata["viewbox"] = tuple(map(float, vb_str.split()))
-                except ET.ParseError:
+                except (ET.ParseError, _dxml.DefusedXmlException):
                     pass
 
             source.metadata.update(metadata)
@@ -351,7 +359,7 @@ class SvgImporterBase(Importer):
 
             return ET.tostring(root, encoding="utf-8")
 
-        except (ValueError, ET.ParseError) as e:
+        except (ValueError, ET.ParseError, _dxml.DefusedXmlException) as e:
             logger.warning(f"Analytical trim failed: {e}")
             self.add_warning(f"Optimization (trimming) failed: {e}")
             return data

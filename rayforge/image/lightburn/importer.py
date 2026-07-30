@@ -1,3 +1,5 @@
+# flake8: noqa: E402
+
 from __future__ import annotations
 
 import base64
@@ -16,8 +18,15 @@ from typing import Any, Dict, List, Optional, Tuple
 # DTD-based network fetches). LightBurn files are user-opened and
 # may come from arbitrary sources, so we must defend against
 # malicious input. See bandit B314 / ruff S314.
-import defusedxml.ElementTree as ET
-from defusedxml import common as defusedxml_common
+#
+# We use defusedxml.ElementTree as ``ET`` for parsing, and import
+# the stdlib ``xml.etree.ElementTree`` (as ``_StdET``) for the
+# ``Element`` type used in annotations. The two implementations
+# produce structurally identical Element objects.
+import defusedxml.ElementTree as ET  # noqa: E402
+import xml.etree.ElementTree as _StdET  # noqa: E402
+from defusedxml import common as defusedxml_common  # noqa: E402
+Element = _StdET.Element  # noqa: E402
 
 from raygeo.geo import Geometry
 
@@ -245,7 +254,7 @@ def _build_path_from_verts_and_prims(
     return geo
 
 
-def _build_path_text(shape_elem: ET.Element) -> Optional[Geometry]:
+def _build_path_text(shape_elem: Element) -> Optional[Geometry]:
     backup_path = shape_elem.find("BackupPath")
     if backup_path is None:
         return None
@@ -278,7 +287,7 @@ class BitmapInfo:
 
 
 def _shape_to_geometry(
-    shape_elem: ET.Element,
+    shape_elem: Element,
     cut_settings: Dict[int, Dict[str, Any]],
     bitmaps: Optional[List[BitmapInfo]] = None,
 ) -> Optional[Tuple[int, Geometry]]:
@@ -464,7 +473,7 @@ class LightBurnImporter(Importer):
         )
 
     def _parse_cut_settings(
-        self, project: ET.Element
+        self, project: Element
     ) -> Dict[int, Dict[str, Any]]:
         cut_settings: Dict[int, Dict[str, Any]] = {}
         for cs_elem in list(project.findall("CutSetting")) + list(
