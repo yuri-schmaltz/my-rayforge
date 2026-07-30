@@ -1,0 +1,106 @@
+name: Generate Release Notes
+
+# Auto-generate release notes from PR titles between two
+# release tags. Triggered on:
+#   - Push of a release tag (e.g. 1.9.0+resilience.5)
+#   - Manual dispatch (for ad-hoc generation)
+#
+# The output is uploaded as a workflow artifact named
+# `release-notes-<tag>`. The maintainer downloads it and
+# pastes it into the GitHub release body or CHANGELOG.md.
+#
+# Privacy: the script only uses public data from the fork
+# repository. No personal data is sent anywhere.
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      from_tag:
+        description: "Start tag (exclusive)"
+        required: true
+      to_tag:
+        description: "End tag (inclusive, default: HEAD)"
+        required: false
+        default: "HEAD"
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Generate release notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine tag range
+        id: range
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            FROM_TAG="${{ inputs.from_tag }}"
+            TO_TAG="${{ inputs.to_tag }}"
+          else
+            # Use the previous tag as FROM and the current tag as TO
+            CURRENT_TAG="${{ github.ref_name }}"
+            # Find the previous tag (chronologically)
+            PREVIOUS_TAG=$(git tag --sort=-v:refname | \
+              grep -A1 "^${CURRENT_TAG}$" | tail -1 || true)
+            if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$CURRENT_TAG" ]; then
+              # First tag; use the initial commit
+              PREVIOUS_TAG=$(git rev-list --max-parents=0 HEAD)
+            fi
+            FROM_TAG="$PREVIOUS_TAG"
+            TO_TAG="$CURRENT_TAG"
+          fi
+          echo "from_tag=$FROM_TAG" >> "$GITHUB_OUTPUT"
+          echo "to_tag=$TO_TAG" >> "$GITHUB_OUTPUT"
+          echo "::notice::Generating release notes for $FROM_TAG → $TO_TAG"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Generate release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python scripts/release_notes.py \
+            --from-tag "${{ steps.range.outputs.from_tag }}" \
+            --to-tag "${{ steps.range.outputs.to_tag }}" \
+            --token "$GITHUB_TOKEN" \
+            --out release-notes.md
+
+      - name: Upload release notes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-notes-${{ steps.range.outputs.to_tag }}
+          path: release-notes.md
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Post to job summary
+        if: always()
+        run: |
+          echo "## Release notes for ${{ steps.range.outputs.to_tag }}" \
+            >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Generated from: \`${{ steps.range.outputs.from_tag }}\`" \
+            >> "$GITHUB_STEP_SUMMARY"
+          echo "Artifact: \`release-notes-${{ steps.range.outputs.to_tag }}\`" \
+            >> "$GITHUB_STEP_SUMMARY"
+          if [ -f release-notes.md ]; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo '<details><summary>Preview (first 50 lines)</summary>' \
+              >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            head -50 release-notes.md >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "</details>" >> "$GITHUB_STEP_SUMMARY"
+          fi
