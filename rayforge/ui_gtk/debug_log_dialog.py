@@ -35,10 +35,16 @@ class DebugLogDialog(Adw.MessageDialog):
         self._on_error = on_error
 
         self.set_heading(_("Save Debug Log"))
+        # Privacy-respecting wording: explicit opt-in, no auto-send.
+        # Rayforge does NOT upload anything automatically. The user
+        # creates the bundle locally and decides whether to share
+        # it (e.g. by attaching to a GitHub issue).
         self.set_body(
             _(
-                "Create a ZIP archive with log files and system "
-                "information for troubleshooting."
+                "Create a local ZIP archive with log files and system "
+                "information for troubleshooting. Nothing is sent "
+                "anywhere automatically — you decide what to do "
+                "with the file."
             ),
         )
 
@@ -48,9 +54,33 @@ class DebugLogDialog(Adw.MessageDialog):
         )
         self._include_switch.set_active(True)
 
+        # Disclosure group: list exactly what is included, so the
+        # user can make an informed decision about whether to share
+        # the bundle. This is the "opt-in" transparency.
+        contents_group = Adw.PreferencesGroup(
+            title=_("Bundle contents"),
+        )
+        contents_group.add(
+            Gtk.Label(
+                label=_(
+                    "• Session log (rayforge/shared/util/logging)\n"
+                    "• System info (OS, Python, dependencies)\n"
+                    "• Active machine profile (YAML)\n"
+                    "• Application config (YAML, no secrets)\n"
+                    "• Custom dialects (YAML, no G-code)\n"
+                    "• Optional: current project file"
+                ),
+                xalign=0.0,
+                wrap=True,
+                margin_top=8,
+                margin_bottom=8,
+            )
+        )
+
         content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         content_box.set_margin_top(12)
         content_box.append(self._include_switch)
+        content_box.append(contents_group)
         self.set_extra_child(content_box)
 
         self.add_response("cancel", _("Cancel"))
