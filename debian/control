@@ -1,7 +1,7 @@
 Source: rayforge
 Section: graphics
 Priority: optional
-Maintainer: Samuel Abels <knipknap@gmail.com>
+Maintainer: Yuri Schmaltz <security@yuri-schmaltz.dev>
 Build-Depends: cargo,
                cython3,
                debhelper-compat (= 13),

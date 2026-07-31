@@ -1,5 +1,7 @@
 rayforge (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
+  * Update maintainer to Yuri Schmaltz <security@yuri-schmaltz.dev>
+    (fork maintained at github.com/yuri-schmaltz/rayforge).
 
- -- Samuel Abels <knipknap@gmail.com>  Mon, 27 May 2024 10:00:00 +0000
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Fri, 31 Jul 2026 05:48:00 +0000
