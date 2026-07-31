@@ -59,6 +59,19 @@ jobs:
           rsync
           rustc
 
+      - name: Install gettext (for .po -> .mo compilation)
+        run: |
+          sudo apt-get install -y gettext
+
+      - name: Compile .po -> .mo translations
+        # CRITICAL: gettext at runtime reads .mo (machine object) files, NOT
+        # .po (portable object) files. The .mo files are gitignored and must
+        # be compiled just before the .deb is built; otherwise the .deb ships
+        # with no translations (only .po files, which are for translators).
+        # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        run: |
+          bash scripts/update_translations.sh --compile-only
+
       - name: Set Version
         id: set-version
         run: |
@@ -104,6 +117,52 @@ jobs:
           echo "Friendly name: $FRIENDLY_NAME"
           echo "deb_file_path=dist/$FRIENDLY_NAME" >> $GITHUB_OUTPUT
           echo "deb_filename=$FRIENDLY_NAME" >> $GITHUB_OUTPUT
+
+      - name: Verify .mo translation files are in the .deb
+        # Guard against regressions: gettext at runtime reads .mo (machine
+        # object) files, not .po (portable object) files. If the build ever
+        # stops compiling .po -> .mo, language switching silently breaks.
+        # Fails the job if any supported language is missing its .mo file.
+        run: |
+          DEB_FILE="${{ steps.build_deb.outputs.deb_file_path }}"
+          echo "Verifying .mo files in $DEB_FILE..."
+          TMPDIR=$(mktemp -d)
+          (cd "$TMPDIR" && ar x "$OLDPWD/$DEB_FILE")
+          mkdir -p "$TMPDIR/data"
+          tar -xf "$TMPDIR/data.tar."* -C "$TMPDIR/data/"
+          MISSING=0
+          for LANG in de en es fr pt uk zh_CN; do
+            # Skip the English source-only directory; it has a .po but no .mo
+            # (translations fall back to msgid, which is the English source).
+            if [ "$LANG" = "en" ]; then
+              # Just confirm the .po is there; the .mo is intentionally absent.
+              if ! find "$TMPDIR/data" -path "*/rayforge/locale/en/LC_MESSAGES/rayforge.po" | grep -q .; then
+                echo "::error::Missing en/LC_MESSAGES/rayforge.po"
+                MISSING=$((MISSING + 1))
+              fi
+              continue
+            fi
+            # Main app .mo
+            if ! find "$TMPDIR/data" -path "*/rayforge/locale/${LANG}/LC_MESSAGES/rayforge.mo" | grep -q .; then
+              echo "::error::Missing main rayforge/locale/${LANG}/LC_MESSAGES/rayforge.mo"
+              MISSING=$((MISSING + 1))
+            fi
+            # Built-in addon .mo files
+            for addon in laser post print-and-cut sketcher; do
+              addon_name=$(ls "$TMPDIR/data/usr/lib/python3/dist-packages/rayforge/builtin_addons/" 2>/dev/null | grep "rayforge-addon-${addon}\$" | head -1)
+              [ -z "$addon_name" ] && continue
+              if ! find "$TMPDIR/data" -path "*/${addon_name}/locale/${LANG}/LC_MESSAGES/*.mo" | grep -q .; then
+                echo "::error::Missing ${addon_name}/locale/${LANG}/LC_MESSAGES/*.mo"
+                MISSING=$((MISSING + 1))
+              fi
+            done
+          done
+          rm -rf "$TMPDIR"
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::error::${MISSING} .mo file(s) missing from .deb - translations won't work!"
+            exit 1
+          fi
+          echo "All .mo files present."
 
       - name: Install runtime dependencies for testing
         run: |

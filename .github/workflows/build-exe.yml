@@ -110,6 +110,17 @@ jobs:
           # The test script will source .msys2_env internally.
           bash scripts/win/win_test.sh
 
+      - name: Compile .po -> .mo translations
+        # CRITICAL: gettext at runtime reads .mo (machine object) files, NOT
+        # .po (portable object) files. The .mo files are gitignored and must
+        # be compiled just before the .exe is bundled; otherwise the .exe
+        # ships with no translations (only .po files, which are for translators).
+        # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        shell: msys2 {0}
+        run: |
+          pacman -S --noconfirm gettext
+          bash scripts/update_translations.sh --compile-only
+
       - name: Run Build Process (win_build.sh)
         shell: msys2 {0}
         run: |

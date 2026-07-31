@@ -62,6 +62,33 @@ fi
 
 # --- 3. Create Upstream Tarball ---
 echo "--- Creating upstream tarball with vendored wheels ---"
+
+# Compile .po -> .mo translations BEFORE rsyncing, so the .mo files are
+# included in the .deb. Without this step, the .deb ships with .po files
+# (for translators) but no .mo files (for gettext at runtime), so language
+# switching silently falls back to English.
+echo "--- Compiling translations (.po -> .mo) ---"
+if command -v msgfmt >/dev/null 2>&1; then
+    bash "$ORIG_DIR/scripts/update_translations.sh" --compile-only
+else
+    echo "WARNING: 'msgfmt' not on PATH. Falling back to pure-Python compiler."
+    python3 -c "
+from pathlib import Path
+import sys
+sys.path.insert(0, '$ORIG_DIR')
+from rayforge.shared.util.po_compiler import compile_po_to_mo
+root = Path('$ORIG_DIR')
+compiled = 0
+for po in sorted(root.rglob('*.po')):
+    if '/build/' in str(po) or '/.git/' in str(po) or '/.pixi/' in str(po):
+        continue
+    mo = po.with_suffix('.mo')
+    if compile_po_to_mo(po, mo):
+        compiled += 1
+print(f'  Compiled {compiled} .mo files (pure-Python fallback)')
+"
+fi
+
 rsync -a \
     --exclude='.git' \
     --exclude='.pixi' \
