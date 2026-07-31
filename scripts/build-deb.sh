@@ -67,12 +67,16 @@ echo "--- Creating upstream tarball with vendored wheels ---"
 # included in the .deb. Without this step, the .deb ships with .po files
 # (for translators) but no .mo files (for gettext at runtime), so language
 # switching silently falls back to English.
-echo "--- Compiling translations (.po -> .mo) ---"
-if command -v msgfmt >/dev/null 2>&1; then
-    bash "$ORIG_DIR/scripts/update_translations.sh" --compile-only
-else
-    echo "WARNING: 'msgfmt' not on PATH. Falling back to pure-Python compiler."
-    python3 -c "
+#
+# We prefer the pure-Python po_compiler because:
+# 1. It has no external dependencies (no gettext, no msgfmt required).
+# 2. It works on all platforms: dev machines without gettext, CI runners
+#    with old gettext versions (Ubuntu 24.04 ships 0.21, our script
+#    requires 0.25+), and minimal container images.
+# 3. The compiled .mo files are byte-compatible with GNU msgfmt output
+#    for the subset of PO features we use (no plural forms, no contexts).
+echo "--- Compiling translations (.po -> .mo, pure-Python) ---"
+python3 -c "
 from pathlib import Path
 import sys
 sys.path.insert(0, '$ORIG_DIR')
@@ -80,14 +84,14 @@ from rayforge.shared.util.po_compiler import compile_po_to_mo
 root = Path('$ORIG_DIR')
 compiled = 0
 for po in sorted(root.rglob('*.po')):
-    if '/build/' in str(po) or '/.git/' in str(po) or '/.pixi/' in str(po):
+    if any(p in po.parts for p in ('build', '.git', '.pixi', 'dist', 'node_modules')):
         continue
     mo = po.with_suffix('.mo')
     if compile_po_to_mo(po, mo):
         compiled += 1
-print(f'  Compiled {compiled} .mo files (pure-Python fallback)')
+        print(f'  + {po.relative_to(\"$ORIG_DIR\")}')
+print(f'  Compiled {compiled} .mo files')
 "
-fi
 
 rsync -a \
     --exclude='.git' \

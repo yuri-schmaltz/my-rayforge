@@ -59,18 +59,30 @@ jobs:
           rsync
           rustc
 
-      - name: Install gettext (for .po -> .mo compilation)
-        run: |
-          sudo apt-get install -y gettext
-
       - name: Compile .po -> .mo translations
         # CRITICAL: gettext at runtime reads .mo (machine object) files, NOT
         # .po (portable object) files. The .mo files are gitignored and must
         # be compiled just before the .deb is built; otherwise the .deb ships
         # with no translations (only .po files, which are for translators).
         # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        # Uses the pure-Python po_compiler (no gettext dependency) because
+        # Ubuntu 24.04 ships gettext 0.21 which is older than the version
+        # required by update_translations.sh (0.25+).
         run: |
-          bash scripts/update_translations.sh --compile-only
+          python3 -c "
+from pathlib import Path
+from rayforge.shared.util.po_compiler import compile_po_to_mo
+root = Path('.')
+compiled = 0
+for po in sorted(root.rglob('*.po')):
+    if any(part in po.parts for part in ('build', '.git', '.pixi', 'dist', 'node_modules')):
+        continue
+    mo = po.with_suffix('.mo')
+    if compile_po_to_mo(po, mo):
+        compiled += 1
+        print(f'  + {po.relative_to(\".\")} -> {mo.relative_to(\".\")}')
+print(f'Compiled {compiled} .mo files')
+"
 
       - name: Set Version
         id: set-version
