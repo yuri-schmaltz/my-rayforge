@@ -3,5 +3,8 @@ rayforge (0.1.0-1) unstable; urgency=medium
   * Initial release.
   * Update maintainer to Yuri Schmaltz <security@yuri-schmaltz.dev>
     (fork maintained at github.com/yuri-schmaltz/rayforge).
+  * Add python3-defusedxml to Depends: (required by
+    rayforge.image.lightburn.importer since PR #14, was
+    failing at import time on user installations).
 
- -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Fri, 31 Jul 2026 05:48:00 +0000
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Fri, 31 Jul 2026 13:30:00 +0000
