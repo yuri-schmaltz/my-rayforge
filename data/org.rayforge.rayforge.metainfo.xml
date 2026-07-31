@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
   <id>org.rayforge.rayforge</id>
-  <developer id="org.rayforge">
-    <name translate="no">Samuel Abels</name>
+  <developer id="yuri-schmaltz">
+    <name translate="no">Yuri Schmaltz</name>
   </developer>
   <content_rating type="oars-1.1" />
   <url type="homepage">https://rayforge.org</url>
