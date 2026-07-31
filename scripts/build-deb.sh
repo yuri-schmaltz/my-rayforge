@@ -68,7 +68,8 @@ echo "--- Creating upstream tarball with vendored wheels ---"
 # (for translators) but no .mo files (for gettext at runtime), so language
 # switching silently falls back to English.
 #
-# We prefer the pure-Python po_compiler because:
+# We use the pure-Python po_compiler (via scripts/compile_translations.py)
+# because:
 # 1. It has no external dependencies (no gettext, no msgfmt required).
 # 2. It works on all platforms: dev machines without gettext, CI runners
 #    with old gettext versions (Ubuntu 24.04 ships 0.21, our script
@@ -76,22 +77,7 @@ echo "--- Creating upstream tarball with vendored wheels ---"
 # 3. The compiled .mo files are byte-compatible with GNU msgfmt output
 #    for the subset of PO features we use (no plural forms, no contexts).
 echo "--- Compiling translations (.po -> .mo, pure-Python) ---"
-python3 -c "
-from pathlib import Path
-import sys
-sys.path.insert(0, '$ORIG_DIR')
-from rayforge.shared.util.po_compiler import compile_po_to_mo
-root = Path('$ORIG_DIR')
-compiled = 0
-for po in sorted(root.rglob('*.po')):
-    if any(p in po.parts for p in ('build', '.git', '.pixi', 'dist', 'node_modules')):
-        continue
-    mo = po.with_suffix('.mo')
-    if compile_po_to_mo(po, mo):
-        compiled += 1
-        print(f'  + {po.relative_to(\"$ORIG_DIR\")}')
-print(f'  Compiled {compiled} .mo files')
-"
+python3 "$ORIG_DIR/scripts/compile_translations.py"
 
 rsync -a \
     --exclude='.git' \

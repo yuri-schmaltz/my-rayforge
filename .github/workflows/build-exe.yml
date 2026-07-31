@@ -118,20 +118,8 @@ jobs:
         # Fixes the "I selected Portuguese but the UI is still in English" bug.
         # Uses the pure-Python po_compiler (no MSYS2 gettext dependency).
         shell: msys2 {0}
-        run: |
-          python -c "
-from pathlib import Path
-from rayforge.shared.util.po_compiler import compile_po_to_mo
-root = Path('.')
-compiled = 0
-for po in sorted(root.rglob('*.po')):
-    if any(part in po.parts for part in ('build', '.git', '.pixi', 'dist', 'node_modules')):
-        continue
-    mo = po.with_suffix('.mo')
-    if compile_po_to_mo(po, mo):
-        compiled += 1
-print(f'Compiled {compiled} .mo files')
-"
+        run: >-
+          python scripts/compile_translations.py
 
       - name: Run Build Process (win_build.sh)
         shell: msys2 {0}
