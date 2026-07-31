@@ -75,6 +75,17 @@ jobs:
       - name: Install macOS dependencies
         run: bash scripts/mac/mac_setup.sh --install
 
+      - name: Compile .po -> .mo translations
+        # CRITICAL: gettext at runtime reads .mo (machine object) files, NOT
+        # .po (portable object) files. The .mo files are gitignored and must
+        # be compiled just before the .app is bundled; otherwise the .app
+        # ships with no translations (only .po files, which are for translators).
+        # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        run: |
+          brew install gettext
+          PATH="/opt/homebrew/opt/gettext/bin:/usr/local/opt/gettext/bin:$PATH" \
+            bash scripts/update_translations.sh --compile-only
+
       - name: Build macOS artifacts
         run: |
           printf "5\n" | bash scripts/mac/mac_build.sh --version "${VERSION}"
@@ -128,6 +139,17 @@ jobs:
 
       - name: Install macOS dependencies
         run: bash scripts/mac/mac_setup.sh --install
+
+      - name: Compile .po -> .mo translations
+        # CRITICAL: gettext at runtime reads .mo (machine object) files, NOT
+        # .po (portable object) files. The .mo files are gitignored and must
+        # be compiled just before the .app is bundled; otherwise the .app
+        # ships with no translations (only .po files, which are for translators).
+        # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        run: |
+          brew install gettext
+          PATH="/opt/homebrew/opt/gettext/bin:/usr/local/opt/gettext/bin:$PATH" \
+            bash scripts/update_translations.sh --compile-only
 
       - name: Build macOS artifacts
         run: |
