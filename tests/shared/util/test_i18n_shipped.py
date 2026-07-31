@@ -146,16 +146,25 @@ class TestBuildPipelinesRunCompileTranslations:
         path = REPO_ROOT / ".github" / "workflows" / workflow_file
         assert path.exists(), f"Missing workflow: {path}"
         content = path.read_text()
-        # Match either:
-        # - `update_translations.sh --compile-only` (msgfmt-based), or
-        # - `compile_po_to_mo` / `po_compiler` (Python fallback)
-        # Both are valid ways to ensure .mo files exist before bundling.
+        # Match any of these patterns - all valid ways to ensure .mo files
+        # exist before bundling:
+        # - `update_translations.sh --compile-only` (legacy: msgfmt-based)
+        # - `compile_translations.py` (new: pure-Python, cross-platform)
+        # - inline `compile_po_to_mo` / `po_compiler` (also valid)
+        compiles_with_script = "compile_translations.py" in content
         compiles_with_msgfmt = "update_translations.sh --compile-only" in content
-        compiles_with_python = "compile_po_to_mo" in content or "po_compiler" in content
-        assert compiles_with_msgfmt or compiles_with_python, (
+        compiles_with_inline_python = (
+            "compile_po_to_mo" in content or "po_compiler" in content
+        )
+        assert (
+            compiles_with_script
+            or compiles_with_msgfmt
+            or compiles_with_inline_python
+        ), (
             f"{workflow_file} does not compile .po -> .mo before building. "
-            f"Add a step that calls update_translations.sh --compile-only "
-            f"(or the pure-Python po_compiler) BEFORE the build step, or "
+            f"Add a step that calls compile_translations.py "
+            f"(or update_translations.sh --compile-only, or inline "
+            f"compile_po_to_mo) BEFORE the build step, or "
             f"the .deb/.exe/.dmg will ship without translations."
         )
 
@@ -165,7 +174,8 @@ class TestBuildPipelinesRunCompileTranslations:
         assert path.exists()
         content = path.read_text()
         assert (
-            "update_translations.sh" in content
+            "compile_translations.py" in content
+            or "update_translations.sh" in content
             or "compile_po_to_mo" in content
         ), (
             "scripts/build-deb.sh does not compile translations. "
