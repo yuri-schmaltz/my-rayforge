@@ -116,10 +116,22 @@ jobs:
         # be compiled just before the .exe is bundled; otherwise the .exe
         # ships with no translations (only .po files, which are for translators).
         # Fixes the "I selected Portuguese but the UI is still in English" bug.
+        # Uses the pure-Python po_compiler (no MSYS2 gettext dependency).
         shell: msys2 {0}
         run: |
-          pacman -S --noconfirm gettext
-          bash scripts/update_translations.sh --compile-only
+          python -c "
+from pathlib import Path
+from rayforge.shared.util.po_compiler import compile_po_to_mo
+root = Path('.')
+compiled = 0
+for po in sorted(root.rglob('*.po')):
+    if any(part in po.parts for part in ('build', '.git', '.pixi', 'dist', 'node_modules')):
+        continue
+    mo = po.with_suffix('.mo')
+    if compile_po_to_mo(po, mo):
+        compiled += 1
+print(f'Compiled {compiled} .mo files')
+"
 
       - name: Run Build Process (win_build.sh)
         shell: msys2 {0}
