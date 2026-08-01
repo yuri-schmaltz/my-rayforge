@@ -112,8 +112,8 @@ jobs:
       - name: Upload Intel app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-intel-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-intel-app.zip
+          name: pires-forge-${{ env.VERSION }}-macos-intel-app.zip
+          path: pires-forge-${{ env.VERSION }}-macos-intel-app.zip
           compression-level: 9
 
   build-arm:
@@ -176,8 +176,8 @@ jobs:
       - name: Upload ARM app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-arm-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-arm-app.zip
+          name: pires-forge-${{ env.VERSION }}-macos-arm-app.zip
+          path: pires-forge-${{ env.VERSION }}-macos-arm-app.zip
           compression-level: 9
 
   merge-universal:
@@ -190,13 +190,13 @@ jobs:
       - name: Download Intel app artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-intel-app.zip
+          name: pires-forge-${{ env.VERSION }}-macos-intel-app.zip
           path: artifacts/intel
 
       - name: Download ARM app artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-arm-app.zip
+          name: pires-forge-${{ env.VERSION }}-macos-arm-app.zip
           path: artifacts/arm
 
       - name: Create universal app
@@ -283,7 +283,7 @@ jobs:
       - name: Package universal app
         shell: bash
         run: |
-          APP_ZIP="rayforge-${VERSION}-macos-universal-app.zip"
+          APP_ZIP="pires-forge-${VERSION}-macos-universal-app.zip"
           ditto -c -k --keepParent "build-universal/Rayforge.app" "$APP_ZIP"
 
           TMP_DIR=$(mktemp -d)
@@ -299,7 +299,7 @@ jobs:
           cp -R "build-universal/Rayforge.app" "build-universal/dmg/"
           ln -sfn /Applications "build-universal/dmg/Applications"
 
-          DMG_NAME="rayforge-${VERSION}-macos-universal.dmg"
+          DMG_NAME="pires-forge-${VERSION}-macos-universal.dmg"
           tries=0
           max_tries=10
           until hdiutil create -volname "Rayforge" \
@@ -316,15 +316,15 @@ jobs:
       - name: Upload universal app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-universal-app.zip
-          path: rayforge-${{ env.VERSION }}-macos-universal-app.zip
+          name: pires-forge-${{ env.VERSION }}-macos-universal-app.zip
+          path: pires-forge-${{ env.VERSION }}-macos-universal-app.zip
           compression-level: 9
 
       - name: Upload universal DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: rayforge-${{ env.VERSION }}-macos-universal-dmg
-          path: rayforge-${{ env.VERSION }}-macos-universal.dmg
+          name: pires-forge-${{ env.VERSION }}-macos-universal-dmg
+          path: pires-forge-${{ env.VERSION }}-macos-universal.dmg
 
   release:
     name: Create GitHub Release (Universal)
@@ -350,22 +350,22 @@ jobs:
       - name: Download Intel app artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-intel-app.zip
+          name: pires-forge-${{ needs.version.outputs.version }}-macos-intel-app.zip
 
       - name: Download ARM app artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-arm-app.zip
+          name: pires-forge-${{ needs.version.outputs.version }}-macos-arm-app.zip
 
       - name: Download universal app artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-universal-app.zip
+          name: pires-forge-${{ needs.version.outputs.version }}-macos-universal-app.zip
 
       - name: Download universal DMG artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ needs.version.outputs.version }}-macos-universal-dmg
+          name: pires-forge-${{ needs.version.outputs.version }}-macos-universal-dmg
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
