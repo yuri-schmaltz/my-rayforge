@@ -1,18 +1,3 @@
-pires-forge (1.9.0+resilience.8-pires1) unstable; urgency=medium
-
-  * Rebrand: Rayforge -> Pires Forge.
-    - Update Source and Package names in debian/control.
-    - Display name and AppStream ID changed to org.piresforge.pires-forge.
-    - Python binary entry point is now pires-forge (the user runs
-      'pires-forge', not 'rayforge').
-    - MIME types changed to application/x-piresforge-{project,sketch}.
-    - .desktop, .metainfo, and AppStream ID renamed accordingly.
-    - Debian package renamed from 'rayforge' to 'pires-forge'.
-  * The Python module path 'rayforge/' and addon names 'rayforge-addon-*'
-    are KEPT unchanged for upstream and addon-compat.
-
- -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Sat, 01 Aug 2026 01:02:53 +0000
-
 pires-forge (0.1.0-1) unstable; urgency=medium
 
   * Initial release.
@@ -21,5 +6,9 @@ pires-forge (0.1.0-1) unstable; urgency=medium
   * Add python3-defusedxml to Depends: (required by
     rayforge.image.lightburn.importer since PR #14, was
     failing at import time on user installations).
+  * Rebrand: Rayforge -> Pires Forge (display name, AppStream ID,
+    Debian package, Python binary entry point). The Python module path
+    'rayforge/' and addon names 'rayforge-addon-*' are KEPT for
+    upstream and addon-compat.
 
- -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Fri, 31 Jul 2026 13:30:00 +0000
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Sat, 01 Aug 2026 01:07:32 +0000
