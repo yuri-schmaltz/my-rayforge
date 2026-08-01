@@ -219,14 +219,18 @@ PY
         ICON_SOURCE="icns"
     fi
 
-    if [ "$ICON_SOURCE" = "icns" ]; then
-        if [ ! -f "rayforge.icns" ] || \
-           [ "website/static/images/icon-app.svg" -nt "rayforge.icns" ]; then
-            echo "Generating macOS icon..."
-            bash scripts/mac/mac_create_icon.sh
-        else
-            echo "Icon is up to date, skipping generation."
-        fi
+    # Always ensure rayforge.icns exists at the project root as a
+    # safety net. PyInstaller's Rayforge.spec falls back to rayforge.icns
+    # when Assets.car is missing, and we've seen actool "succeed" with
+    # empty output-files in some CI environments, leaving PyInstaller
+    # to error with "rayforge.icns not found". Generating the .icns
+    # unconditionally is cheap (~2s) and prevents that failure mode.
+    if [ ! -f "rayforge.icns" ] || \
+       [ "website/static/images/icon-app.svg" -nt "rayforge.icns" ]; then
+        echo "Generating macOS icon (.icns)..."
+        bash scripts/mac/mac_create_icon.sh
+    else
+        echo "rayforge.icns is up to date, skipping generation."
     fi
 
     "$VENV_PY" -m PyInstaller --clean --noconfirm Rayforge.spec

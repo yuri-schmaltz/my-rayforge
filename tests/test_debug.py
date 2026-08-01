@@ -89,7 +89,16 @@ class TestCreateDumpArchive:
             assert "system_info.txt" in names
             content = zf.read("system_info.txt").decode("utf-8")
             # Sanity check: app name and version
-            assert "rayforge" in content.lower() or "Rayforge" in content
+            # Rebrand: app name is now "Pires Forge" / "pires-forge".
+            # We accept either the new name (Pires Forge) or the
+            # legacy name (Rayforge) to make this test resilient to
+            # either branding.
+            content_lower = content.lower()
+            assert (
+                "pires forge" in content_lower
+                or "pires-forge" in content_lower
+                or "rayforge" in content_lower
+            ), f"App name not found in debug dump: {content!r}"
 
         result.unlink()
 
