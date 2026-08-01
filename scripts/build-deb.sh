@@ -136,6 +136,6 @@ env -i \
 echo "--- Copying build artifacts back to project's dist/ directory ---"
 mkdir -p "$ORIG_DIR/dist"
 # This finds the .deb, .dsc, .tar.gz, and the new _source.changes
-find "$BUILD_DIR" -maxdepth 1 -name "pires-forge*"' -type f -exec cp -v {} "$ORIG_DIR/dist/" \;
+find "$BUILD_DIR" -maxdepth 1 -name 'pires-forge*' -type f -exec cp -v {} "$ORIG_DIR/dist/" \;
 
 echo "Build complete. Artifacts are in the dist/ directory."
