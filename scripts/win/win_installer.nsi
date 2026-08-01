@@ -1,17 +1,17 @@
-; NSIS Script for Rayforge Installer
+; NSIS Script for Pires Forge Installer
 
 ;--------------------------------
 ; Defines
 ; These are variables passed from our build script using the -D flag
-!define PRODUCT_NAME "Rayforge"
+!define PRODUCT_NAME "Pires Forge"
 !ifndef APP_VERSION
   !define APP_VERSION "0.0.0"
 !endif
 !ifndef APP_DIR_NAME
-  !define APP_DIR_NAME "rayforge-v0.0.0"
+  !define APP_DIR_NAME "pires-forge-v0.0.0"
 !endif
 !ifndef EXECUTABLE_NAME
-  !define EXECUTABLE_NAME "rayforge.exe"
+  !define EXECUTABLE_NAME "pires-forge.exe"
 !endif
 !ifndef ICON_FILE
   !define ICON_FILE "rayforge.ico"
@@ -25,7 +25,7 @@ SetCompressor lzma ; Use modern, efficient compression
 
 ; Installer attributes
 Name "${PRODUCT_NAME} ${APP_VERSION}"
-OutFile "..\..\dist\rayforge-v${APP_VERSION}-installer.exe"
+OutFile "..\..\dist\pires-forge-v${APP_VERSION}-installer.exe"
 InstallDir "$PROGRAMFILES64\${PRODUCT_NAME}"
 InstallDirRegKey HKLM "Software\${PRODUCT_NAME}" "Install_Dir"
 Icon "..\..\${ICON_FILE}"
