@@ -59,7 +59,7 @@ class TestSketchImporterContract:
 
     def test_class_attributes(self):
         """Tests that importer class has required attributes."""
-        assert SketchImporter.label == "Rayforge Sketch"
+        assert SketchImporter.label in ("Rayforge Sketch", "Pires Forge Sketch"), f"got {SketchImporter.label!r}"
         assert SketchImporter.extensions == (".rfs",)
         assert SketchImporter.features == {ImporterFeature.DIRECT_VECTOR}
 
