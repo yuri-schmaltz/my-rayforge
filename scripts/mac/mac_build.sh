@@ -203,7 +203,7 @@ PY
         echo "Compiling rayforge.icon → Assets.car..."
         if ! xcrun actool rayforge/resources/icons/rayforge.icon \
                 --compile "$(pwd)" \
-               --app-icon rayforge \
+               --app-icon pires-forge \
                 --platform macosx \
                 --target-device mac \
                 --minimum-deployment-target 10.14 \
@@ -245,9 +245,9 @@ PY
         cp "Assets.car" "$RES_DIR/Assets.car"
         /usr/libexec/PlistBuddy -c "Delete :CFBundleIconFile" \
             "$APP_ROOT/Info.plist" 2>/dev/null || true
-        /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string rayforge" \
+        /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string pires-forge" \
             "$APP_ROOT/Info.plist" 2>/dev/null || \
-        /usr/libexec/PlistBuddy -c "Set :CFBundleIconName rayforge" \
+        /usr/libexec/PlistBuddy -c "Set :CFBundleIconName pires-forge" \
             "$APP_ROOT/Info.plist" 2>/dev/null || true
     fi
 
@@ -560,7 +560,7 @@ SH
     # fi
 
     # Make sure the plist still points to the wrapper.
-    /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable Rayforge" \
+    /usr/libexec/PlistBuddy -c "Set :CFBundleExecutable Pires Forge" \
         "$APP_ROOT/Info.plist" 2>/dev/null || true
 
     echo "Cleaning dist/*.whl and dist/*.gz after app bundle..."

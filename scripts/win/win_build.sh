@@ -17,7 +17,7 @@ source .msys2_env
 
 # Use Bash parameter expansion `${APP_VERSION#v}` to remove a leading 'v' if it exists.
 CLEAN_VERSION="${APP_VERSION#v}"
-BUNDLE_NAME="rayforge-v${CLEAN_VERSION}"
+BUNDLE_NAME="pires-forge-v${CLEAN_VERSION}"
 INSTALLER_EXE_NAME="${BUNDLE_NAME}-installer.exe"
 
 echo "--- Starting Windows Build Process (Version: $APP_VERSION) ---"

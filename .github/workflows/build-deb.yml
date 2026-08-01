@@ -114,7 +114,7 @@ jobs:
           echo "Built: $DEB_FILE_PATH"
 
           # Rename to a friendlier filename for the artifact.
-          FRIENDLY_NAME="rayforge-${CLEAN_VERSION}-ubuntu24.04.deb"
+          FRIENDLY_NAME="pires-forge-${CLEAN_VERSION}-ubuntu24.04.deb"
           cp "$DEB_FILE_PATH" "dist/$FRIENDLY_NAME"
           echo "Friendly name: $FRIENDLY_NAME"
           echo "deb_file_path=dist/$FRIENDLY_NAME" >> $GITHUB_OUTPUT
@@ -174,8 +174,8 @@ jobs:
         run: |
           DEB_FILE="${{ steps.build_deb.outputs.deb_file_path }}"
           sudo apt-get install -y "./$DEB_FILE"
-          dpkg -l rayforge
-          rayforge --version
+          dpkg -l pires-forge
+          pires-forge --version
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4

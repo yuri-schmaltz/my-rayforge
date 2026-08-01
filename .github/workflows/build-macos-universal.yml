@@ -106,7 +106,7 @@ jobs:
             echo "App bundle not found at $APP_PATH"
             exit 1
           fi
-          ZIP_NAME="rayforge-${VERSION}-macos-intel-app.zip"
+          ZIP_NAME="pires-forge-${VERSION}-macos-intel-app.zip"
           ditto -c -k --keepParent "$APP_PATH" "$ZIP_NAME"
 
       - name: Upload Intel app artifact
@@ -170,7 +170,7 @@ jobs:
             echo "App bundle not found at $APP_PATH"
             exit 1
           fi
-          ZIP_NAME="rayforge-${VERSION}-macos-arm-app.zip"
+          ZIP_NAME="pires-forge-${VERSION}-macos-arm-app.zip"
           ditto -c -k --keepParent "$APP_PATH" "$ZIP_NAME"
 
       - name: Upload ARM app artifact
@@ -203,9 +203,9 @@ jobs:
         shell: bash
         run: |
           mkdir -p build-universal
-          ditto -x -k "artifacts/intel/rayforge-${VERSION}-macos-intel-app.zip" \
+          ditto -x -k "artifacts/intel/pires-forge-${VERSION}-macos-intel-app.zip" \
             artifacts/intel/unpacked
-          ditto -x -k "artifacts/arm/rayforge-${VERSION}-macos-arm-app.zip" \
+          ditto -x -k "artifacts/arm/pires-forge-${VERSION}-macos-arm-app.zip" \
             artifacts/arm/unpacked
 
           INTEL_APP="artifacts/intel/unpacked/Rayforge.app"

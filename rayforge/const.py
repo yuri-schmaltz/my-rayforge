@@ -1,9 +1,14 @@
-"""Constants for Rayforge application."""
+"""Constants for Pires Forge application."""
 
-APP_NAME = "Rayforge"
-MIME_TYPE_PROJECT = "application/x-rayforge-project"
-MIME_TYPE_SKETCH = "application/x-rayforge-sketch"
+APP_NAME = "Pires Forge"
+APP_NAME_SHORT = "pires-forge"
+MIME_TYPE_PROJECT = "application/x-piresforge-project"
+MIME_TYPE_SKETCH = "application/x-piresforge-sketch"
 
+# This is a rebrand / fork of the upstream Rayforge project. The upstream
+# repository is kept as the source of bug reports and release metadata
+# (since Pires Forge is built from upstream and most user-facing bugs
+# originate there), but the user-visible identity is "Pires Forge".
 GITHUB_RELEASES_API = (
     "https://api.github.com/repos/barebaric/rayforge/releases/latest"
 )

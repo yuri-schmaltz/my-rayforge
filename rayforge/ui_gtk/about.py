@@ -252,7 +252,7 @@ class AboutDialog(PatchedDialogWindow):
         hero_box.set_halign(Gtk.Align.CENTER)
         content_box.append(hero_box)
 
-        icon = get_icon("org.rayforge.rayforge")
+        icon = get_icon("org.piresforge.pires-forge")
         icon.set_pixel_size(128)
         hero_box.append(icon)
 

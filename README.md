@@ -11,9 +11,21 @@
 <a href="https://flathub.org/apps/org.rayforge.rayforge"><img alt="Get it from Flathub" src="website/static/images/flathub-badge.svg" height="55"/></a>
 <a href="https://www.patreon.com/c/knipknap"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" height="55"/></a>
 
-# Rayforge
 
-Rayforge is a modern, cross-platform 2D CAD, G-code sender and control software for GRBL, Marlin, Ruida, and
+> **⚠️ This is a fork.** The active development of this codebase is now
+> branded as **Pires Forge**. It is a rebrand of
+> [barebaric/rayforge](https://github.com/barebaric/rayforge) maintained
+> by [Yuri Schmaltz](https://github.com/yuri-schmaltz) as a
+> production-ready, monetization-stripped, security-hardened fork.
+> The Python module path, addon API, and project structure are kept
+> identical to upstream for compatibility. The user-visible identity
+> (display name, AppStream ID, .desktop, .metainfo, Debian package
+> name) is now **Pires Forge** (AppStream ID: `org.piresforge.pires-forge`,
+> Debian package: `pires-forge`, binary: `pires-forge`).
+
+# Pires Forge
+
+Pires Forge is a modern, cross-platform 2D CAD, G-code sender and control software for GRBL, Marlin, Ruida, and
 Smoothieware-based laser cutters and engravers.
 Built with Gtk4 and Libadwaita, it provides a clean, native interface for Linux, MacOS and Windows, offering a full suite of tools
 for both hobbyists and professionals.

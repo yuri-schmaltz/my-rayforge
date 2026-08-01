@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-  <mime-type type="application/x-rayforge-project">
+  <mime-type type="application/x-piresforge-project">
     <comment>Rayforge project file</comment>
     <sub-class-of type="application/zip"/>
     <glob pattern="*.ryp" weight="100"/>
   </mime-type>
-  <mime-type type="application/x-rayforge-sketch">
+  <mime-type type="application/x-piresforge-sketch">
     <comment>Rayforge sketch file</comment>
     <glob pattern="*.rfs" weight="100"/>
   </mime-type>
