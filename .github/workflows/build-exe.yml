@@ -186,8 +186,8 @@ jobs:
         shell: bash
         run: |
           bash scripts/win/win_run_ui_test.sh \
-            "dist/rayforge-v${{ needs.build.outputs.version }}" \
-            "rayforge-v${{ needs.build.outputs.version }}.exe"
+            "dist/pires-forge-v${{ needs.build.outputs.version }}" \
+            "pires-forge-v${{ needs.build.outputs.version }}.exe"
 
   release:
     name: Create GitHub Release
@@ -218,7 +218,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           # The file to attach to the release is the installer
-          files: rayforge-v${{ needs.build.outputs.version }}-installer.exe
+          files: pires-forge-v${{ needs.build.outputs.version }}-installer.exe
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
           name: Release ${{ needs.build.outputs.version }}
