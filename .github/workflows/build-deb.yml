@@ -99,6 +99,9 @@ jobs:
         env:
           TARGET_DISTRIBUTION: noble
         run: |
+          # Clean any leftover .deb from previous CI runs to prevent the
+          # verify step below from checking a stale artifact.
+          rm -rf dist/
           chmod +x ./scripts/build-deb.sh
           ./scripts/build-deb.sh --source
 
