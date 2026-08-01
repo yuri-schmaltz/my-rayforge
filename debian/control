@@ -31,5 +31,5 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, ${python3:Depends},
   python3-defusedxml,
   python3-svgelements, python3-semver, python3-fitz, python3-serial
 Description: Desktop application for laser cutting and engraving
-Pires Forge is a powerful, open-source, and cross-platform software for
-  controlling your laser cutter and engraver.
+ Pires Forge is a powerful, open-source, and cross-platform software for
+ controlling your laser cutter and engraver.
