@@ -191,7 +191,7 @@ def create_thumbnail(version, output_path, base_image=None, use_ai=True):
 
     draw.text((x, y), version_text, fill=(255, 255, 255, 255), font=font_large)
 
-    sub_text = "Rayforge"
+    sub_text = "Pires Forge"
     bbox_sub = draw.textbbox((0, 0), sub_text, font=font_small)
     sub_width = bbox_sub[2] - bbox_sub[0]
     sub_x = (width - sub_width) // 2

@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>org.rayforge.rayforge</id>
+  <id>org.piresforge.pires-forge</id>
   <developer id="yuri-schmaltz">
     <name translate="no">Yuri Schmaltz</name>
   </developer>
   <content_rating type="oars-1.1" />
-  <url type="homepage">https://rayforge.org</url>
+  <url type="homepage">https://github.com/yuri-schmaltz/pires-forge</url>
   <url type="bugtracker">https://github.com/barebaric/rayforge/issues</url>
   <url type="vcs-browser">https://github.com/barebaric/rayforge</url>
   
-  <name>Rayforge</name>
+  <name>Pires Forge</name>
   <summary>A desktop application for laser cutting and engraving</summary>
 
   <categories>
@@ -32,11 +32,11 @@
     </p>
   </description>
   
-  <launchable type="desktop-id">org.rayforge.rayforge.desktop</launchable>
+  <launchable type="desktop-id">org.piresforge.pires-forge.desktop</launchable>
 
   <provides>
-    <mediatype>application/x-rayforge-project</mediatype>
-    <mediatype>application/x-rayforge-sketch</mediatype>
+    <mediatype>application/x-piresforge-project</mediatype>
+    <mediatype>application/x-piresforge-sketch</mediatype>
     <mediatype>application/x-ruida</mediatype>
     <mediatype>image/png</mediatype>
     <mediatype>image/bmp</mediatype>

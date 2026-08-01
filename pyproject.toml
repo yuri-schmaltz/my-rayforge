@@ -1,5 +1,5 @@
 [project]
-name = "rayforge"
+name = "pires-forge"
 dynamic = ["version", "dependencies"]
 authors = [
   { name="Yuri Schmaltz", email="security@yuri-schmaltz.dev" },
@@ -20,7 +20,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/barebaric/rayforge/issues"
 
 [project.gui-scripts]
-rayforge = "rayforge.app:main"
+pires-forge = "rayforge.app:main"
 
 [build-system]
 requires = [
@@ -62,10 +62,10 @@ include = [
 mypy_path = "stubs"
 
 [tool.setuptools.data-files]
-"share/applications" = ["data/org.rayforge.rayforge.desktop"]
-"share/metainfo" = ["data/org.rayforge.rayforge.metainfo.xml"]
-"share/mime/packages" = ["data/org.rayforge.rayforge.xml"]
-"share/icons/hicolor/scalable/apps" = ["rayforge/resources/icons/org.rayforge.rayforge.svg"]
+"share/applications" = ["data/org.piresforge.pires-forge.desktop"]
+"share/metainfo" = ["data/org.piresforge.pires-forge.metainfo.xml"]
+"share/mime/packages" = ["data/org.piresforge.pires-forge.xml"]
+"share/icons/hicolor/scalable/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.svg"]
 
 [project.optional-dependencies]
 test = [

@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+
+Name=Pires Forge
+Comment=Laser cutting and engraving
+Categories=Graphics;2DGraphics;VectorGraphics;Engineering;
+StartupNotify=true
+MimeType=application/x-piresforge-project;application/x-piresforge-sketch;application/x-ruida;image/png;image/bmp;image/jpeg;image/svg+xml;image/vnd.dxf;
+
+Icon=org.piresforge.pires-forge
+Exec=rayforge
+Terminal=false

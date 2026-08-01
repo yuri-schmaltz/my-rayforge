@@ -186,7 +186,7 @@ def main():
 
     class App(Adw.Application):
         def __init__(self, args):
-            super().__init__(application_id="org.rayforge.rayforge")
+            super().__init__(application_id="org.piresforge.pires-forge")
             from rayforge.ui_gtk.shared.keyboard import PRIMARY_ACCEL
 
             self.args = args
