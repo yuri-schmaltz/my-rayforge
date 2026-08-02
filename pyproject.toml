@@ -1,6 +1,7 @@
 [project]
 name = "pires-forge"
-dynamic = ["version", "dependencies"]
+version = "1.0.0"
+dependencies = []
 authors = [
   { name="Yuri Schmaltz", email="security@yuri-schmaltz.dev" },
 ]
@@ -35,10 +36,7 @@ include-package-data = true
 include = ["rayforge*"]
 
 [tool.setuptools-git-versioning]
-enabled = true
-
-[tool.setuptools.dynamic]
-dependencies = {file = ["requirements.txt"]}
+enabled = false
 
 [tool.ruff]
 lint = { ignore = ["E203"] }
