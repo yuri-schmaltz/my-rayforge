@@ -75,7 +75,11 @@ class Config:
         self.canvas_view: CanvasViewState = CanvasViewState()
         self.auto_pipeline: bool = True
         self.ops_color_mode: OpsColorMode = OpsColorMode.LASER
-        self.check_for_app_updates: bool = True
+        # Pires Forge does not check for updates by default. The fork
+        # has its own release cadence and we don't want to silently
+        # notify users about unrelated upstream versions. Users can
+        # opt-in via Settings → Preferences.
+        self.check_for_app_updates: bool = False
         # Usage tracking consent date: None = not asked, "" = declined,
         # ISO date string = consent given on that date
         self.usage_consent_date: Optional[str] = None
@@ -284,7 +288,7 @@ class Config:
             data.get("canvas_view", {})
         )
         config.auto_pipeline = data.get("auto_pipeline", True)
-        config.check_for_app_updates = data.get("check_for_app_updates", True)
+        config.check_for_app_updates = data.get("check_for_app_updates", False)
 
         ops_color_mode_str = data.get(
             "ops_color_mode", OpsColorMode.LASER.value

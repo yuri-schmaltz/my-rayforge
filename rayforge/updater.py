@@ -41,7 +41,8 @@ class AppUpdateChecker:
         )
 
     async def _check_worker(self, ctx):
-        ctx.set_message(_("Checking for Rayforge updates..."))
+        from .const import APP_NAME
+        ctx.set_message(_("Checking for {app} updates...").format(app=APP_NAME))
         try:
             release = await self._fetch_latest_release()
         except Exception as e:
@@ -59,8 +60,8 @@ class AppUpdateChecker:
             logger.info(
                 f"New version available: {latest_tag} (current: {__version__})"
             )
-            msg = _("Rayforge {version} is available.").format(
-                version=latest_tag
+            msg = _("{app} {version} is available.").format(
+                app=APP_NAME, version=latest_tag
             )
 
             def _open_download():
@@ -76,8 +77,10 @@ class AppUpdateChecker:
             )
             ctx.set_message(_("New version available."))
         else:
-            logger.info("Rayforge is up to date.")
-            ctx.set_message(_("Rayforge is up to date."))
+            logger.info(f"{APP_NAME} is up to date.")
+            ctx.set_message(
+                _("{app} is up to date.").format(app=APP_NAME)
+            )
 
     async def _fetch_latest_release(self) -> Optional[dict]:
         """
