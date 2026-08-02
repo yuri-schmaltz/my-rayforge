@@ -1,6 +1,6 @@
 [project]
 name = "pires-forge"
-version = "1.0.0"
+dynamic = ["version"]
 dependencies = []
 authors = [
   { name="Yuri Schmaltz", email="security@yuri-schmaltz.dev" },
