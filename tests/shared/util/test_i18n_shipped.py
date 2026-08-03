@@ -81,7 +81,9 @@ class TestMainAppPoFilesCompile:
                 f"in the production build."
             )
 
-    @pytest.mark.parametrize("lang", [l for l in SUPPORTED_LANGUAGES if l != "en"])
+    @pytest.mark.parametrize(
+        "lang", [l for l in SUPPORTED_LANGUAGES if l != "en"]  # noqa: E501
+    )
     def test_non_en_mo_translates_at_least_one_known_string(
         self, lang, tmp_path
     ):
@@ -152,7 +154,9 @@ class TestBuildPipelinesRunCompileTranslations:
         # - `compile_translations.py` (new: pure-Python, cross-platform)
         # - inline `compile_po_to_mo` / `po_compiler` (also valid)
         compiles_with_script = "compile_translations.py" in content
-        compiles_with_msgfmt = "update_translations.sh --compile-only" in content
+        compiles_with_msgfmt = (  # noqa: E501
+            "update_translations.sh --compile-only" in content
+        )
         compiles_with_inline_python = (
             "compile_po_to_mo" in content or "po_compiler" in content
         )
