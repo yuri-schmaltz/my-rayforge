@@ -1,17 +1,21 @@
 version: 2
 updates:
-  - directory: /website
-    package-ecosystem: "npm"
-    open-pull-requests-limit: 0
-    ignore:
-      - dependency-name: "*"
-
-  - directory: /
-    package-ecosystem: "pip"
+  - package-ecosystem: "pip"
+    directory: "/"
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
     groups:
       python-dependencies:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
         patterns:
           - "*"

@@ -4,6 +4,14 @@ Pires Forge uses [pixi](https://pixi.sh) for reproducible development
 environments and produces native installers for Linux (`.deb`),
 macOS (`.dmg`), and Windows (`.exe`).
 
+## Python version
+
+The project targets **Python 3.12** (the system Python in
+Ubuntu 24.04, which is the build target for the `.deb`). The
+declared lower bound in `pyproject.toml` is `>=3.10` to keep
+development on 3.11/3.13 viable, but the CI and the `.deb` are
+built and tested against 3.12.
+
 ## Prerequisites
 
 - [pixi](https://pixi.sh) (recommended; handles all dependencies)
@@ -61,7 +69,8 @@ scripts\win\win_build.bat
 - The user-facing binary name is `pires-forge` (set via
   `[project.gui-scripts]` in `pyproject.toml`).
 - The build scripts use the tag name to set the version. To produce
-  a release, create and push a tag like `v1.0.0`.
+  a release, create and push a tag like `v1.0.0`. See
+  [`RELEASE.md`](RELEASE.md) for the full release process.
 
 ## Adding a new device
 
@@ -77,8 +86,11 @@ The repository includes GitHub Actions workflows under
 
 - Building `.deb`, `.dmg`, and `.exe` packages on tag push
 - Lint, test, and security gates on every push
-- Publishing to the Launchpad PPA, PyPI, and Snap Store
 - Generating release notes
+
+For the end-to-end release process (changelog, version bump,
+tag push, post-release verification), see
+[`RELEASE.md`](RELEASE.md).
 
 ## Troubleshooting
 
