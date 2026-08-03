@@ -9001,7 +9001,7 @@ packages:
   size: 433413
   timestamp: 1764777166076
 - pypi: ./
-  name: rayforge
+  name: pires-forge
   requires_dist:
   - raygeo==1.25.3
   - aiohttp==3.14.1

@@ -36,7 +36,7 @@ patchelf = "*"
 
 [feature.app.pypi-dependencies]
 raygeo = "==1.25.3"
-rayforge = { editable = true, path = "." }
+pires-forge = { editable = true, path = "." }
 aiohttp = "==3.14.1"
 asyncudp = "==0.11.0"
 blinker = "==1.9.0"
