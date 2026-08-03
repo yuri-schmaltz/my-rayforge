@@ -1,5 +1,12 @@
 # Pires Forge
 
+[![Latest release](https://img.shields.io/github/v/release/yuri-schmaltz/pires-forge?display_name=tag&style=flat-square)](https://github.com/yuri-schmaltz/pires-forge/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
+[![Platforms: Linux, macOS, Windows](https://img.shields.io/badge/platforms-Linux%20%7C%20macOS%20%7C%20Windows-lightgrey?style=flat-square)](#install)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg?style=flat-square)](pyproject.toml)
+[![GTK 4](https://img.shields.io/badge/GTK-4-blueviolet.svg?style=flat-square)](https://gtk.org)
+[![Single maintainer](https://img.shields.io/badge/maintainer-Yuri%20Schmaltz-orange.svg?style=flat-square)](CONTRIBUTORS.md)
+
 Pires Forge is a modern, cross-platform 2D CAD, G-code sender and
 control software for GRBL, Marlin, Ruida, and Smoothieware-based
 laser cutters and engravers. Built with Gtk4 and Libadwaita, it
