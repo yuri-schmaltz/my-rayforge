@@ -83,7 +83,7 @@ Download the latest `.dmg` from the
 
 The fork does not currently publish to the Snap Store
 because the `rayforge` name is owned by upstream
-`barebaric/rayforge`. To publish the fork as a snap:
+`yuri-schmaltz/pires-forge`. To publish the fork as a snap:
 
 1. Reserve a different snap name (e.g. `rayforge-fork`)
 2. Build the .snap using `.github/workflows/verify-snap.yml`

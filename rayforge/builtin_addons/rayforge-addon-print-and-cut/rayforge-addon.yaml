@@ -4,7 +4,7 @@ description: "Align workpieces to physical objects using registration marks"
 api_version: 16
 author:
   name: "Rayforge Team"
-  email: "noreply@rayforge.org"
+  email: "security@yuri-schmaltz.dev"
 provides:
   frontend: "print_and_cut.frontend"
 license:

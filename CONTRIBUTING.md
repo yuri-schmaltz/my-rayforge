@@ -1,7 +1,7 @@
 # Contributing to Rayforge (yuri-schmaltz fork)
 
 Thanks for your interest in contributing to the resilience fork of
-[Rayforge](https://github.com/barebaric/rayforge)! This document
+[Rayforge](https://github.com/yuri-schmaltz/pires-forge)! This document
 explains how to set up a development environment, how the contribution
 workflow works, and what we expect from PRs.
 
@@ -183,7 +183,7 @@ git push -u origin fix/your-descriptive-name
 ```
 
 Then open a PR against the fork's `main` branch (NOT against upstream
-`barebaric/rayforge` — see the [fork policy](#fork-policy) below).
+`yuri-schmaltz/pires-forge` — see the [fork policy](#fork-policy) below).
 The PR template will ask you to fill in:
 
 - **What does this PR do?** (1-3 sentences)
@@ -267,13 +267,13 @@ unsure why a CI check is failing, ask in the PR comments.
 ## Fork policy
 
 This is a **fork-only repository**. The maintainer does not interact
-with upstream `barebaric/rayforge` for this fork's changes. All
+with upstream `yuri-schmaltz/pires-forge` for this fork's changes. All
 branches, PRs, tags, and releases happen exclusively inside the
 fork via self-PRs (`origin:fix/...` → `origin:main`).
 
 - ✅ Push branches to `origin` (this fork).
 - ✅ Open PRs against `origin:main`.
-- ❌ Do not open PRs against `barebaric/rayforge` from this fork.
+- ❌ Do not open PRs against `yuri-schmaltz/pires-forge` from this fork.
 - ❌ Do not expect changes here to be reviewed by the upstream
   maintainer.
 
@@ -309,7 +309,7 @@ addon has:
 - `tests/` mirroring the addon's source layout
 
 For third-party addons, see `docs/addon-development.md` (TBD —
-upstream docs are in `barebaric/rayforge`).
+upstream docs are in `yuri-schmaltz/pires-forge`).
 
 ## Release process
 

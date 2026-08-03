@@ -4,7 +4,7 @@ description: "Vector sketch editing functionality for creating and editing vecto
 api_version: 16
 author:
   name: "Rayforge Team"
-  email: "noreply@rayforge.org"
+  email: "security@yuri-schmaltz.dev"
 provides:
   worker: "sketcher.worker"
   frontend: "sketcher.frontend"

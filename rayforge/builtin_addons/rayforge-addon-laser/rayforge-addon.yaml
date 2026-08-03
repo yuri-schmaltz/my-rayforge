@@ -6,7 +6,7 @@ requires:
   - post_processors
 author:
   name: "Rayforge Team"
-  email: "noreply@rayforge.org"
+  email: "security@yuri-schmaltz.dev"
 provides:
   worker: "laser_essentials.worker"
   frontend: "laser_essentials.frontend"

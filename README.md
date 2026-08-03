@@ -1,39 +1,19 @@
-[![GitHub Release](https://img.shields.io/github/release/barebaric/rayforge.svg?style=flat)](https://github.com/barebaric/rayforge/releases/)
-[![PyPI version](https://img.shields.io/pypi/v/rayforge)](https://pypi.org/project/rayforge/)
-[![Snap Release](https://snapcraft.io/rayforge/badge.svg)](https://snapcraft.io/rayforge)
-[![Launchpad PPA](https://img.shields.io/badge/PPA-blue)](https://launchpad.net/~knipknap/+archive/ubuntu/rayforge)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI Status](https://github.com/yuri-schmaltz/rayforge/actions/workflows/lint-test.yml/badge.svg)](https://github.com/yuri-schmaltz/rayforge/actions/workflows/lint-test.yml)
-[![Security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](SECURITY_AUDIT.md)
-[![Coverage Gate](https://img.shields.io/badge/coverage-gate-blue.svg)](SUPPORT.md#support--troubleshooting)
-
-[![Get it from the Snap Store](https://snapcraft.io/en/light/install.svg)](https://snapcraft.io/rayforge)
-<a href="https://flathub.org/apps/org.rayforge.rayforge"><img alt="Get it from Flathub" src="website/static/images/flathub-badge.svg" height="55"/></a>
-<a href="https://www.patreon.com/c/knipknap"><img src="https://c5.patreon.com/external/logo/become_a_patron_button.png" alt="Become a Patron" height="55"/></a>
-
-
-> **⚠️ This is a fork.** The active development of this codebase is now
-> branded as **Pires Forge**. It is a rebrand of
-> [barebaric/rayforge](https://github.com/barebaric/rayforge) maintained
-> by [Yuri Schmaltz](https://github.com/yuri-schmaltz) as a
-> production-ready, monetization-stripped, security-hardened fork.
-> The Python module path, addon API, and project structure are kept
-> identical to upstream for compatibility. The user-visible identity
-> (display name, AppStream ID, .desktop, .metainfo, Debian package
-> name) is now **Pires Forge** (AppStream ID: `org.piresforge.pires-forge`,
-> Debian package: `pires-forge`, binary: `pires-forge`).
-
 # Pires Forge
 
-Pires Forge is a modern, cross-platform 2D CAD, G-code sender and control software for GRBL, Marlin, Ruida, and
-Smoothieware-based laser cutters and engravers.
-Built with Gtk4 and Libadwaita, it provides a clean, native interface for Linux, MacOS and Windows, offering a full suite of tools
-for both hobbyists and professionals.
+Pires Forge is a modern, cross-platform 2D CAD, G-code sender and
+control software for GRBL, Marlin, Ruida, and Smoothieware-based
+laser cutters and engravers. Built with Gtk4 and Libadwaita, it
+provides a clean, native interface for Linux, macOS, and Windows,
+offering a full suite of tools for both hobbyists and professionals.
 
 ![Screenshot](website/static/screenshots/main-3d-rotary.png)
 
-You can also check the [official Rayforge homepage](https://rayforge.org).
-We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
+> **This is a fork.** Pires Forge is an independent rebrand of the
+> [Rayforge](https://github.com/barebaric/rayforge) project, maintained
+> by [Yuri Schmaltz](https://github.com/yuri-schmaltz) as a
+> production-ready, security-hardened fork. The Python module path
+> (`rayforge/`), addon API, and project structure are kept compatible
+> with the original codebase.
 
 ## Key Features
 
@@ -51,17 +31,17 @@ We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ### Operations & Toolpaths
 
-| Feature                      | Description                                                                                          |
-| :--------------------------- | :--------------------------------------------------------------------------------------------------- |
-| **Versatile Operations**     | Supports Contour, Raster Engraving (with cross-hatch fill), Shrink Wrap, Depth Engraving, and Frame. |
-| **2.5D Cutting**             | Multi-pass cuts with configurable step-down for thick materials.                                     |
-| **True 4th Axis Support**    | Full rotary axis support - as 4th axis, or axis replacement mode for hobby machines.                 |
-| **Animated 3D Simulation**   | Simulate toolpaths in 3D with animated playback, scrubber, and speed control.                        |
-| **Holding Tabs**             | Add tabs to contour cuts. Supports manual and automatic placement.                                   |
-| **Overscan & Kerf Comp.**    | Improve engraving quality with overscan; ensure dimensional accuracy with kerf compensation.         |
-| **Dithering Algorithms**     | Floyd-Steinberg and Bayer ordered dithering for high-quality raster engraving.                       |
-| **Post-Processors**          | Lead-in/lead-out, merge overlapping lines, and crop toolpaths to stock boundary.                     |
-| **Advanced Path Generation** | Image tracing, travel time optimization, path smoothing, and spot size interpolation.                |
+| Feature                       | Description                                                                                          |
+| :---------------------------- | :--------------------------------------------------------------------------------------------------- |
+| **Versatile Operations**      | Supports Contour, Raster Engraving (with cross-hatch fill), Shrink Wrap, Depth Engraving, and Frame. |
+| **2.5D Cutting**              | Multi-pass cuts with configurable step-down for thick materials.                                     |
+| **True 4th Axis Support**     | Full rotary axis support - as 4th axis, or axis replacement mode for hobby machines.                 |
+| **Animated 3D Simulation**    | Simulate toolpaths in 3D with animated playback, scrubber, and speed control.                        |
+| **Holding Tabs**              | Add tabs to contour cuts. Supports manual and automatic placement.                                   |
+| **Overscan & Kerf Comp.**     | Improve engraving quality with overscan; ensure dimensional accuracy with kerf compensation.         |
+| **Dithering Algorithms**      | Floyd-Steinberg and Bayer ordered dithering for high-quality raster engraving.                       |
+| **Post-Processors**           | Lead-in/lead-out, merge overlapping lines, and crop toolpaths to stock boundary.                     |
+| **Advanced Path Generation**  | Image tracing, travel time optimization, path smoothing, and spot size interpolation.                |
 
 ### Machine Control
 
@@ -104,10 +84,9 @@ We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 | :----------------- | :------------------------------------------------------------------------------------------------------- |
 | **Modern UI**      | Polished UI built with Gtk4 and Libadwaita. Supports system, light, and dark themes.                     |
 | **Addon System**   | Built-in addon manager for installing and managing community extensions.                                 |
-| **Extensible**     | Open development model makes it easy to [add support for new devices](website/docs/developer/driver.md). |
-| **Cross-Platform** | Native builds for Linux, Mac and Windows.                                                                |
+| **Extensible**     | Open development model makes it easy to add support for new devices.                                     |
+| **Cross-Platform** | Native builds for Linux, macOS, and Windows.                                                             |
 | **Multi-Language** | Available in English, Portuguese, Spanish, German, French, Ukrainian, and Chinese.                       |
-| **Update Checker** | Automatic background check for new versions via the GitHub Releases API.                                 |
 
 ### Device Support
 
@@ -123,23 +102,54 @@ We also have a [Discord](https://discord.gg/sTHNdTtpQJ).
 
 ## Installation
 
-For installation instructions for the **community fork** (this
-repository), see [docs/INSTALLATION.md](docs/INSTALLATION.md).
-The fork is distributed as a `.deb` (Ubuntu), `.exe` (Windows),
-and `.dmg` (macOS) from the
-[Releases page](https://github.com/yuri-schmaltz/rayforge/releases).
+Pires Forge is distributed as a `.deb` (Ubuntu), `.dmg` (macOS), and
+`.exe` (Windows) from the
+[Releases page](https://github.com/yuri-schmaltz/pires-forge/releases).
 
-The upstream Rayforge homepage
-(https://rayforge.org/docs/getting-started/installation)
-documents the **upstream** install paths, not the fork's
-`.deb` / `.exe` / `.dmg`.
+For detailed installation instructions, see
+[`docs/INSTALLATION.md`](docs/INSTALLATION.md).
 
-## Development
+Quick install on Ubuntu 24.04:
 
-For detailed information about developing for Rayforge, including setup instructions,
-testing, and contribution guidelines, please see the
-[Developer Documentation](https://rayforge.org/docs/developer/getting-started).
+```bash
+sudo apt install ./pires-forge-linux.deb
+pires-forge
+```
+
+## Building from Source
+
+See [`docs/BUILDING.md`](docs/BUILDING.md) for build instructions. The
+project uses [pixi](https://pixi.sh) for reproducible development
+environments and is tested on Linux, macOS, and Windows.
+
+## Contributing
+
+Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
+the contribution workflow, coding conventions, and how to submit a
+pull request. All contributors must follow the
+[code of conduct](CODE_OF_CONDUCT.md).
+
+## Security
+
+To report a security vulnerability, see [`SECURITY.md`](SECURITY.md).
+The supported versions and threat model are documented there.
+
+## Support
+
+For troubleshooting, common issues, and how to enable debug logging,
+see [`SUPPORT.md`](SUPPORT.md).
 
 ## License
 
-This project is licensed under the **MIT License**. See the `LICENSE` file for details.
+This project is licensed under the **MIT License**. See the
+[`LICENSE`](LICENSE) file for details. The original Rayforge
+codebase is copyright Samuel Abels and contributors; see
+[`NOTICE`](NOTICE) for the rebrand attribution.
+
+## Maintainer
+
+**Yuri Schmaltz** &lt;security@yuri-schmaltz.dev&gt;
+
+This project is an independent fork. The original Rayforge project
+is maintained by Samuel Abels at
+<https://github.com/barebaric/rayforge>.

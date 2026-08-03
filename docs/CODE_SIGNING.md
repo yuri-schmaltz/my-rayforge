@@ -167,7 +167,7 @@ a release tag), the `sign.yml` workflow will:
 The fork's `.deb` package is built by the
 `build-deb.yml` workflow and uploaded as a workflow artifact
 (not pushed to a PPA, since the upstream `publish-deb.yml` is
-gated to the `barebaric/rayforge` repository).
+gated to the `yuri-schmaltz/pires-forge` repository).
 
 If you want to set up a self-hosted apt repository (e.g. via
 aptly + nginx) and have the packages signed, follow these steps:

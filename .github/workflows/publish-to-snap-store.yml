@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   lint-test:
-    if: github.repository == 'barebaric/rayforge'
+    if: github.repository == 'yuri-schmaltz/pires-forge'
     uses: ./.github/workflows/lint-test.yml
 
   build-publish-snap:
@@ -78,7 +78,7 @@ jobs:
       - name: Determine release channel
         id: release_info
         if: |
-          github.repository == 'barebaric/rayforge' &&
+          github.repository == 'yuri-schmaltz/pires-forge' &&
           github.event_name == 'push' &&
           (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         shell: bash

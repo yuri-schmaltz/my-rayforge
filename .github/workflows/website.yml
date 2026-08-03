@@ -79,20 +79,20 @@ jobs:
           fi
 
       - name: Configure SSH
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'barebaric/rayforge'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'yuri-schmaltz/pires-forge'
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.WEBSITE_DEPLOY_KEY }}
 
       - name: Add github.com to known_hosts
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'barebaric/rayforge'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'yuri-schmaltz/pires-forge'
         run: ssh-keyscan github.com >> ~/.ssh/known_hosts
 
       - name: Deploy Website
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'barebaric/rayforge'
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'yuri-schmaltz/pires-forge'
         env:
           DEPLOY_VERSION: ${{ steps.get_version.outputs.version }}
-          DEPLOY_REPO_URL: git@github.com:barebaric/rayforge-website.git
+          DEPLOY_REPO_URL: git@github.com:yuri-schmaltz/pires-forge-website.git
           DEPLOY_BRANCH: main
           IS_TAGGED_RELEASE: ${{ github.ref_type == 'tag' }}
           IS_PRERELEASE: ${{ steps.get_version.outputs.is_prerelease }}

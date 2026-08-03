@@ -174,10 +174,7 @@ def get_supporters() -> list[tuple[str, str | None]]:
     Returns a list of supporters who donated to the app.
     Each entry is a tuple of (name, optional_url).
     """
-    return [
-        ("starlynx.dev", None),
-        ("Anonymous Supporter", None),
-    ]
+    return []
 
 
 class AboutDialog(PatchedDialogWindow):
@@ -263,7 +260,7 @@ class AboutDialog(PatchedDialogWindow):
         title.set_margin_top(6)
         hero_box.append(title)
 
-        copyright_label = Gtk.Label(label="© 2025 Samuel Abels")
+        copyright_label = Gtk.Label(label="© 2025-2026 Yuri Schmaltz")
         hero_box.append(copyright_label)
 
         links_box = Gtk.Box(halign=Gtk.Align.CENTER, margin_top=12)
@@ -301,11 +298,12 @@ class AboutDialog(PatchedDialogWindow):
         prefgroup.add(version_row)
 
         dev_row = Adw.ActionRow(
-            title=_("Lead Developer"), subtitle="Samuel Abels"
+            title=_("Lead Developer"),
+            subtitle="Yuri Schmaltz <security@yuri-schmaltz.dev>",
         )
         prefgroup.add(dev_row)
 
-        license_row = Adw.ActionRow(title=_("License"), subtitle="MIT X11")
+        license_row = Adw.ActionRow(title=_("License"), subtitle="MIT")
         license_row.set_activatable(True)
         license_row.add_suffix(get_icon("open-in-new-symbolic"))
         license_row.connect(
@@ -393,8 +391,9 @@ class AboutDialog(PatchedDialogWindow):
         thank_you_label.set_markup(
             "<i>"
             + _(
-                "Special thanks go to everyone who has donated to support "
-                "Rayforge! You keep the coffee and the AI tokens flowing!"
+                "Pires Forge is an independent fork. Special thanks to "
+                "the upstream Rayforge project and its contributors for "
+                "the original codebase."
             )
             + "</i>"
         )

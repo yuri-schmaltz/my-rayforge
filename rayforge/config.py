@@ -62,12 +62,16 @@ USER_MATERIALS_DIR = CONFIG_DIR / "materials"
 USER_RECIPES_DIR = CONFIG_DIR / "recipes"
 
 ADDON_REGISTRY_URL = (
-    "https://raw.githubusercontent.com/barebaric/rayforge-registry/"
+    "https://raw.githubusercontent.com/yuri-schmaltz/pires-forge-addons/"
     "main/registry.yaml"
 )
 
-UMAMI_URL = "https://analytics.barebaric.com/api/send"
-UMAMI_WEBSITE_ID = "3b301b16-48d2-4007-977a-ccfb738eab52"
+# Analytics are disabled in Pires Forge. The upstream Umami endpoint
+# is not used; users who want telemetry can opt in via their own
+# reverse-proxy or by setting UMAMI_URL/UMAMI_WEBSITE_ID at build
+# time.
+UMAMI_URL = ""
+UMAMI_WEBSITE_ID = ""
 
 
 def getflag(name, default=False):

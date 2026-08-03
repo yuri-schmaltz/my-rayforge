@@ -43,7 +43,7 @@ jobs:
           pixi run --frozen wheel
 
       - name: Publish package distributions to PyPI
-        if: startsWith(github.ref, 'refs/tags/') && github.repository == 'barebaric/rayforge'
+        if: startsWith(github.ref, 'refs/tags/') && github.repository == 'yuri-schmaltz/pires-forge'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist

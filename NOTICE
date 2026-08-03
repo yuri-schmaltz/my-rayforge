@@ -1,0 +1,40 @@
+Pires Forge
+Copyright (c) 2025-2026 Yuri Schmaltz
+
+This product includes software developed by the original Rayforge
+project (https://github.com/barebaric/rayforge), copyright (c) 2025
+Samuel Abels and contributors.
+
+Pires Forge is a fork of the Rayforge codebase, rebranded and
+maintained by Yuri Schmaltz. The rebrand changes the user-visible
+identity (display name, AppStream ID, .desktop, .metainfo, Debian
+package name, binary name) while keeping the Python module path,
+addon API, and project structure compatible with the original.
+
+Rebrand changes made for Pires Forge 1.0.0:
+
+1. User-visible identity:
+   - Display name: Rayforge → Pires Forge
+   - AppStream ID: org.rayforge.rayforge → org.piresforge.pires-forge
+   - MIME types: application/x-rayforge-* → application/x-piresforge-*
+   - Debian package: rayforge → pires-forge
+   - Binary entry point: rayforge → pires-forge
+   - macOS bundle: Rayforge.app → Pires Forge.app
+   - Windows bundle: rayforge-v* → pires-forge-v*
+   - NSIS installer product name: Rayforge → Pires Forge
+
+2. Code and metadata:
+   - All GitHub URLs point to yuri-schmaltz/pires-forge
+   - Application update check defaults to off
+   - defusedxml runtime dependency for untrusted XML parsing
+   - Security hardening via bandit gates and supply-chain checks
+   - .mo translation files now bundled in all distribution packages
+   - metainfo, .desktop, and about dialog updated to reflect the
+     rebrand and the new maintainer
+
+3. Intentionally kept as "rayforge":
+   - Python module path: rayforge/ (for import compatibility)
+   - Addon names: rayforge-addon-* (for cross-fork compatibility)
+
+For the full list of changes, see CHANGELOG.md and the git log
+of the yuri-schmaltz/pires-forge repository.

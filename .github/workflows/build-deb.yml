@@ -2,7 +2,7 @@ name: Build .deb package
 
 # Fork-friendly version of publish-deb.yml: builds the Ubuntu 24.04 .deb
 # and uploads it as a workflow artifact. Does NOT publish to Launchpad PPA
-# (the upstream barebaric/rayforge owns that account).
+# (the upstream yuri-schmaltz/pires-forge owns that account).
 #
 # Triggers:
 #   - push to main

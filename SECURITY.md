@@ -2,10 +2,10 @@
 
 This document describes the security policy for the
 **`yuri-schmaltz/rayforge`** fork (the resilience fork of
-[Rayforge](https://github.com/barebaric/rayforge)).
+[Rayforge](https://github.com/yuri-schmaltz/pires-forge)).
 
 For the security model of upstream Rayforge, see
-[barebaric/rayforge SECURITY.md](https://github.com/barebaric/rayforge/blob/main/SECURITY.md).
+[yuri-schmaltz/pires-forge SECURITY.md](https://github.com/yuri-schmaltz/pires-forge/blob/main/SECURITY.md).
 The fork inherits the upstream model for the parts of the code that
 are shared; the differences are documented in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).
 
@@ -93,7 +93,7 @@ additions:
      (no PyPI token, no signing keys, no codecov token).
    - The `package-deb` and `package-exe` workflows only run on
      the fork's branches (the upstream `publish-deb.yml` and
-     `publish-snap-store.yml` are gated to `barebaric/rayforge`).
+     `publish-snap-store.yml` are gated to `yuri-schmaltz/pires-forge`).
    - All CI jobs run on `ubuntu-latest` (no self-hosted runners).
 
 ## Security-relevant changes
@@ -163,7 +163,7 @@ The following are **not** in the fork's threat model:
 - **Upstream's security fixes**: the fork syncs with upstream
   periodically. If upstream ships a security fix between syncs,
   the fork will be a release or two behind. Check the
-  [upstream release notes](https://github.com/barebaric/rayforge/releases)
+  [upstream release notes](https://github.com/yuri-schmaltz/pires-forge/releases)
   if you need the latest.
 
 ## Acknowledgments

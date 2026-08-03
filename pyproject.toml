@@ -17,8 +17,8 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/barebaric/rayforge"
-"Bug Tracker" = "https://github.com/barebaric/rayforge/issues"
+"Homepage" = "https://github.com/yuri-schmaltz/pires-forge"
+"Bug Tracker" = "https://github.com/yuri-schmaltz/pires-forge/issues"
 
 [project.gui-scripts]
 pires-forge = "rayforge.app:main"

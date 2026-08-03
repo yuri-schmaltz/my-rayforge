@@ -6,7 +6,7 @@ package to the Snap Store (snapcraft.io/rayforge).
 ## The fork's situation
 
 The fork `yuri-schmaltz/rayforge` is a community fork. The
-upstream `barebaric/rayforge` already publishes to the Snap
+upstream `yuri-schmaltz/pires-forge` already publishes to the Snap
 Store under the same snap name (`rayforge`), but they own
 the Snapcraft credentials.
 
@@ -106,7 +106,7 @@ If you want the next release to publish automatically:
 1. Add the `SNAPCRAFT_STORE_CREDENTIALS` secret (Option A
    above)
 2. Modify `.github/workflows/publish-to-snap-store.yml`:
-   - Remove the `if: github.repository == 'barebaric/rayforge'`
+   - Remove the `if: github.repository == 'yuri-schmaltz/pires-forge'`
      guard from the `build-publish-snap` job
    - Or copy it to a new workflow file in the fork
 

@@ -4,7 +4,7 @@ description: "Core Post-processing transformers for toolpath optimization"
 api_version: 16
 author:
   name: "Rayforge Team"
-  email: "noreply@rayforge.org"
+  email: "security@yuri-schmaltz.dev"
 provides:
   worker: "post_processors.worker"
   frontend: "post_processors.frontend"

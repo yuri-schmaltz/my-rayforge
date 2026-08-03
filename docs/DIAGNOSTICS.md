@@ -46,7 +46,7 @@ The debug .zip contains:
 - No telemetry about which features you use
 - No telemetry about how long you used the app
 - No information about the contents of your other projects
-- No analytics from the upstream `analytics.barebaric.com`
+- No analytics
   service (the analytics only count first-launch events and
   are governed by the separate "Help improve Rayforge" prompt)
 
