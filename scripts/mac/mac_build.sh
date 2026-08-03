@@ -226,7 +226,7 @@ PY
     # to error with "rayforge.icns not found". Generating the .icns
     # unconditionally is cheap (~2s) and prevents that failure mode.
     if [ ! -f "rayforge.icns" ] || \
-       [ "website/static/images/icon-app.svg" -nt "rayforge.icns" ]; then
+       [ "rayforge/resources/icons/org.piresforge.pires-forge.svg" -nt "rayforge.icns" ]; then
         echo "Generating macOS icon (.icns)..."
         bash scripts/mac/mac_create_icon.sh
     else
