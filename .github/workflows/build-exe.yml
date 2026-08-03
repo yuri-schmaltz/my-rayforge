@@ -30,7 +30,10 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION=${{ github.ref_name }}
+            # Strip the leading 'v' from the tag name (v1.0.0 -> 1.0.0)
+            # so the bundle dir template "pires-forge-v$VERSION" doesn't
+            # produce "pires-forge-vv1.0.0".
+            VERSION=${${{ github.ref_name }}#v}
           elif git describe --tags >/dev/null 2>&1; then
             VERSION=$(git describe --tags)
           else
