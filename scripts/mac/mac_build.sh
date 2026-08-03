@@ -220,7 +220,7 @@ PY
     fi
 
     # Always ensure rayforge.icns exists at the project root as a
-    # safety net. PyInstaller's Rayforge.spec falls back to rayforge.icns
+    # safety net. PyInstaller's pires-forge.spec falls back to rayforge.icns
     # when Assets.car is missing, and we've seen actool "succeed" with
     # empty output-files in some CI environments, leaving PyInstaller
     # to error with "rayforge.icns not found". Generating the .icns
@@ -233,7 +233,7 @@ PY
         echo "rayforge.icns is up to date, skipping generation."
     fi
 
-    "$VENV_PY" -m PyInstaller --clean --noconfirm Rayforge.spec
+    "$VENV_PY" -m PyInstaller --clean --noconfirm pires-forge.spec
 
     APP_ROOT="dist/Rayforge.app/Contents"
     FW_DIR="$APP_ROOT/Frameworks"
