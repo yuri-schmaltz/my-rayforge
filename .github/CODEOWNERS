@@ -1,0 +1,26 @@
+# CODEOWNERS
+# This file defines who is automatically requested for review when a
+# pull request touches certain paths. For a single-maintainer
+# personal fork, the maintainer (@yuri-schmaltz) owns everything.
+# Listing the critical paths explicitly is a defensive measure:
+# any future branch-protection rule that requires a CODEOWNER
+# approval will use this list to determine which paths are
+# "protected".
+
+# Default owner for everything
+*   @yuri-schmaltz
+
+# Critical paths: workflows, packaging, build config, security.
+# These are listed separately to make it easy to add a stricter
+# branch-protection rule later (e.g. require approval on changes
+# to release pipelines).
+/.github/workflows/    @yuri-schmaltz
+/.github/dependabot.yml @yuri-schmaltz
+/.github/CODEOWNERS     @yuri-schmaltz
+/.github/SECURITY.md    @yuri-schmaltz
+/debian/                @yuri-schmaltz
+/pires-forge.spec       @yuri-schmaltz
+/pyproject.toml         @yuri-schmaltz
+/pixi.toml              @yuri-schmaltz
+/MANIFEST.in            @yuri-schmaltz
+/scripts/               @yuri-schmaltz
