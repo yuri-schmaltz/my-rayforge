@@ -1,0 +1,32 @@
+# Normalize line endings to LF on commit, except for Windows-only
+# files that must remain CRLF. This prevents accidental mixed line
+# endings in cross-platform PRs.
+*               text=auto eol=lf
+
+# Shell scripts must always be LF (even on Windows, git bash
+# translation breaks if they're CRLF).
+*.sh            text eol=lf
+
+# Makefiles require tab indentation; convert on checkout if
+# needed but commit as LF.
+Makefile        text eol=lf
+
+# Binary files that GitHub renders or downloads. Listing them
+# explicitly avoids any line-ending detection ambiguity.
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.ico          binary
+*.icns         binary
+*.webp         binary
+*.pdf          binary
+*.mo           binary
+*.woff         binary
+*.woff2        binary
+*.ttf          binary
+*.otf          binary
+
+# Python source is normally LF, but on Windows editors sometimes
+# save as CRLF. This catches the most common case.
+*.py           text eol=lf
