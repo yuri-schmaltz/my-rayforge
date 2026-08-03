@@ -110,7 +110,7 @@ if [[ "${1:-}" == "--source" ]]; then
     TARGET_DIST="${TARGET_DISTRIBUTION:-noble}"
     dch --newversion "${UPSTREAM_VERSION}-1~ppa1~${TARGET_DIST}1" --distribution "$TARGET_DIST" "New PPA release for ${TARGET_DIST}."
 else
-    dch --newversion "${UPSTREAM_VERSION}-1~local1" "New local build ${UPSTREAM_VERSION}."
+    dch --newversion "${UPSTREAM_VERSION}-1~local1" --force-bad-version "New local build ${UPSTREAM_VERSION}."
 fi
 
 # --- 4a. Build Source Package (Strictly source-only for PPA) ---
