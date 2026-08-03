@@ -281,8 +281,8 @@ jobs:
             echo "Warning: codesign verification failed for $APP_PATH"
           fi
           spctl --assess --type execute --verbose=2 "$APP_PATH" || true
-          "$APP_PATH/Contents/MacOS/Rayforge" --version
-          "$APP_PATH/Contents/MacOS/Rayforge" --exit
+          "$APP_PATH/Contents/MacOS/PiresForge" --version
+          "$APP_PATH/Contents/MacOS/PiresForge" --exit
 
       - name: Package universal app
         shell: bash
@@ -306,7 +306,7 @@ jobs:
           DMG_NAME="pires-forge-${VERSION}-macos-universal.dmg"
           tries=0
           max_tries=10
-          until hdiutil create -volname "Rayforge" \
+          until hdiutil create -volname "PiresForge" \
             -srcfolder "build-universal/dmg" -ov -format ULMO "$DMG_NAME"
           do
             tries=$((tries + 1))
