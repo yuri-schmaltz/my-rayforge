@@ -95,9 +95,9 @@ jobs:
 
       - name: Smoke test Intel app
         run: |
-          APP_BIN="dist/Rayforge.app/Contents/MacOS/Rayforge"
+          APP_BIN="dist/PiresForge.app/Contents/MacOS/PiresForge"
           if [ ! -x "$APP_BIN" ]; then
-            echo "Rayforge executable not found at $APP_BIN"
+            echo "PiresForge executable not found at $APP_BIN"
             exit 1
           fi
           "$APP_BIN" --version
@@ -105,7 +105,7 @@ jobs:
 
       - name: Package Intel app
         run: |
-          APP_PATH="dist/Rayforge.app"
+          APP_PATH="dist/PiresForge.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
             exit 1
@@ -159,9 +159,9 @@ jobs:
 
       - name: Smoke test ARM app
         run: |
-          APP_BIN="dist/Rayforge.app/Contents/MacOS/Rayforge"
+          APP_BIN="dist/PiresForge.app/Contents/MacOS/PiresForge"
           if [ ! -x "$APP_BIN" ]; then
-            echo "Rayforge executable not found at $APP_BIN"
+            echo "PiresForge executable not found at $APP_BIN"
             exit 1
           fi
           "$APP_BIN" --version
@@ -169,7 +169,7 @@ jobs:
 
       - name: Package ARM app
         run: |
-          APP_PATH="dist/Rayforge.app"
+          APP_PATH="dist/PiresForge.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App bundle not found at $APP_PATH"
             exit 1
@@ -212,9 +212,9 @@ jobs:
           ditto -x -k "artifacts/arm/pires-forge-${VERSION}-macos-arm-app.zip" \
             artifacts/arm/unpacked
 
-          INTEL_APP="artifacts/intel/unpacked/Rayforge.app"
-          ARM_APP="artifacts/arm/unpacked/Rayforge.app"
-          UNI_APP="build-universal/Rayforge.app"
+          INTEL_APP="artifacts/intel/unpacked/PiresForge.app"
+          ARM_APP="artifacts/arm/unpacked/PiresForge.app"
+          UNI_APP="build-universal/PiresForge.app"
 
           if [ ! -d "$INTEL_APP" ] || [ ! -d "$ARM_APP" ]; then
             echo "Intel or ARM app bundle not found after extraction"
@@ -249,7 +249,7 @@ jobs:
       - name: Set architecture priority
         shell: bash
         run: |
-          PLIST="build-universal/Rayforge.app/Contents/Info.plist"
+          PLIST="build-universal/PiresForge.app/Contents/Info.plist"
           if [ -f "$PLIST" ]; then
             /usr/libexec/PlistBuddy -c "Delete :LSArchitecturePriority" \
               "$PLIST" >/dev/null 2>&1 || true
@@ -264,7 +264,7 @@ jobs:
       - name: Re-sign universal app
         shell: bash
         run: |
-          APP_PATH="$(pwd)/build-universal/Rayforge.app"
+          APP_PATH="$(pwd)/build-universal/PiresForge.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "Universal app bundle not found at $APP_PATH"
             exit 1
@@ -288,19 +288,19 @@ jobs:
         shell: bash
         run: |
           APP_ZIP="pires-forge-${VERSION}-macos-universal-app.zip"
-          ditto -c -k --keepParent "build-universal/Rayforge.app" "$APP_ZIP"
+          ditto -c -k --keepParent "build-universal/PiresForge.app" "$APP_ZIP"
 
           TMP_DIR=$(mktemp -d)
           ditto -x -k "$APP_ZIP" "$TMP_DIR"
-          "$TMP_DIR/Rayforge.app/Contents/MacOS/Rayforge" --version
-          "$TMP_DIR/Rayforge.app/Contents/MacOS/Rayforge" --exit
+          "$TMP_DIR/PiresForge.app/Contents/MacOS/PiresForge" --version
+          "$TMP_DIR/PiresForge.app/Contents/MacOS/PiresForge" --exit
           rm -rf "$TMP_DIR"
 
       - name: Build universal DMG with retry
         shell: bash
         run: |
           mkdir -p build-universal/dmg
-          cp -R "build-universal/Rayforge.app" "build-universal/dmg/"
+          cp -R "build-universal/PiresForge.app" "build-universal/dmg/"
           ln -sfn /Applications "build-universal/dmg/Applications"
 
           DMG_NAME="pires-forge-${VERSION}-macos-universal.dmg"
