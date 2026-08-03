@@ -59,8 +59,9 @@ jobs:
         # fixtures) and skips project-wide false positives
         # (B101 assert_used, B110 try_except_pass, B311 random,
         # B105 hardcoded_password_string, B404/B405 import-only
-        # warnings, B603/B606 argv-form subprocess). See
-        # SECURITY.md for the full list and rationale.
+        # warnings, B603/B606 argv-form subprocess). See the
+        # ``.bandit`` file in the repo root for the full list
+        # and rationale.
         #
         # We fail the build only on ``high`` severity findings;
         # ``medium`` findings are reported as warnings so a
@@ -69,7 +70,7 @@ jobs:
         # (B102 exec in --uiscript, B104 bind 0.0.0.0 in the
         # ruida simulator, B310 urlopen in http/oauth, B324
         # weak hash in intent_builder) are documented inline
-        # with ``# noqa:`` or in SECURITY.md.
+        # with ``# noqa:`` in the source.
         run: |
           set +e
           echo "=== bandit HIGH severity (fails build) ==="
@@ -91,7 +92,7 @@ jobs:
             exit $HIGH_RC
           fi
           if [ $MEDIUM_RC -ne 0 ]; then
-            echo "::warning::bandit found MEDIUM-severity issues — see SECURITY.md for false positives"
+            echo "::warning::bandit found MEDIUM-severity issues — see the .bandit config for false positives"
           fi
 
       - name: Upload bandit report

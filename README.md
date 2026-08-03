@@ -122,22 +122,12 @@ See [`docs/BUILDING.md`](docs/BUILDING.md) for build instructions. The
 project uses [pixi](https://pixi.sh) for reproducible development
 environments and is tested on Linux, macOS, and Windows.
 
-## Contributing
-
-Contributions are welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for
-the contribution workflow, coding conventions, and how to submit a
-pull request. All contributors must follow the
-[code of conduct](CODE_OF_CONDUCT.md).
-
-## Security
-
-To report a security vulnerability, see [`SECURITY.md`](SECURITY.md).
-The supported versions and threat model are documented there.
-
 ## Support
 
 For troubleshooting, common issues, and how to enable debug logging,
 see [`SUPPORT.md`](SUPPORT.md).
+
+To report a security vulnerability, email **<security@yuri-schmaltz.dev>**.
 
 ## License
 

@@ -88,5 +88,4 @@ nothing to send.
 
 For sensitive bugs (security vulnerabilities, data loss, etc.),
 email **<security@yuri-schmaltz.dev>** instead of opening a public
-GitHub issue. See [SECURITY.md](../SECURITY.md) for the full
-disclosure policy.
+GitHub issue.

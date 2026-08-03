@@ -7,7 +7,7 @@ If your problem isn't here, search the
 [open issues](https://github.com/yuri-schmaltz/pires-forge/issues)
 or [open a new one](https://github.com/yuri-schmaltz/pires-forge/issues/new/choose).
 
-> For **security** issues, see [SECURITY.md](SECURITY.md) — please
+> For security issues, email **<security@yuri-schmaltz.dev>** — please
 > do not open a public issue for security bugs.
 
 ## Installation

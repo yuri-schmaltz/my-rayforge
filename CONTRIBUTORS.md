@@ -5,7 +5,7 @@ Pires Forge is maintained by a single contributor:
 - **Yuri Schmaltz** <security@yuri-schaltz.dev> — maintainer, all commits
 
 This is a personal fork. There are no external contributors. If you
-want to contribute, see [CONTRIBUTING.md](CONTRIBUTING.md) and open
+want to contribute, see the workflow in [README.md](README.md) and
 a pull request.
 
 ## Previous contributors
