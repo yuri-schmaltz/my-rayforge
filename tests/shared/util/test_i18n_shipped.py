@@ -47,7 +47,7 @@ EXPECTED_PT_TRANSLATIONS = {
 
 
 class TestMainAppPoFilesCompile:
-    """Verify each main-app .po file can be compiled and contains real translations."""
+    """Verify each main-app .po file compiles and has real translations."""
 
     @pytest.mark.parametrize("lang", SUPPORTED_LANGUAGES)
     def test_po_file_exists(self, lang):
@@ -82,7 +82,8 @@ class TestMainAppPoFilesCompile:
             )
 
     @pytest.mark.parametrize(
-        "lang", [l for l in SUPPORTED_LANGUAGES if l != "en"]  # noqa: E501
+        "lang",
+        [x for x in SUPPORTED_LANGUAGES if x != "en"],  # noqa: E501
     )
     def test_non_en_mo_translates_at_least_one_known_string(
         self, lang, tmp_path

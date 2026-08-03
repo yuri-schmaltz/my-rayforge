@@ -42,7 +42,9 @@ class AppUpdateChecker:
 
     async def _check_worker(self, ctx):
         from .const import APP_NAME
-        ctx.set_message(_("Checking for {app} updates...").format(app=APP_NAME))
+        ctx.set_message(
+            _("Checking for {app} updates...").format(app=APP_NAME)
+        )
         try:
             release = await self._fetch_latest_release()
         except Exception as e:
