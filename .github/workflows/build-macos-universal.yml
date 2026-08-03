@@ -33,7 +33,11 @@ jobs:
         shell: bash
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION=${{ github.ref_name }}
+            # Strip the leading 'v' from the tag name (v1.0.0 -> 1.0.0)
+            # so the bundle dir template "pires-forge-v$VERSION" doesn't
+            # produce "pires-forge-vv1.0.0".
+            RAW_VERSION="${{ github.ref_name }}"
+            VERSION="${RAW_VERSION#v}"
           else
             SHORT_SHA=$(git rev-parse --short HEAD)
             if git describe --tags --abbrev=0 >/dev/null 2>&1; then

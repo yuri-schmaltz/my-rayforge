@@ -75,7 +75,9 @@ jobs:
         id: set-version
         run: |
           if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION=${{ github.ref_name }}
+            # Strip the leading 'v' from the tag name (v1.0.0 -> 1.0.0)
+            RAW_VERSION="${{ github.ref_name }}"
+            VERSION="${RAW_VERSION#v}"
           elif git describe --tags >/dev/null 2>&1; then
             VERSION=$(git describe --tags)
           else
