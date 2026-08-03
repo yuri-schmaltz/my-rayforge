@@ -6,8 +6,6 @@ laser cutters and engravers. Built with Gtk4 and Libadwaita, it
 provides a clean, native interface for Linux, macOS, and Windows,
 offering a full suite of tools for both hobbyists and professionals.
 
-![Screenshot](website/static/screenshots/main-3d-rotary.png)
-
 > **This is a fork.** Pires Forge is an independent rebrand of the
 > [Rayforge](https://github.com/barebaric/rayforge) project, maintained
 > by [Yuri Schmaltz](https://github.com/yuri-schmaltz) as a
