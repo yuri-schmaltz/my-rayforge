@@ -53,7 +53,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='Pires Forge',  # User-visible executable name
+    name='PiresForge',  # No-space name avoids post-build script issues
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -73,11 +73,11 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='Pires Forge',
+    name='PiresForge',
 )
 app = BUNDLE(
     coll,
-    name='Pires Forge.app',
+    name='PiresForge.app',
     icon=_icon,
     bundle_identifier='org.piresforge.pires-forge',
     info_plist={

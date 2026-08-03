@@ -30,7 +30,7 @@ done
 
 echo ""
 print_info "======================================"
-print_info "    Rayforge macOS Build Script"
+print_info "    Pires Forge macOS Build Script"
 print_info "======================================"
 echo ""
 echo "Select build option:"
@@ -69,7 +69,7 @@ case "$BUILD_CHOICE" in
 esac
 
 if (( DO_RUN_APP == 1 )); then
-    APP_BIN="./dist/Rayforge.app/Contents/MacOS/Rayforge"
+    APP_BIN="./dist/PiresForge.app/Contents/MacOS/PiresForge"
     if [ ! -x "$APP_BIN" ]; then
         echo "$APP_BIN not found or not executable." >&2
         echo "Build the app bundle first (option 2)." >&2
@@ -167,8 +167,8 @@ if (( DO_BUILD == 1 )); then
     print_info "--------------------------------------"
     echo ""
     "$VENV_PY" -m build
-elif [ -d "dist/Rayforge.app" ] && (( DO_BUNDLE == 0 )); then
-    echo "Note: dist/Rayforge.app exists but was not rebuilt." >&2
+elif [ -d "dist/PiresForge.app" ] && (( DO_BUNDLE == 0 )); then
+    echo "Note: dist/PiresForge.app exists but was not rebuilt." >&2
 fi
 
 if (( DO_BUNDLE == 1 )); then
@@ -190,7 +190,7 @@ def _onerror(func, path, exc_info):
     except Exception:
         pass
 
-for target in ("dist/Rayforge", "dist/Rayforge.app"):
+for target in ("dist/PiresForge", "dist/PiresForge.app"):
     path = Path(target)
     if path.exists():
         shutil.rmtree(path, onerror=_onerror)
@@ -235,12 +235,12 @@ PY
 
     "$VENV_PY" -m PyInstaller --clean --noconfirm pires-forge.spec
 
-    APP_ROOT="dist/Rayforge.app/Contents"
+    APP_ROOT="dist/PiresForge.app/Contents"
     FW_DIR="$APP_ROOT/Frameworks"
     BIN_DIR="$APP_ROOT/MacOS"
     RES_DIR="$APP_ROOT/Resources"
 
-    chmod -R u+w "dist/Rayforge.app" || true
+    chmod -R u+w "dist/PiresForge.app" || true
 
     # Copy Assets.car into Resources and set CFBundleIconName in Info.plist.
     # This is what tells macOS to use the Liquid Glass .icon instead of .icns.
@@ -259,27 +259,27 @@ PY
     rm -f "$FW_DIR/libiconv.2.dylib"
 
     # Replace the launcher with a wrapper that sets env vars,
-    # keeping the Mach-O as Rayforge.bin.
-    if [ -f "$BIN_DIR/Rayforge" ] && [ ! -f "$BIN_DIR/Rayforge.bin" ]; then
-        if file "$BIN_DIR/Rayforge" | grep -q "Mach-O"; then
-            mv "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"
+    # keeping the Mach-O as PiresForge.bin.
+    if [ -f "$BIN_DIR/PiresForge" ] && [ ! -f "$BIN_DIR/PiresForge.bin" ]; then
+        if file "$BIN_DIR/PiresForge" | grep -q "Mach-O"; then
+            mv "$BIN_DIR/PiresForge" "$BIN_DIR/PiresForge.bin"
         else
-            cp "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"
+            cp "$BIN_DIR/PiresForge" "$BIN_DIR/PiresForge.bin"
         fi
     fi
-    if [ -f "$BIN_DIR/Rayforge.bin" ]; then
-        cat > "$BIN_DIR/Rayforge" <<'SH'
+    if [ -f "$BIN_DIR/PiresForge.bin" ]; then
+        cat > "$BIN_DIR/PiresForge" <<'SH'
 #!/bin/bash
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 export DYLD_LIBRARY_PATH="$APP_DIR/Frameworks"
 export DYLD_FALLBACK_LIBRARY_PATH="$APP_DIR/Frameworks"
 export GI_TYPELIB_PATH="$APP_DIR/Resources/gi_typelibs"
 export GIO_EXTRA_MODULES="$APP_DIR/Frameworks/gio_modules"
-exec "$APP_DIR/MacOS/Rayforge.bin" "$@"
+exec "$APP_DIR/MacOS/PiresForge.bin" "$@"
 SH
-        chmod +x "$BIN_DIR/Rayforge"
+        chmod +x "$BIN_DIR/PiresForge"
         install_name_tool -add_rpath @executable_path/../Frameworks \
-            "$BIN_DIR/Rayforge.bin" 2>/dev/null || true
+            "$BIN_DIR/PiresForge.bin" 2>/dev/null || true
     fi
 
     BREW_PREFIX=""
@@ -444,7 +444,7 @@ SH
                     "$FW_DIR/$libname"
                 changed=1
             fi
-        done < <(otool -L "$BIN_DIR/Rayforge" "$FW_DIR"/*.dylib 2>/dev/null | \
+        done < <(otool -L "$BIN_DIR/PiresForge" "$FW_DIR"/*.dylib 2>/dev/null | \
             awk '{print $1}' | \
             grep -E '^/usr/local/|^/opt/homebrew/|^@rpath/' | \
             sort -u || true)
@@ -470,7 +470,7 @@ SH
                 fi
             done || true
         done
-        for bin in "$BIN_DIR/Rayforge" "$BIN_DIR/Rayforge.bin"; do
+        for bin in "$BIN_DIR/PiresForge" "$BIN_DIR/PiresForge.bin"; do
             [ -f "$bin" ] || continue
             if ! file "$bin" | grep -q "Mach-O"; then
                 continue
@@ -485,7 +485,7 @@ SH
         done
 
         # Force libpng references to @rpath to avoid runtime lookups in Homebrew.
-        for target in "$FW_DIR"/*.dylib "$BIN_DIR/Rayforge.bin"; do
+        for target in "$FW_DIR"/*.dylib "$BIN_DIR/PiresForge.bin"; do
             [ -f "$target" ] || continue
             otool -L "$target" | awk '{print $1}' | \
                 grep -E '/opt/homebrew/opt/libpng/|/usr/local/opt/libpng/' | \
@@ -538,7 +538,7 @@ SH
     # Re-sign after install_name_tool and dylib rewrites to keep
     # macOS code-signing validation valid on Apple Silicon.
     if [ "$(uname -m)" = "arm64" ]; then
-        APP_BUNDLE="$(pwd)/dist/Rayforge.app"
+        APP_BUNDLE="$(pwd)/dist/PiresForge.app"
         echo "Re-signing app bundle..."
         if [ ! -d "$APP_BUNDLE" ]; then
             echo "App bundle not found at $APP_BUNDLE" >&2
@@ -578,26 +578,26 @@ if (( DO_DMG == 1 )); then
     print_info "--------------------------------------"
     echo ""
     echo "Creating DMG..."
-    if [ ! -d "dist/Rayforge.app" ]; then
-        echo "dist/Rayforge.app not found.\nBuild the app bundle first." >&2
+    if [ ! -d "dist/PiresForge.app" ]; then
+        echo "dist/PiresForge.app not found.\nBuild the app bundle first." >&2
         exit 1
     fi
-    DMG_PATH="dist/Rayforge_${VERSION}.dmg"
+    DMG_PATH="dist/PiresForge_${VERSION}.dmg"
     rm -f "$DMG_PATH"
-    hdiutil create -volname "Rayforge" -srcfolder "dist/Rayforge.app" \
+    hdiutil create -volname "PiresForge" -srcfolder "dist/PiresForge.app" \
         -ov -format UDZO "$DMG_PATH"
 fi
 
 if (( DO_BUILD == 1 )) && (( DO_BUNDLE == 1 )) && (( DO_DMG == 1 )); then
-    echo "Build artifacts created in dist/, dist/*.whl, dist/Rayforge.app, and dist/Rayforge.dmg"
+    echo "Build artifacts created in dist/, dist/*.whl, dist/PiresForge.app, and dist/PiresForge.dmg"
 elif (( DO_BUILD == 1 )) && (( DO_BUNDLE == 1 )); then
-    echo "Build artifacts created in dist/, dist/*.whl, and dist/Rayforge.app"
+    echo "Build artifacts created in dist/, dist/*.whl, and dist/PiresForge.app"
 elif (( DO_BUILD == 1 )); then
     echo "Build artifacts created in dist/ and dist/*.whl"
 elif (( DO_BUNDLE == 1 )); then
-    echo "App bundle created in dist/Rayforge.app"
+    echo "App bundle created in dist/PiresForge.app"
 elif (( DO_DMG == 1 )); then
-    echo "DMG created in dist/Rayforge.dmg"
+    echo "DMG created in dist/PiresForge.dmg"
 fi
 
 echo ""
