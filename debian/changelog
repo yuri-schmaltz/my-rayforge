@@ -1,3 +1,28 @@
+pires-forge (1.0.0-1) unstable; urgency=medium
+
+  * Release of Pires Forge 1.0.0.
+  * Rebrand: Rayforge -> Pires Forge (display name, AppStream ID,
+    .desktop, .metainfo, Debian package, Python binary entry point).
+    The Python module path 'rayforge/' and addon names
+    'rayforge-addon-*' are KEPT identical to upstream for
+    addon-compat and Python module compat.
+  * All GitHub URLs (GITHUB_RELEASES_API, GITHUB_URL, ISSUES_URL,
+    DOWNLOAD_URL) now point to yuri-schmaltz/pires-forge (this fork).
+  * Application update check defaults to off (was: on, pointing to
+    upstream). Users can opt-in via Settings -> Preferences.
+  * Add python3-defusedxml to Depends: (required by
+    rayforge.image.lightburn.importer since PR #14; blocks
+    billion-laughs, XXE, and DTD-SSRF attacks).
+  * i18n fix: .mo translation files are now bundled in the .deb
+    (MANIFEST.in updated to include .po/.pot, plus a compile
+    step in CI). Closes the silent "I selected Portuguese but
+    the UI is still in English" bug.
+  * Maintainer: Yuri Schmaltz <security@yuri-schmaltz.dev>.
+  * 33 regression tests in tests/shared/util/test_i18n_shipped.py
+    verify every supported language ships in the binary.
+
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Sun, 03 Aug 2026 09:30:00 +0000
+
 pires-forge (0.1.0-1) unstable; urgency=medium
 
   * Initial release.

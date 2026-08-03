@@ -4,6 +4,17 @@ venv
 *.py[oc]
 __pycache__
 
+# Python test/cache directories
+.hypothesis/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.pyright/
+htmlcov/
+.coverage
+coverage.xml
+
+# Build artifacts
 dist
 build
 /media
@@ -43,4 +54,20 @@ external/
 
 # macOS icon build artifacts
 Assets.car
-rayforge.icns.worktrees/
+rayforge.icns
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# pixi env directory (not committed, but to be safe)
+.pixi/
+
+# Worktrees
+.worktrees/

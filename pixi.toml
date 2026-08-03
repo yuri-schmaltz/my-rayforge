@@ -6,7 +6,6 @@ platforms = ["linux-64", "osx-arm64"]
 
 [environments]
 default = { features = ["app", "test"], solve-group = "default" }
-website = { features = ["website"], solve-group = "default" }
 build = { features = ["build-tools"], solve-group = "build" }
 video = { features = ["video-tools"], solve-group = "video" }
 
@@ -93,8 +92,6 @@ pyright = "*"
 ruff = "*"
 pre-commit = "*"
 
-[feature.website.dependencies]
-nodejs = ">=22"
 [feature.video-tools.dependencies]
 ffmpeg = "*"
 python = ">=3.11"
@@ -118,7 +115,6 @@ print-untranslated = "bash scripts/print_untranslated.sh"
 update-supporters = "python3 scripts/media/update_supporters.py"
 fetch-stats = "python3 scripts/fetch_download_stats.py"
 normalize-icons = "python3 scripts/normalize_icons.py"
-gen-affiliate = "python3 scripts/generate_affiliate_link.py"
 
 [tasks.clean]
 cmd = "bash scripts/clean.sh"
@@ -174,17 +170,6 @@ libadwaita = ">=1.8.4,<2"
 
 [target.linux-64.dependencies]
 libglvnd = ">=1.7.0,<2"
-
-# Tasks for developing and generating the website
-[feature.website.tasks]
-site-gen-api = "python3 scripts/update_api_docs.py"
-site-install = { cmd = "npm install", cwd = "website" }
-site-serve = { cmd = "npm start", cwd = "website", depends-on = ["update-api-docs"] }
-site-build = { cmd = "npm run build", cwd = "website", depends-on = ["site-gen-api"] }
-site-deploy = { cmd = "bash scripts/deploy_website.sh", depends-on = ["site-gen-api"] }
-
-[tasks.update-api-docs]
-cmd = "python3 scripts/update_api_docs.py"
 
 # Tasks for video processing
 [feature.video-tools.tasks]
