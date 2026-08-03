@@ -50,7 +50,7 @@ class TestSendEventSuccess:
         # since the fork ships with telemetry disabled by default
         # (UMAMI_URL = ""). When UMAMI_URL is empty, _send_event
         # returns early without calling resilient_post.
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
@@ -59,7 +59,7 @@ class TestSendEventSuccess:
         assert m.call_args.args[0].startswith("http")
 
     def test_passes_correct_headers(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
@@ -71,7 +71,7 @@ class TestSendEventSuccess:
 
     def test_includes_cache_token_when_set(self, tracker):
         tracker._cache_token = "abc123"
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
@@ -79,7 +79,7 @@ class TestSendEventSuccess:
         assert headers["x-umami-cache"] == "abc123"
 
     def test_payload_is_event_type_wrapped(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/click", "url": "/x"})
         _wait_for_threads()
@@ -92,7 +92,7 @@ class TestSendEventSuccess:
 class TestSendEventFailure:
     def test_silent_on_network_failure(self, tracker):
         # resilient_post returns None on failure (and never raises)
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None):
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
@@ -100,7 +100,7 @@ class TestSendEventFailure:
 
     def test_silent_on_unexpected_exception(self, tracker):
         # Defensive: if anything in _send raises, we log and move on
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch(
                  "rayforge.usage.resilient_post",
                  side_effect=Exception("unexpected"),
@@ -112,7 +112,7 @@ class TestSendEventFailure:
 
 class TestCacheTokenUpdate:
     def test_updates_cache_token_from_response(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch(
                  "rayforge.usage.resilient_post",
                  return_value=json.dumps({"cache": "new-token-xyz"}).encode(),
@@ -122,7 +122,7 @@ class TestCacheTokenUpdate:
         assert tracker._cache_token == "new-token-xyz"
 
     def test_no_update_on_missing_cache_field(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch(
                  "rayforge.usage.resilient_post",
                  return_value=json.dumps({"other": "field"}).encode(),
@@ -133,7 +133,7 @@ class TestCacheTokenUpdate:
         assert tracker._cache_token is None
 
     def test_no_update_on_invalid_json(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch(
                  "rayforge.usage.resilient_post",
                  return_value=b"not json {{{",
@@ -144,7 +144,7 @@ class TestCacheTokenUpdate:
         assert tracker._cache_token is None
 
     def test_no_update_on_empty_response(self, tracker):
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch(
                  "rayforge.usage.resilient_post",
                  return_value=b"",
@@ -157,7 +157,7 @@ class TestCacheTokenUpdate:
 class TestResilienceConfig:
     def test_uses_max_attempts_2(self, tracker):
         """Usage analytics should retry at most once to bound duplicates."""
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
@@ -165,7 +165,7 @@ class TestResilienceConfig:
 
     def test_uses_short_timeout(self, tracker):
         """Analytics should not block the user for long."""
-        with patch("rayforge.usage.UMAMI_URL", "https://umami.example/api/send"), \  # noqa: E501
+        with patch("rayforge.usage.UMAMI_URL", "https://umami.test/send"),  \
              patch("rayforge.usage.resilient_post", return_value=None) as m:
             tracker._send_event({"event": "/test", "url": "/x"})
         _wait_for_threads()
