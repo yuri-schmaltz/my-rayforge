@@ -108,7 +108,7 @@ export DEBFULLNAME=$(echo "$MAINTAINER_INFO" | sed -E 's/ <.*//')
 if [[ "${1:-}" == "--source" ]]; then
 # Use the TARGET_DISTRIBUTION from the environment, defaulting to 'noble' if not set
     TARGET_DIST="${TARGET_DISTRIBUTION:-noble}"
-    dch --newversion "${UPSTREAM_VERSION}-1~ppa1~${TARGET_DIST}1" --distribution "$TARGET_DIST" "New PPA release for ${TARGET_DIST}."
+    dch --newversion "${UPSTREAM_VERSION}-1~ppa1~${TARGET_DIST}1" --distribution "$TARGET_DIST" --force-bad-version "New PPA release for ${TARGET_DIST}."
 else
     dch --newversion "${UPSTREAM_VERSION}-1~local1" --force-bad-version "New local build ${UPSTREAM_VERSION}."
 fi
