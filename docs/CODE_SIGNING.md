@@ -1,16 +1,17 @@
 # Code Signing Setup Guide
 
-This document explains how to set up code signing for the
-`yuri-schmaltz/rayforge` fork. The fork does **not** sign its
-binaries by default (the maintainer doesn't have the signing
-certificates), which means:
+This document explains how to set up code signing for
+[Pires Forge](https://github.com/yuri-schmaltz/pires-forge). The
+fork does **not** sign its binaries by default (the maintainer
+doesn't have the signing certificates), which means:
 
 - **Windows**: users see a SmartScreen warning on first launch.
   They must click "More info" → "Run anyway" to proceed.
 - **macOS**: users see a Gatekeeper warning on first launch. They
   must right-click the app and choose "Open" to proceed.
-- **Debian/Ubuntu**: if a self-hosted apt repository is used, `apt`
-  will warn about an untrusted package.
+- **Debian/Ubuntu**: the `.deb` is not signed with a release key.
+  apt will warn about an untrusted package; users can install with
+  `sudo apt install --allow-unauthenticated`.
 
 This guide walks through the setup of code signing on each
 platform. The fork's CI workflow (`.github/workflows/sign.yml`)
@@ -28,239 +29,137 @@ try to install the app. With code signing:
 - **macOS**: Gatekeeper accepts the app without manual override.
   Apple notarization (a separate step from code signing) is
   required for macOS Catalina and later.
-- **Debian/Ubuntu**: apt trusts the package and installs it
-  without warnings.
+- **Debian/Ubuntu**: apt verifies the package against the maintainer's
+  GPG key in `Release.gpg` and installs without warning.
 
-For a production release that you want users to install with
-confidence, code signing is a hard requirement. It's not a
-"nice to have".
+## Windows (Authenticode)
 
-## Cost
+### Requirements
 
-Code signing certificates cost money (or in some cases, time):
+- An **Authenticode** code signing certificate. Options:
+  - **Self-signed** (free; Windows still warns on first launch,
+    but the warning is reduced to "Unknown publisher" instead of
+    "Windows protected your PC").
+  - **CA-issued** (paid; ~$200/year from providers like
+    Certum, SSL.com, or Sectigo).
+  - **Azure Trusted Signing** (paid; Microsoft's cloud signing
+    service).
+- A **hardware token** (e.g. YubiKey, USB smartcard) for storing
+    the certificate. Some CAs require this for EV certificates.
+- [`signtool.exe`](https://learn.microsoft.com/en-us/windows/win32/seccrypto/signtool)
+  from the Windows SDK.
 
-| Platform | Certificate | Cost | Validity |
-|----------|-------------|------|----------|
-| Windows | Code-signing cert from a trusted CA (DigiCert, Sectigo, GlobalSign, etc.) | $200-500/year | 1-3 years |
-| macOS | Apple Developer Program (includes "Developer ID Application" cert) | $99/year | 1 year |
-| Debian | Self-generated GPG key (free) | Free | Until expiry / no expiry |
+### Steps
 
-The Windows and macOS certs need to be renewed annually. The
-Debian GPG key is free and can have no expiry date.
+1. **Obtain the certificate** from a CA. They will email you a
+   `.pfx` file (or instructions to download it).
+2. **Add the certificate** to the Windows certificate store
+   (`certmgr.msc` → Personal → Certificates).
+3. **Add the secrets** to the GitHub repository's Actions secrets:
+   - `WINDOWS_CERTIFICATE_BASE64` — the `.pfx` file, base64-encoded.
+   - `WINDOWS_CERTIFICATE_PASSWORD` — the certificate's password.
+4. The CI workflow will sign the `.exe` automatically on the
+   next release.
 
-## Windows setup
-
-### 1. Purchase a code-signing certificate
-
-Buy from a CA that the Windows SmartScreen trust list includes.
-As of 2026, the most reliable options are:
-
-- **DigiCert**: ~$500/year, 3-year max, hardware token required
-- **Sectigo (Comodo)**: ~$250/year, 1-year, software cert
-- **GlobalSign**: ~$250/year, 1-year, software cert
-
-Avoid self-signed certs — they don't help with SmartScreen
-reputation.
-
-### 2. Export the .pfx file
-
-After the CA issues the cert, export it as a .pfx file with a
-strong password. The .pfx file contains both the public cert
-and the private key.
+### Test locally
 
 ```bash
-# In Windows Certificate Manager (certmgr.msc):
-#  Personal → Certificates → [your cert] → All Tasks → Export
-#  → "Yes, export the private key"
-#  → Personal Information Exchange - PKCS #12 (.PFX)
-#  → Check "Include all certificates in the certification path"
-#  → Set a strong password (20+ random characters)
-#  → Save to file
+# Sign an .exe
+signtool.exe sign /fd SHA256 /a /tr http://timestamp.digicert.com \
+    /td SHA256 path/to/Rayforge.exe
+
+# Verify
+signtool.exe verify /pa path/to/Rayforge.exe
 ```
 
-### 3. Base64-encode the .pfx
+## macOS (Developer ID + Notarization)
+
+### Requirements
+
+- An **Apple Developer ID** ($99/year, individual or organization).
+- A **Developer ID Installer** or **Developer ID Application**
+  certificate (free once you have the Developer ID).
+- An **app-specific password** for notarization.
+- `codesign`, `notarytool`, `xcrun` (Xcode command line tools).
+
+### Steps
+
+1. **Join the Apple Developer Program** at
+   <https://developer.apple.com/programs/>.
+2. **Create a Developer ID Application certificate** in
+   <https://developer.apple.com/account/resources/certificates>.
+3. **Export the certificate** as a `.p12` file from Keychain Access.
+4. **Add the secrets** to the GitHub repository's Actions secrets:
+   - `MACOS_CERTIFICATE_P12_BASE64` — the `.p12`, base64-encoded.
+   - `MACOS_CERTIFICATE_PASSWORD` — the certificate password.
+   - `MACOS_NOTARIZATION_APPLE_ID` — your Apple ID.
+   - `MACOS_NOTARIZATION_PASSWORD` — the app-specific password.
+   - `MACOS_NOTARIZATION_TEAM_ID` — your Apple Developer team ID.
+5. The CI workflow will sign and notarize the `.app` and `.dmg`
+   automatically on the next release.
+
+### Test locally
 
 ```bash
-base64 -w 0 cert.pfx > cert.pfx.b64
-# On macOS: base64 -i cert.pfx -o cert.pfx.b64
-# On Windows: certutil -encode cert.pfx cert.pfx.b64
+# Sign the .app
+codesign --force --deep --options=runtime \
+    --sign "Developer ID Application: Your Name (TEAMID)" \
+    Rayforge.app
+
+# Notarize
+xcrun notarytool submit Rayforge.dmg \
+    --apple-id your@email.com \
+    --password <app-specific-password> \
+    --team-id TEAMID \
+    --wait
+
+# Staple the notarization ticket
+xcrun stapler staple Rayforge.dmg
+
+# Verify
+spctl --assess --type execute --verbose=2 Rayforge.app
 ```
 
-### 4. Add the secrets to GitHub
+## Debian / Ubuntu (GPG)
 
-1. Go to https://github.com/yuri-schmaltz/rayforge/settings/secrets/actions
-2. Click "New repository secret"
-3. Add two secrets:
-   - `WINDOWS_CERT_PFX_BASE64`: paste the contents of `cert.pfx.b64`
-   - `WINDOWS_CERT_PASSWORD`: the password you set in step 2
+### Requirements
 
-### 5. Verify the next release is signed
+- A **GPG key** (free; you probably already have one).
+- A **Launchpad account** (free; required for the PPA).
 
-The next time the `build-exe.yml` workflow runs (on a release tag),
-the `sign.yml` workflow will:
-1. Download the unsigned .exe artifact
-2. Import the .pfx certificate
-3. Sign the .exe with `signtool /fd SHA256`
-4. Upload the signed .exe as a new artifact
-5. The maintainer downloads the signed .exe and attaches it to
-   the GitHub release (replacing the unsigned one)
+### Steps
 
-## macOS setup
+1. **Generate or use an existing GPG key**:
 
-### 1. Enroll in the Apple Developer Program
+   ```bash
+   gpg --list-keys  # check if you have one
+   gpg --full-generate-key  # create a new one
+   ```
 
-1. Go to https://developer.apple.com/programs/enroll/
-2. Pay the $99/year fee (or renew annually)
-3. Wait for approval (usually 1-2 business days)
+2. **Upload the key** to a keyserver:
 
-### 2. Generate a Developer ID Application certificate
+   ```bash
+   gpg --send-keys YOUR_KEY_ID
+   ```
 
-1. Open Keychain Access on a Mac that has Xcode installed
-2. Keychain Access → Certificate Assistant → Request a
-   Certificate from a Certificate Authority
-3. Fill in your email and common name, select "Saved to disk"
-4. Go to https://developer.apple.com/account/resources/certificates/list
-5. Click "+" to create a new certificate, select "Developer ID
-   Application", upload the CSR from step 3
-6. Download the resulting certificate and double-click to
-   install it in your keychain
-7. Find the cert in Keychain Access, right-click → Export
-   "Developer ID Application: Your Name" → save as .p12 with a
-   strong password
+3. **Configure `debsign` and `dput`** on the CI runner. The
+   `.github/workflows/sign.yml` workflow already calls `debsign`
+   and `dput ppa:yuri-schmaltz/pires-forge` on the built
+   `.changes` file.
 
-### 3. Set up an App Store Connect API key for notarization
+4. **Add the secrets**:
+   - `GPG_PRIVATE_KEY_BASE64` — the GPG private key, base64-encoded.
+   - `GPG_PASSPHRASE` — the GPG key's passphrase.
+   - `LAUNCHPAD_API_KEY` — the API token for `dput`.
 
-Apple notarization requires an API key:
+5. The CI workflow will sign the `.dsc`, `.changes`, and
+   `.deb` files automatically on the next release.
 
-1. Go to https://appstoreconnect.apple.com/access/api
-2. Click "+" to generate a new key
-3. Name: "Rayforge Notarization"
-4. Access: "Developer"
-5. Download the .p8 file (you can only download it once)
-6. Note the Key ID and Issuer ID
+## What the fork does today
 
-### 4. Add the secrets to GitHub
+Pires Forge `1.0.0` is **unsigned**. This is documented in the
+release notes. Users see the appropriate platform warnings
+(SmartScreen, Gatekeeper, apt untrusted).
 
-1. Go to https://github.com/yuri-schmaltz/rayforge/settings/secrets/actions
-2. Add the following secrets:
-   - `MACOS_CERT_P12_BASE64`: `base64 -i cert.p12`
-   - `MACOS_CERT_PASSWORD`: the .p12 password
-   - `MACOS_NOTARY_KEY_ID`: from step 3
-   - `MACOS_NOTARY_ISSUER_ID`: from step 3
-   - `MACOS_NOTARY_KEY_P8_BASE64`: `base64 -i AuthKey_XXXXXX.p8`
-
-### 5. Verify the next release is signed and notarized
-
-The next time the `build-macos-universal.yml` workflow runs (on
-a release tag), the `sign.yml` workflow will:
-1. Download the unsigned .dmg artifact
-2. Import the .p12 into a temporary keychain
-3. Sign the .app and .dmg with `codesign --deep --options runtime`
-4. Submit the .dmg to Apple's notary service
-5. Staple the notarization ticket to the .dmg
-6. Upload the signed+notarized .dmg as a new artifact
-7. The maintainer downloads the signed .dmg and attaches it to
-   the GitHub release (replacing the unsigned one)
-
-## Debian/Ubuntu setup
-
-The fork's `.deb` package is built by the
-`build-deb.yml` workflow and uploaded as a workflow artifact
-(not pushed to a PPA, since the upstream `publish-deb.yml` is
-gated to the `yuri-schmaltz/pires-forge` repository).
-
-If you want to set up a self-hosted apt repository (e.g. via
-aptly + nginx) and have the packages signed, follow these steps:
-
-### 1. Generate a GPG key
-
-```bash
-gpg --batch --gen-key <<EOF
-%no-protection
-Key-Type: RSA
-Key-Length: 4096
-Name-Real: Rayforge APT Repository
-Name-Email: security@yuri-schmaltz.dev
-Expire-Date: 0
-%commit
-EOF
-```
-
-The 4096-bit key with no expiry is recommended for an apt repo
-signing key. **Back up the private key** (you'll need it for
-the GitHub secret) and store a printed copy in a safe (if the
-key is lost, all existing installations will fail to update).
-
-### 2. Export the private key
-
-```bash
-gpg --armor --export-secret-keys security@yuri-schmaltz.dev > deb-gpg.asc
-base64 -w 0 deb-gpg.asc > deb-gpg.asc.b64
-```
-
-### 3. Add the secrets to GitHub
-
-1. Go to https://github.com/yuri-schmaltz/rayforge/settings/secrets/actions
-2. Add:
-   - `DEB_GPG_PRIVATE_KEY_BASE64`: contents of `deb-gpg.asc.b64`
-   - `DEB_GPG_PASSPHRASE`: empty (because we used `%no-protection`)
-
-If you DID set a passphrase, also add `DEB_GPG_PASSPHRASE` with
-the passphrase.
-
-### 4. Verify the next release is signed
-
-The next time the `build-deb.yml` workflow runs (on a release
-tag), the `sign.yml` workflow will:
-1. Download the unsigned .deb artifact
-2. Import the GPG key
-3. Sign the .deb with `debsigs`
-4. Upload the signed .deb as a new artifact
-5. The maintainer uploads it to the self-hosted apt repo
-
-## Cost summary
-
-For all three platforms signed:
-- Year 1: ~$450 (DigiCert $500 + Apple $99 - $150 bundle discount sometimes available)
-- Year 2+: $350+ (renewals)
-
-For Windows + macOS only (skip Debian):
-- Year 1: $600+
-- Year 2+: $500+
-
-For just Debian (free):
-- Year 1: $0
-- Year 2+: $0
-
-## When to set this up
-
-Code signing is most valuable just before a public release. If
-you're still in development, the unsigned binaries are fine for
-internal testing. Set up code signing when you're ready to:
-
-1. Post on social media / Reddit / Hacker News
-2. Email your existing user base about the release
-3. Publish on Flathub / Snap Store / AUR
-4. List on product directories like AlternativeTo
-
-Before any of those, you want users to install the app without
-warnings.
-
-## What if I don't want to pay for certs?
-
-For personal/development use, the unsigned binaries are fine. The
-warnings are annoying but not blocking. The fork's CI will still
-build and publish the unsigned binaries — you just need to mention
-in the release notes that users should expect the warnings.
-
-For a self-published fork that's not for profit, this is a
-reasonable trade-off. The maintainer of this fork made that
-trade-off for `1.9.0+resilience.4` and below; future releases
-may add signing if the certs are acquired.
-
-## See also
-
-- `SUPPORT.md`: end-user troubleshooting (includes the warnings
-  and how to bypass them)
-- `SECURITY.md`: the security policy
-- `CHANGELOG.md`: release notes (mention signing status)
+If you want to fund code signing for the fork, the maintainer
+accepts donations at <security@yuri-schmaltz.dev>.

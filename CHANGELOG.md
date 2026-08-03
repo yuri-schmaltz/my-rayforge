@@ -97,7 +97,7 @@ prior to the fork, see the Rayforge repository.
 
 ### Notes for Upgraders
 
-Upgrading from `1.9.0+resilience.9-pires1`:
+Upgrading from an earlier release (e.g. the `rayforge` package or `1.9.0+resilience.9-pires*`):
 
 ```bash
 sudo apt remove pires-forge  # or rayforge, whichever is installed

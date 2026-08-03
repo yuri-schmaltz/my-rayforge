@@ -1,8 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: pixi-lint
-        name: pixi run lint
-        entry: pixi run lint
-        language: system
-        pass_filenames: false

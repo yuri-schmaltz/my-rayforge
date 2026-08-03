@@ -3,8 +3,8 @@
 Auto-generate release notes for the fork from PR titles.
 
 Usage:
-    python scripts/release_notes.py --from-tag 1.9.0+resilience.4 \\
-                                    --to-tag 1.9.0+resilience.5
+    python scripts/release_notes.py --from-tag v0.0.0 \\
+                                    --to-tag v0.0.0
 
 Output: a Markdown-formatted changelog section for the
 release. Designed to be pasted into CHANGELOG.md or used
@@ -61,13 +61,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--repo",
-        default="yuri-schmaltz/rayforge",
-        help="GitHub repo (default: yuri-schmaltz/rayforge).",
+        default="yuri-schmaltz/pires-forge",
+        help="GitHub repo (default: yuri-schmaltz/pires-forge).",
     )
     parser.add_argument(
         "--from-tag",
         required=True,
-        help="Start tag (exclusive). E.g. 1.9.0+resilience.4",
+        help="Start tag (exclusive). E.g. v0.0.0",
     )
     parser.add_argument(
         "--to-tag",

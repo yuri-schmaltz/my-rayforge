@@ -39,7 +39,7 @@ def tracker():
     t._screen = "1920x1080"
     t._language = "en_US"
     t._os = "linux/5.0"
-    t._version = "1.9.0+resilience.3"
+    t._version = "1.0.0+dev1"
     t._session_id = "test-session-id"
     return t
 

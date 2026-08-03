@@ -2,7 +2,7 @@ name: Generate Release Notes
 
 # Auto-generate release notes from PR titles between two
 # release tags. Triggered on:
-#   - Push of a release tag (e.g. 1.9.0+resilience.5)
+#   - Push of a release tag (e.g. v1.0.0)
 #   - Manual dispatch (for ad-hoc generation)
 #
 # The output is uploaded as a workflow artifact named

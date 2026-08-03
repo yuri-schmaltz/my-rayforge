@@ -45,12 +45,6 @@ website/docs/developer/raygeo-api/
 rayforge/private_addons
 rayforge/version.txt
 
-# Rust ops crate
-target/
-crates/rayforge-ops/Cargo.lock
-
-# External dependencies
-external/
 
 # macOS icon build artifacts
 Assets.car

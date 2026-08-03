@@ -1,174 +1,113 @@
 # Security Policy
 
-This document describes the security policy for the
-**`yuri-schmaltz/rayforge`** fork (the resilience fork of
-[Rayforge](https://github.com/yuri-schmaltz/pires-forge)).
+This document describes the security policy for
+**[Pires Forge](https://github.com/yuri-schmaltz/pires-forge)** — an
+independent, single-maintainer fork of the
+[Rayforge](https://github.com/barebaric/rayforge) project maintained
+by [Yuri Schmaltz](https://github.com/yuri-schmaltz).
 
-For the security model of upstream Rayforge, see
-[yuri-schmaltz/pires-forge SECURITY.md](https://github.com/yuri-schmaltz/pires-forge/blob/main/SECURITY.md).
-The fork inherits the upstream model for the parts of the code that
-are shared; the differences are documented in [SECURITY_AUDIT.md](SECURITY_AUDIT.md).
+Pires Forge inherits the upstream security model for the parts of the
+code that are shared. The rebrand-focused changes in Pires Forge do
+not introduce new attack surface.
 
 ## Supported versions
 
-The fork ships patched releases on a rolling basis. Security fixes
-land in `main` first, then are tagged as a new `1.9.0+resilience.X`
-release.
+Pires Forge ships patched releases on a rolling basis. Security fixes
+land in `main` first, then are tagged as a new release.
 
-| Version             | Supported          |
-| ------------------- | ------------------ |
-| `1.9.0+resilience.4` (latest) | ✅ Active |
-| `1.9.0+resilience.3`          | ⚠️ Critical fixes only |
-| `1.9.0+resilience.1` / `.2`   | ❌ End of life |
-| `1.9.0` (upstream, unpatched) | ❌ Use the fork's release |
+| Version | Supported | Notes |
+| ------- | --------- | ----- |
+| `1.0.0` (latest) | ✅ Active | First stable release of Pires Forge |
+| `0.1.0` | ⚠️ Critical fixes only | Pre-rebrand rebase with `Rayforge` name |
+| Upstream `1.9.0` (`barebaric/rayforge`) | ❌ Not supported by us | Use the fork instead |
 
 We do **not** support:
-- Pre-1.9.0 versions (the resilience layer was introduced in 1.9.0).
-- Upstream `1.9.0` directly (use the fork's `1.9.0+resilience.X`).
-- The `my-rayforge` repository name (renamed to `rayforge` in
-  July 2026).
+- Pre-`1.0.0` versions.
+- The `my-rayforge` repository name (renamed to `rayforge`, then to
+  `pires-forge` in 2026).
+- The original `barebaric/rayforge` repository directly — that is the
+  upstream project, which is maintained by Samuel Abels and
+  contributors; the Pires Forge rebrand lives here at
+  `yuri-schmaltz/pires-forge`.
 
 ## Reporting a vulnerability
 
-**Please do not open a public GitHub issue for security bugs.**
+**Do not** open a public GitHub issue for security bugs.
 
-Send a report to **`security at yuri-schmaltz dot dev  # placeholder; replace with a real mailbox when one is set up`** (PGP key below).
-Include:
+Email: **<security@yuri-schmaltz.dev>**
 
-- A description of the vulnerability and its impact.
-- Steps to reproduce (proof-of-concept code or screenshots welcome).
-- The version affected (`rayforge --version` or check
-  `Settings → About` in the app).
-- Your name / handle for the credits (optional — anonymous reports
-  are accepted).
+Please include:
+- A short description of the issue
+- Steps to reproduce (proof of concept if possible)
+- The commit / tag / version affected
+- Your assessment of the impact
 
-We will:
-- Acknowledge within **3 business days**.
-- Triage within **7 days** (severity, affected versions, scope).
-- Ship a fix in the next `1.9.0+resilience.X` release, or sooner
-  for critical issues.
-
-For critical issues (RCE, auth bypass, data exfiltration), we may
-ship a hotfix release out-of-band.
-
-### PGP key
-
-```
------BEGIN PGP PUBLIC KEY BLOCK-----
-[Placeholder — replace before publishing]
------END PGP PUBLIC KEY BLOCK-----
-```
-
-(Forking: the maintainer will publish the actual key when this
-file is committed. Until then, the report can be sent in cleartext
-with the understanding that the email is in transit over an
-untrusted channel.)
-
-## Security advisories
-
-Past advisories are published as
-[GitHub Security Advisories](https://github.com/yuri-schmaltz/rayforge/security/advisories)
-on the fork. The fork uses GHSA IDs; the cross-references with the
-upstream project (where relevant) are noted in the advisory body.
+We will acknowledge receipt within 72 hours and aim to provide a
+fix or mitigation within 30 days, depending on severity.
 
 ## Threat model
 
-The fork's threat model is the same as upstream's, with two
-additions:
+Pires Forge is a desktop application that:
 
-1. **The fork ships a custom version scheme** (`1.9.0+resilience.X`)
-   that mixes upstream's `1.9.0` and the fork's patches. The
-   auto-update checker (`rayforge/updater.py`) and the
-   version-comparison logic in `rayforge/version.py` are the
-   single point of truth for "is the installed version newer than
-   the latest known release?" — bugs there are critical. The
-   SECURITY_AUDIT.md document covers the review checklist for
-   these files.
+- Reads **untrusted file formats** (SVG, DXF, PDF, PNG/JPG, BMP,
+  LightBurn `.lbrn`/`.lbrn2`, Ruida `.rd`).
+- Writes **G-code files** for laser cutters/engravers.
+- Optionally sends G-code to **local network** devices (GRBL serial,
+  GRBL/Smoothieware telnet, Marlin serial, Ruida UDP, OctoPrint HTTP).
+- Optionally captures **USB camera** input for workpiece alignment.
+- Does **not** auto-update, does **not** phone home, and does **not**
+  collect telemetry by default.
 
-2. **The fork's CI/CD pipeline is in the maintainer's GitHub
-   account, not the upstream's.** A compromise of the maintainer's
-   GitHub credentials could lead to malicious binaries being
-   published via the existing release workflow. Mitigations:
-   - The release workflow does not consume any external secrets
-     (no PyPI token, no signing keys, no codecov token).
-   - The `package-deb` and `package-exe` workflows only run on
-     the fork's branches (the upstream `publish-deb.yml` and
-     `publish-snap-store.yml` are gated to `yuri-schmaltz/pires-forge`).
-   - All CI jobs run on `ubuntu-latest` (no self-hosted runners).
+### Security boundaries
 
-## Security-relevant changes
+| Boundary | Trust | Notes |
+| -------- | ----- | ----- |
+| **SVG / DXF / PDF / PNG / BMP** import | Untrusted | Parsed with `defusedxml` (when applicable) to block billion-laughs, XXE, and DTD-SSRF attacks. |
+| **LightBurn `.lbrn` / `.lbrn2`** import | Untrusted | Parsed with `defusedxml` since the LightBurn format is XML-based. |
+| **G-code output** | Trusted | Generated locally; not signed. |
+| **Network I/O** to machines | Trusted LAN | The user explicitly configures the machine address. No inbound network listeners. |
+| **Camera input** | Trusted OS device | Captured via the OS camera stack; no network access. |
+| **Filesystem** | Trusted user space | Project files use `.ryp` (zip-based) with a manifest; arbitrary file extraction is constrained to the project directory. |
+| **Configuration** (`~/.config/rayforge/`) | Trusted user space | YAML config; the parser rejects unknown keys but does NOT validate the schema. Do not load untrusted YAML configs. |
+| **Update check** | Disabled by default | When enabled, queries the GitHub Releases API of `yuri-schmaltz/pires-forge` for new versions. Opt-in via Settings → Preferences. |
 
-The following changes from upstream are security-relevant. Each is
-documented in [SECURITY_AUDIT.md](SECURITY_AUDIT.md) with the full
-review checklist:
+### Out of scope
 
-- **PR #13**: sketcher `ParameterContext` now uses the AST-whitelisted
-  `safe_evaluate` instead of bare `eval()`. Fixes a sandbox-escape
-  vulnerability via `.lbrn` and `.sketch` files.
-- **PR #14**: `hashlib.sha1(blob)` → `hashlib.sha1(blob,
-  usedforsecurity=False)` for the cache-key hash in
-  `rayforge/pipeline/intent_builder.py`.
-- **PR #15**: SVG and LightBurn XML parsers now use `defusedxml`
-  to block billion-laughs, XXE, and DTD-SSRF payloads.
-- **PR #17**: bumped 3 dependencies to fix 12 CVEs in GitPython,
-  pypdf, and cairosvg. Fixed a `project.version must be pep440`
-  error in the `.deb` build pipeline that was preventing the
-  build from completing (and thus preventing the security fix
-  from reaching end users).
-- **PR #18**: 17 `try-except-pass` cases were either given
-  `logger.debug(...)` for diagnostic value, or marked with
-  `# noqa: S110` where the silent pass is intentional (signal
-  cleanup, shutdown teardown).
+- Vulnerabilities in **upstream Rayforge** that we have already
+  patched in Pires Forge (report upstream if you also use it).
+- Vulnerabilities in **third-party libraries** (Python packages,
+  GTK, etc.) — report to the upstream maintainer.
+- Denial of service against the local machine via malformed input
+  (Pires Forge runs as a normal user; the OS limits the blast radius).
 
-## Known intentional design choices (trust boundaries)
+## Hardening
 
-These are **features, not vulnerabilities**. They are documented
-in [SECURITY_AUDIT.md](SECURITY_AUDIT.md#-documented-security-boundaries)
-with the full review checklist. Reviewers should consult that
-section before approving changes to the affected files.
+The Pires Forge build pipeline runs the following security gates:
 
-- **`--uiscript <file.py>`** in `rayforge/uiscript.py`: the CLI
-  flag takes a path to a Python script and `exec()`s it in a
-  background thread inside the running application. This is
-  equivalent to running `python -c "..."` with the user's own
-  credentials. It is **not safe to expose in a multi-tenant
-  environment** (kiosks, shared hosts, web services that pass
-  untrusted input to `--uiscript`).
+- **`bandit`** — static analysis for common Python security issues
+  (B101, B102, B104, B310, B324, B404/B405, B603/B606, etc.). The
+  full set of suppressed checks with justification is in `.bandit`.
+- **`pip-audit`** — checks the dependency tree for known CVEs.
+- **`defusedxml`** — required runtime dependency for untrusted XML
+  parsing (LightBurn, SVG fallback).
+- **Reproducible builds** — `pixi.lock` pins the entire dep tree.
 
-- **HTTP `Authorization: token <PAT>` in the bot's push URL**:
-  the fork's release workflow uses HTTPS git URLs with embedded
-  GitHub tokens. The tokens are scoped per-session, scoped to
-  the fork's repo only, and discarded after each push. They
-  never appear in PR bodies, commit messages, or file content.
+The Debian package additionally enforces:
 
-## Out of scope
+- `python3-defusedxml` in `Depends:` (so apt refuses to install
+  Pires Forge on a system without it).
+- Lintian overrides documented in `debian/lintian-overrides` for
+  known false positives.
 
-The following are **not** in the fork's threat model:
+## Disclosure policy
 
-- **The auto-update network channel**: the update checker uses
-  HTTPS to `api.github.com` (via the resilient HTTP layer). MITM
-  attacks against the user's local network or the GitHub API
-  are out of scope. The fork does not pin GitHub's certificate
-  chain beyond what the system trust store provides.
+We follow **coordinated disclosure**: please give us a reasonable
+time to patch before public disclosure. We will credit the reporter
+in the release notes unless they prefer to remain anonymous.
 
-- **The build host's security**: the `.deb`, `.dmg`, and `.exe`
-  binaries are built on GitHub-hosted runners (`ubuntu-latest`,
-  `macos-latest`, `windows-latest`). A compromise of GitHub Actions
-  is out of scope.
+## Contact
 
-- **The user's local security**: if the user installs the
-  binary into a directory writable by other users, or runs it
-  with elevated privileges, the local security model applies.
-
-- **Upstream's security fixes**: the fork syncs with upstream
-  periodically. If upstream ships a security fix between syncs,
-  the fork will be a release or two behind. Check the
-  [upstream release notes](https://github.com/yuri-schmaltz/pires-forge/releases)
-  if you need the latest.
-
-## Acknowledgments
-
-Security researchers who report valid vulnerabilities to the fork
-are credited in the corresponding GitHub Security Advisory (unless
-they prefer to remain anonymous). Thank you for keeping the fork's
-users safe.
+- Maintainer: Yuri Schmaltz
+- Email: <security@yuri-schmaltz.dev>
+- GitHub: <https://github.com/yuri-schmaltz/pires-forge>
+- Issues (non-security): <https://github.com/yuri-schmaltz/pires-forge/issues>

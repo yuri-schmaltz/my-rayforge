@@ -10,7 +10,7 @@ from typing import Any, Dict, Optional, Tuple
 # xml.etree.ElementTree is vulnerable to XML attacks (B314 in
 # bandit / S314 in ruff). SVG files are user-opened and may carry
 # billion-laughs DoS, XXE, or DTD-based SSRF payloads. Defusedxml
-# blocks all of these by default. See SECURITY_AUDIT.md.
+# blocks all of these by default. See SECURITY.md.
 import defusedxml.ElementTree as ET  # noqa: E402
 from defusedxml import common as _dxml  # noqa: E402
 

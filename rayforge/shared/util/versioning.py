@@ -79,19 +79,19 @@ def is_newer_version(remote_str: str, local_str: str) -> bool:
     """Compares two version strings.
 
     Uses PEP 440 semantics (via ``packaging.version.Version``) so the
-    fork's ``1.9.0+resilience.X`` semver-build-metadata tag scheme
+    fork.s semver-build-metadata tag scheme
     compares correctly:
 
-    - ``1.9.0+resilience.4`` is newer than ``1.9.0`` (fork patch)
-    - ``1.9.0+resilience.4`` is newer than ``1.9.0+resilience.3``
-    - ``1.9.0+resilience.4`` is older than ``1.9.0+resilience.5``
-    - ``1.9.0+resilience.4`` is older than ``1.9.1`` (upstream wins)
-    - ``1.9.0+resilience.4`` is older than ``2.0.0`` (upstream wins)
+    - ``1.0.0+dev1`` is newer than ``1.9.0`` (build patch)
+    - ``1.0.0+dev1`` is newer than ``1.0.0+dev1``
+    - ``1.0.0+dev1`` is older than ``1.0.0+dev1``
+    - ``1.0.0+dev1`` is older than ``1.9.1`` (upstream wins)
+    - ``1.0.0+dev1`` is older than ``2.0.0`` (upstream wins)
 
     The previous implementation used ``semver.VersionInfo`` which
     ignores semver build metadata for ordering (per the semver
-    spec) — that meant ``1.9.0+resilience.4`` was treated as equal
-    to ``1.9.0`` and equal to ``1.9.0+resilience.3``, so the
+    spec) — that meant ``1.0.0+dev1`` was treated as equal
+    to ``1.9.0`` and equal to ``1.0.0+dev1``, so the
     auto-update checker would never notify users about fork
     patches. PEP 440's local-version segment semantics fix this.
 

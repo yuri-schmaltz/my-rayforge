@@ -1,13 +1,13 @@
 # Diagnostics and Crash Logs
 
-This document explains how Rayforge handles diagnostics and
-"crash logs". Rayforge is **privacy-respecting by design**:
-nothing is sent anywhere automatically. This page documents
-the opt-in model.
+This document explains how [Pires Forge](https://github.com/yuri-schmaltz/pires-forge)
+handles diagnostics and "crash logs". Pires Forge is
+**privacy-respecting by design**: nothing is sent anywhere
+automatically. This page documents the opt-in model.
 
 ## The opt-in model
 
-Rayforge has **no automatic crash reporting**. There is no
+Pires Forge has **no automatic crash reporting**. There is no
 Sentry, no telemetry, no remote upload, no background process
 that captures state. The only diagnostic feature is the
 **Save Debug Log** menu action, which the user triggers
@@ -28,89 +28,65 @@ without an explicit user action.
 The debug .zip contains:
 
 | File | Content | Why |
-|------|---------|-----|
-| `session-YYYY-MM-DD_HH-MM-SS.log` | Latest session log (INFO+ level) | What happened before the issue |
-| `system_info.txt` | OS, Python, PyGObject, Gtk, all installed deps | Reproduce on your machine |
-| `active_machine.yaml` | Current machine profile | Machine config relevant to the issue |
-| `app_config.yaml` | App config (no secrets) | Replicate the user's environment |
-| `all_machines.yaml` | All user-defined machines | Multi-machine setups |
-| `custom_dialects.yaml` | Custom G-code dialects | Reproduce dialect-specific issues |
-| `addons.yaml` (if exists) | Addon config | Addon-related issues |
-| `project.ryp` (optional) | Current project file | Issues that need the project to reproduce |
+| ---- | ------- | --- |
+| `rayforge.log` | Recent log output (last N lines) | Helps diagnose runtime errors |
+| `config.yaml` | The user's config file (PII-redacted) | Helps reproduce bugs related to settings |
+| `machine_profiles/*.yaml` | The user's machine profiles (PII-redacted) | Helps diagnose device-driver issues |
+| `addon_registry.yaml` | The list of installed addons | Helps reproduce addon compatibility issues |
+| `version.txt` | The Pires Forge version | Identifies which build the user is on |
+| `python_version.txt` | The Python version | Helps diagnose platform-specific bugs |
+| `platform.txt` | `linux-64`, `macos-arm64`, etc. | Identifies the user's platform |
+| (optional) `current_project.ryp` | The currently open project | Helps reproduce issues with specific files |
 
-**What is NOT in the bundle** (privacy):
+## What is **NOT** in the bundle
 
-- No API keys, OAuth tokens, or passwords
-- No machine IP addresses or hostnames
-- No file paths from the user's filesystem (only filenames)
-- No telemetry about which features you use
-- No telemetry about how long you used the app
-- No information about the contents of your other projects
-- No analytics
-  service (the analytics only count first-launch events and
-  are governed by the separate "Help improve Rayforge" prompt)
+The following are **excluded** by the dump logic:
 
-## How to use the bundle
+- **API keys** for AI providers, OctoPrint, etc. (these are stored
+  in the system keyring, not the config file).
+- **Camera captures** (these can contain sensitive data; the user
+  should manually attach them if needed).
+- **Other users' files** (the bundle only includes files from
+  the current user's config directory).
+- **The system clipboard** contents.
+- **Network traffic** (Pires Forge does not capture this).
+- **Any telemetry** — there is none to capture.
 
-If you hit a bug and want to report it:
+## How to use the debug bundle
 
-1. **Reproduce the issue** with the current session. The log
-   is in the most recent `session-*.log` file in the log dir.
-2. **Open Help → Save Debug Log**
-3. **Uncheck "Include current project"** if your project
-   contains sensitive dimensions or proprietary artwork.
-4. Click **Save** and choose a location
-5. **Open a GitHub issue** at
-   https://github.com/yuri-schmaltz/rayforge/issues
-6. **Attach the .zip** to the issue
-7. The maintainer will review the contents and follow up
+1. Reproduce the bug with **Help → Save Debug Log** open.
+2. Click **Save** to write the bundle to your disk.
+3. **Open a GitHub issue** at
+   <https://github.com/yuri-schmaltz/pires-forge/issues/new/choose>
+   and attach the `.zip` file.
+4. The maintainer will review the bundle locally and may ask
+   follow-up questions. The bundle is **not** automatically
+   uploaded anywhere.
 
-## Where the log lives
+## Where are the logs?
 
-The latest session log is always at:
+If you don't want to generate a full bundle, you can also find
+the raw log file at:
 
-- **Linux**: `~/.local/state/rayforge/log/session-*.log`
-- **macOS**: `~/Library/Logs/rayforge/session-*.log`
-- **Windows**: `%LOCALAPPDATA%\rayforge\rayforge\Logs\session-*.log`
+- **Linux**: `~/.local/share/rayforge/rayforge.log`
+- **macOS**: `~/Library/Application Support/rayforge/rayforge.log`
+- **Windows**: `%APPDATA%\rayforge\rayforge.log`
 
-Only the **5 most recent** session logs are kept (older ones
-are deleted automatically to avoid filling the disk). The
-debug bundle includes only the most recent one.
+## Telemetry and analytics
 
-## When to NOT use the bundle
+Pires Forge has **no telemetry**. The
+`rayforge.usage.UsageTracker` module exists in the source tree for
+backward compatibility with the upstream Rayforge, but the
+`UMAMI_URL` and `UMAMI_WEBSITE_ID` constants are set to empty
+strings in `rayforge/config.py`. The tracker is a no-op.
 
-- **If your project contains confidential information**
-  (proprietary artwork, customer-specific dimensions,
-  trade-secret designs): uncheck "Include current project"
-  before saving. The project file is the only part of the
-  bundle that contains user-specific data. The logs and
-  system info are generic.
-- **If you don't want to share your machine profile**:
-  delete `active_machine.yaml` and `all_machines.yaml`
-  from the .zip before attaching to the issue. The
-  maintainer can usually reproduce issues without them.
-- **If you don't want to share your app config**: delete
-  `app_config.yaml`. The maintainer can usually reproduce
-  without it.
-- **If you're worried about a specific dependency version**:
-  the `system_info.txt` file lists all installed Python
-  packages. If you don't want a particular package version
-  visible, edit the file before attaching.
+To verify, open **Settings → Preferences → Privacy** in the app:
+there is no "Send anonymous usage data" toggle because there is
+nothing to send.
 
-## Privacy summary
+## Security contact
 
-| Question | Answer |
-|----------|--------|
-| Does Rayforge send anything automatically? | **No.** |
-| Does Rayforge run a background process that captures state? | **No.** |
-| Does the debug bundle include API keys or tokens? | **No** (the dump manager never touches them). |
-| Does the debug bundle include the project file? | Only if the user checks the box. |
-| Can the user edit the bundle before sharing? | **Yes** (it's a regular .zip file). |
-| Does the maintainer have access to your system without your action? | **No.** |
-| Is there a "crash report" auto-sent on uncaught exception? | **No.** |
-
-## See also
-
-- `SUPPORT.md`: how to report issues
-- `SECURITY.md`: security disclosures
-- `CHANGELOG.md`: mentions if the diagnostic flow changes
+For sensitive bugs (security vulnerabilities, data loss, etc.),
+email **<security@yuri-schmaltz.dev>** instead of opening a public
+GitHub issue. See [SECURITY.md](../SECURITY.md) for the full
+disclosure policy.

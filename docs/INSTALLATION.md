@@ -1,258 +1,97 @@
-# Installation
+# Installing Pires Forge
 
-This document describes all the ways to install the
-`yuri-schmaltz/rayforge` fork on all supported platforms.
+Pires Forge is distributed as a `.deb` (Ubuntu), `.dmg` (macOS), and
+`.exe` (Windows) from the
+[Releases page](https://github.com/yuri-schmaltz/pires-forge/releases).
 
-If you're a first-time user, the **recommended path** is
-the .deb on Ubuntu (or the .exe on Windows, or the .dmg
-on macOS). All three are pre-built for each release tag.
+## Linux (`.deb` for Ubuntu 24.04 / Linux Mint 22.x)
 
-If you want to use a different package manager (Flatpak,
-AUR, Nix, etc.) or build from source, see the relevant
-section below.
+The `.deb` is built for Ubuntu 24.04 (Noble) and compatible
+distributions. Linux Mint 22.x (which is Ubuntu 24.04-based) is
+the primary supported target.
 
-## TL;DR
-
-| Platform | Format | Source | Auto-update? |
-|----------|--------|--------|--------------|
-| Ubuntu 24.04+ | `.deb` | [Releases page](https://github.com/yuri-schmaltz/rayforge/releases) | No (manual) |
-| Windows 10/11 | `.exe` | [Releases page](https://github.com/yuri-schmaltz/rayforge/releases) | No (manual) |
-| macOS 12+ | `.dmg` | [Releases page](https://github.com/yuri-schmaltz/rayforge/releases) | No (manual) |
-| Linux (snap) | `.snap` | Manual upload to snap store (see [SNAP_STORE.md](SNAP_STORE.md)) | Yes (via snapd) |
-| Linux (Flatpak) | None (build from source) | See [Flatpak](#flatpak) below | No |
-| Arch Linux | None (build from source) | See [AUR](#aur) below | No |
-| NixOS | None (build from source) | See [Nix](#nixos) below | No |
-| From source | pixi | See [Build from source](#build-from-source) | n/a |
-
-## Ubuntu / Debian (.deb)
-
-Download the latest `.deb` from the
-[Releases page](https://github.com/yuri-schmaltz/rayforge/releases):
+### Install
 
 ```bash
-# For Ubuntu 24.04 (noble)
-wget https://github.com/yuri-schmaltz/rayforge/releases/download/1.9.0+resilience.5/Rayforge-1.9.0+resilience.5-Linux.deb
-sudo dpkg -i Rayforge-1.9.0+resilience.5-Linux.deb
-sudo apt-get install -f  # Install any missing dependencies
+sudo apt install /path/to/pires-forge-linux.deb
+pires-forge
 ```
 
-Or with `apt` directly (once the fork is added to a PPA,
-which is not yet done — see the [Roadmap](#roadmap) below):
+This installs:
+
+- `/usr/bin/pires-forge` — the binary
+- `/usr/share/applications/org.piresforge.pires-forge.desktop` —
+  menu entry (in category **Graphics**)
+- `/usr/share/metainfo/org.piresforge.pires-forge.metainfo.xml` —
+  AppStream metadata
+- `/usr/share/icons/hicolor/scalable/apps/org.piresforge.pires-forge.svg` —
+  app icon
+- `/usr/share/mime/packages/org.piresforge.pires-forge.xml` —
+  MIME type registration (`.ryp`, `.rfs`)
+- Python modules under `/usr/lib/python3/dist-packages/rayforge/`
+
+### Upgrade from an older release
+
+The Debian package was renamed from `rayforge` to `pires-forge`
+during the rebrand. To upgrade:
 
 ```bash
-# Not yet available; this is the future PPA setup:
-# sudo add-apt-repository ppa:yuri-schmaltz/rayforge
-# sudo apt update
-# sudo apt install rayforge
+sudo apt remove rayforge  # or pires-forge, whichever is installed
+sudo apt install /path/to/pires-forge-linux.deb
 ```
 
-The .deb is the **primary distribution channel** for the
-fork. The build workflow `.github/workflows/build-deb.yml`
-runs on every release tag.
+Your config and addon data in `~/.config/rayforge/` is preserved
+(the config directory keeps the `rayforge` name for compatibility
+with the Python module path).
 
-## Windows (.exe)
+### Refresh menu and icon caches
 
-Download the latest `.exe` from the
-[Releases page](https://github.com/yuri-schmaltz/rayforge/releases):
-
-1. Go to https://github.com/yuri-schmaltz/rayforge/releases/latest
-2. Download `Rayforge-<version>-Windows.exe`
-3. Double-click the .exe to run the installer
-4. If you see a SmartScreen warning, click "More info" →
-   "Run anyway". The fork is not code-signed (the
-   maintainer doesn't have a Windows code-signing
-   certificate); see [CODE_SIGNING.md](CODE_SIGNING.md) for
-   the setup guide.
-
-## macOS (.dmg)
-
-Download the latest `.dmg` from the
-[Releases page](https://github.com/yuri-schmaltz/rayforge/releases):
-
-1. Go to https://github.com/yuri-schmaltz/rayforge/releases/latest
-2. Download `Rayforge-<version>-macOS.dmg`
-3. Open the .dmg (double-click)
-4. Drag Rayforge.app to /Applications
-5. If you see a Gatekeeper warning, right-click the app
-   and choose "Open" → "Open" in the dialog. The fork is
-   not signed or notarized (the maintainer doesn't have
-   an Apple Developer account); see
-   [CODE_SIGNING.md](CODE_SIGNING.md) for the setup guide.
-
-## Snap
-
-The fork does not currently publish to the Snap Store
-because the `rayforge` name is owned by upstream
-`yuri-schmaltz/pires-forge`. To publish the fork as a snap:
-
-1. Reserve a different snap name (e.g. `rayforge-fork`)
-2. Build the .snap using `.github/workflows/verify-snap.yml`
-3. Upload manually to https://snapcraft.io/rayforge-fork
-
-See [SNAP_STORE.md](SNAP_STORE.md) for the full guide.
-
-## Flatpak
-
-The fork does not currently publish a Flatpak. To build
-your own from source:
-
-### 1. Install flatpak-builder
+After installing or upgrading, run:
 
 ```bash
-# Ubuntu / Debian
-sudo apt install flatpak flatpak-builder
-
-# Fedora
-sudo dnf install flatpak flatpak-builder
-
-# Arch
-sudo pacman -S flatpak flatpak-builder
+sudo update-desktop-database
+sudo gtk-update-icon-cache -f /usr/share/icons/hicolor
 ```
 
-### 2. Use the manifest template
+Then log out and back in. The app should appear in
+**Menu → Graphics → Pires Forge**.
 
-A flatpak manifest template is provided at
-`flatpak/org.rayforge.rayforge.yaml`. Edit it to point to
-the latest release tarball:
+## macOS (`.dmg`)
 
-```bash
-# Download the manifest template
-wget https://raw.githubusercontent.com/yuri-schmaltz/rayforge/main/flatpak/org.rayforge.rayforge.yaml
+The `.dmg` is a universal binary (Intel + Apple Silicon).
 
-# Build
-flatpak-builder --repo=rayforge-repo build-dir org.rayforge.rayforge.yaml
+1. Open `pires-forge-macos.dmg`.
+2. Drag **Pires Forge.app** to **/Applications**.
+3. Open **Pires Forge** from Launchpad or `/Applications`.
 
-# Install
-flatpak install --user rayforge-repo org.rayforge.rayforge
+The first launch may require you to allow the app in
+**System Settings → Privacy & Security** because the binary is not
+notarized with an Apple Developer ID.
 
-# Run
-flatpak run org.rayforge.rayforge
-```
+To uninstall, drag `Pires Forge.app` from `/Applications` to the
+Trash.
 
-### 3. Publish to Flathub (optional)
+## Windows (`.exe`)
 
-If you want to publish the fork to Flathub:
+The `.exe` is an NSIS installer.
 
-1. Fork https://github.com/flathub/flathub
-2. Add a new app at `org.rayforge.rayforge-fork/` (or
-   similar)
-3. Use the manifest from step 2
-4. Open a PR to flathub/flathub
-5. Flathub reviewers will check the build, and if approved,
-   the fork becomes available via `flatpak install flathub
-   org.rayforge.rayforge-fork`
+1. Run `pires-forge-v1.0.0-installer.exe` (or whichever version you
+   downloaded).
+2. Accept the license and choose the install location.
+3. The Start Menu entry is under **Pires Forge**.
 
-See https://docs.flathub.org/docs/for-app-authors/ for the
-full Flathub submission guide.
+The installer puts files in `C:\Program Files\Pires Forge\` by
+default. To uninstall, use **Control Panel → Programs → Uninstall**.
 
-## AUR (Arch User Repository)
+## After installation
 
-The fork does not currently publish to the AUR. To package
-the fork for Arch:
+Once installed, see [BUILDING.md](BUILDING.md) if you want to
+build from source, or [SUPPORT.md](../SUPPORT.md) for
+troubleshooting.
 
-### 1. Get an AUR account
+## Source tarball
 
-Create an account at https://aur.archlinux.org and set up
-SSH keys per https://wiki.archlinux.org/title/AUR_submission_guidelines.
-
-### 2. Create a PKGBUILD
-
-A template PKGBUILD is provided at `aur/rayforge-fork/PKGBUILD`.
-The package name must be unique on the AUR; `rayforge` is
-already taken by upstream, so use `rayforge-fork` (or
-similar).
-
-```bash
-# Clone the AUR repo
-git clone ssh://aur@aur.archlinux.org/rayforge-fork.git
-cd rayforge-fork
-
-# Copy the template
-wget https://raw.githubusercontent.com/yuri-schmaltz/rayforge/main/aur/rayforge-fork/PKGBUILD
-wget https://raw.githubusercontent.com/yuri-schmaltz/rayforge/main/aur/rayforge-fork/rayforge-fork.install
-
-# Update the .SRCINFO
-makepkg --printsrcinfo > .SRCINFO
-
-# Test the build
-makepkg -si
-
-# Submit
-git add PKGBUILD rayforge-fork.install .SRCINFO
-git commit -m "Initial upload: rayforge-fork 1.9.0+resilience.5"
-git push
-```
-
-### 3. Update on new releases
-
-When a new release is tagged:
-
-```bash
-# Update the PKGBUILD version
-sed -i 's/^pkgver=.*/pkgver=1.9.0+resilience.6/' PKGBUILD
-# Update the checksums
-updpkgsums
-# Rebuild .SRCINFO
-makepkg --printsrcinfo > .SRCINFO
-# Commit
-git commit -am "upgpkg: rayforge-fork 1.9.0+resilience.6"
-git push
-```
-
-## NixOS
-
-The fork does not currently have a Nix package. To use it
-on NixOS, build from source (see below) or write a
-Nix derivation. A template derivation is provided at
-`nix/default.nix`.
-
-## Build from source
-
-Requires `pixi` (https://pixi.sh):
-
-```bash
-git clone https://github.com/yuri-schmaltz/rayforge
-cd rayforge
-pixi install
-pixi run -e dev rayforge
-```
-
-For a release-mode build (without the dev environment):
-
-```bash
-pixi run -e build compile-translations
-pixi run -e build build-pkg
-# The .deb is at dist/rayforge_*.deb
-```
-
-See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full
-development setup.
-
-## Roadmap
-
-The fork is working towards a more comprehensive
-distribution:
-
-- [x] `.deb` for Ubuntu 24.04
-- [x] `.exe` for Windows
-- [x] `.dmg` for macOS
-- [x] `.snap` build (manual upload to snap store)
-- [ ] Flatpak (template manifest only; no build)
-- [ ] AUR (template PKGBUILD only; no submission)
-- [ ] Nix (template derivation only; no submission)
-- [ ] Auto-update via the GitHub releases API (currently
-      manual download)
-
-## See also
-
-- [CODE_SIGNING.md](CODE_SIGNING.md) — for the maintainer
-  to acquire certs and sign the binaries
-- [SNAP_STORE.md](SNAP_STORE.md) — for publishing the
-  fork to the Snap Store
-- [DIAGNOSTICS.md](DIAGNOSTICS.md) — for getting a debug
-  bundle to file an issue
-- [SUPPORT.md](../SUPPORT.md) — for filing issues when
-  installation doesn't work
-- [CHANGELOG.md](../CHANGELOG.md) — for the latest release
-  notes
-"
+If you want to install from source, see [BUILDING.md](BUILDING.md)
+for build instructions. The project uses [pixi](https://pixi.sh)
+for reproducible development environments and is tested on Linux,
+macOS, and Windows.

@@ -167,7 +167,7 @@ class TestParseArgs:
         args = release_notes.parse_args()
         assert args.from_tag == "1.0.0"
         assert args.to_tag == "HEAD"
-        assert args.repo == "yuri-schmaltz/rayforge"
+        assert args.repo == "yuri-schmaltz/pires-forge"
         assert args.token == "test"
         assert args.out == "-"
 
