@@ -2210,9 +2210,9 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
-        self._update_status_message(tasks)
+        self._update_status_message(tasks, progress)
 
-    def _update_status_message(self, tasks):
+    def _update_status_message(self, tasks, progress):
         if not tasks:
             self._status_message_label.set_visible(False)
             self.status_bar.set_mode("designing")
