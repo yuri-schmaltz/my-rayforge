@@ -1,0 +1,143 @@
+"""Splash screen shown during app startup.
+
+Renders data/splash/splash.svg (the source-of-truth vector) in a
+borderless Gtk.Window centered on the primary monitor. The window
+auto-sizes to the SVG's intrinsic 800x500 viewBox.
+
+This is a deliberately simple, dependency-free implementation:
+- No Adw.SplashScreen, no Cairo, no GdkPixbuf manual rasterization.
+- A Gtk.Picture widget loads the SVG directly (librsvg handles
+  rasterization at any size).
+- The window is non-interactive (no decorations, no taskbar entry)
+  so users can't accidentally interact with it before the main
+  window is ready.
+
+Lifecycle:
+    splash = SplashScreen()
+    splash.show()
+    # ... heavy work (load main window, restore last project) ...
+    splash.close()
+
+The splash is best-effort: if the SVG cannot be loaded (e.g.
+packaging issue, missing librsvg), the class falls back to a
+plain black window so startup never blocks on cosmetic assets.
+"""
+from __future__ import annotations
+
+import logging
+import sys
+from pathlib import Path
+from typing import Optional
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gdk, GLib, Gtk  # noqa: E402
+
+logger = logging.getLogger(__name__)
+
+
+# SVG intrinsic size matches the viewBox declared in the source file
+# (data/splash/splash.svg). Kept in sync manually.
+_SPLASH_WIDTH = 800
+_SPLASH_HEIGHT = 500
+
+
+def _resolve_splash_svg() -> Optional[Path]:
+    """Locate splash.svg, respecting PyInstaller bundle layout.
+
+    In dev: `<repo_root>/data/splash/splash.svg`
+    In bundle: `<sys._MEIPASS>/data/splash/splash.svg`
+    """
+    base_dir = (
+        Path(sys._MEIPASS)  # type: ignore[attr-defined]
+        if hasattr(sys, "_MEIPASS")
+        else Path(__file__).resolve().parent.parent.parent
+    )
+    candidate = base_dir / "data" / "splash" / "splash.svg"
+    return candidate if candidate.is_file() else None
+
+
+class SplashScreen(Gtk.Window):
+    """A minimal, borderless, non-interactive splash window.
+
+    Public surface:
+        SplashScreen()  -> show()  -> ... -> close()
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.set_title("Pires Forge")
+        self.set_resizable(False)
+        self.set_decorated(False)
+        # Skip taskbar / pager so the splash doesn't crowd the dock.
+        self.set_skip_taskbar_hint(True)
+        self.set_skip_pager_hint(True)
+        # No input focus while loading.
+        self.set_can_focus(False)
+        self.set_focus_on_map(False)
+        self.set_modal(False)
+        # Default size from the SVG viewBox; if loading fails we keep
+        # this geometry as a black box fallback.
+        self.set_default_size(_SPLASH_WIDTH, _SPLASH_HEIGHT)
+
+        # Solid background so the SVG blends on every WM theme.
+        # (Libadwaita dark backgrounds in compositor preview modes can
+        # otherwise leak through transparent SVG corners.)
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_string(
+            "window.splash-window { background-color: #0a0a0a; }"
+        )
+        self.add_css_class("splash-window")
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        # Content: a Gtk.Picture loading the SVG, or a plain Box on
+        # failure. Using keep-aspect-ratio + contain so the image
+        # scales gracefully on HiDPI displays.
+        picture = Gtk.Picture()
+        picture.set_can_shrink(False)
+        picture.set_keep_aspect_ratio(True)
+        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        picture.set_size_request(_SPLASH_WIDTH, _SPLASH_HEIGHT)
+
+        svg_path = _resolve_splash_svg()
+        if svg_path is not None:
+            try:
+                picture.set_filename(str(svg_path))
+            except GLib.Error as exc:
+                logger.warning("Splash SVG failed to load: %s", exc)
+        else:
+            logger.warning(
+                "splash.svg not found at expected path; showing fallback."
+            )
+
+        self.set_child(picture)
+
+        # Center on the primary monitor once the window is realized.
+        # We can't query monitor geometry in __init__ — it requires
+        # the display to be associated with a real screen, which
+        # only happens after the window is added to a toplevel.
+        self.connect("realize", self._center_on_primary_monitor)
+
+    def _center_on_primary_monitor(self, *_args) -> None:
+        """Place the splash on the center of the primary monitor."""
+        display = Gdk.Display.get_default()
+        if display is None:
+            return
+        monitor = display.get_primary_monitor()
+        if monitor is None:
+            monitors = display.get_monitors()
+            if monitors.get_n_items() > 0:
+                monitor = monitors.get_item(0)
+        if monitor is None:
+            return
+        geometry = monitor.get_geometry()
+        x = geometry.x + (geometry.width - _SPLASH_WIDTH) // 2
+        y = geometry.y + (geometry.height - _SPLASH_HEIGHT) // 2
+        # Clamp to >= 0 in case the WM reports negative coordinates
+        # for multi-monitor setups with a left-of-primary layout.
+        self.move(max(0, x), max(0, y))
