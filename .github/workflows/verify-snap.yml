@@ -102,19 +102,19 @@ jobs:
           sudo snap install "${{ steps.build.outputs.snap }}" --dangerous
           echo "✅ Snap installed"
 
-      - name: Smoke test: --help
+      - name: "Smoke test: --help"
         if: steps.build.outcome == 'success'
         run: |
           rayforge --help
           echo "✅ --help passed"
 
-      - name: Smoke test: --version
+      - name: "Smoke test: --version"
         if: steps.build.outcome == 'success'
         run: |
           rayforge --version
           echo "✅ --version passed"
 
-      - name: Smoke test: launch headless
+      - name: "Smoke test: launch headless"
         if: steps.build.outcome == 'success'
         run: |
           # Start the snap in headless mode (no display) and
