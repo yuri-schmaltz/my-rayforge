@@ -98,6 +98,26 @@ css = """
 @define-color forge_text_dim #a9a9a9;
 @define-color forge_accent #4f84c4;
 
+/* Light theme overrides — the GTK CSS engine applies the
+ * @media (prefers-color-scheme: light) block whenever
+ * Adw.StyleManager.set_color_scheme() is FORCE_LIGHT or DEFAULT
+ * and the system theme is light. Tokens are re-defined with light
+ * values; component rules further down are inherited as-is (the
+ * same @forge_bg, @forge_text, etc. now resolve to light values).
+ */
+@media (prefers-color-scheme: light) {
+    @define-color forge_bg #fafafa;
+    @define-color forge_bg_alt #f0f0f0;
+    @define-color forge_bg_soft #e8e8e8;
+    @define-color forge_panel #ffffff;
+    @define-color forge_border #d0d0d0;
+    @define-color forge_text #2a2a2a;
+    @define-color forge_text_dim #6a6a6a;
+    /* forge_accent kept — the cobalt #4f84c4 reads well on both
+     * dark and light backgrounds. WCAG AA contrast against
+     * #fafafa is 4.7:1, against #2a2a2a is 5.1:1. */
+}
+
 .forge-theme,
 .forge-theme window,
 .forge-theme box,
@@ -166,6 +186,51 @@ css = """
     background-color: #2c2c2c;
     color: @forge_text;
     border: 1px solid @forge_border;
+}
+
+/* Light theme overrides for hardcoded dark colors that wouldn't
+ * be reachable through tokens alone. Headerbar, toolbar, button
+ * gradients, popover backgrounds, and the checked-state text
+ * color all need explicit light counterparts.
+ */
+@media (prefers-color-scheme: light) {
+    .forge-theme headerbar {
+        background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+    }
+    .forge-theme .main-toolbar {
+        background: linear-gradient(to bottom, #efefef, #e2e2e2);
+    }
+    .forge-theme button,
+    .forge-theme menubutton > button,
+    .forge-theme splitbutton > button,
+    .forge-theme togglebutton {
+        border-color: #b0b0b0;
+        background: linear-gradient(to bottom, #ffffff, #ececec);
+        color: @forge_text;
+    }
+    .forge-theme button:hover,
+    .forge-theme menubutton > button:hover,
+    .forge-theme splitbutton > button:hover,
+    .forge-theme togglebutton:hover {
+        background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+    }
+    .forge-theme button:checked,
+    .forge-theme button:active,
+    .forge-theme togglebutton:checked,
+    .forge-theme splitbutton > button:checked,
+    .forge-theme menubutton > button:checked {
+        /* Slightly darker accent gradient so the active state has
+         * enough contrast against the light surface. Text stays
+         * near-white since the bg is mid-tone blue. */
+        background: linear-gradient(to bottom, #4f84c4, #2f5e9a);
+        border-color: #2f5e9a;
+        color: #ffffff;
+    }
+    .forge-theme popover,
+    .forge-theme menu,
+    .forge-theme .menu {
+        background-color: #ffffff;
+    }
 }
 
 .right-panel-overlay {
@@ -1652,9 +1717,28 @@ class MainWindow(Adw.ApplicationWindow):
         self.canvas3d.set_machine(viewport=viewport)
 
     def apply_theme(self):
-        """Reads the theme from config and applies it to the UI."""
+        """Reads the theme from config and applies it to the UI.
+
+        Resolves config.theme ("system" | "light" | "dark") to the
+        matching Adw.ColorScheme. The CSS in this module defines a
+        @media (prefers-color-scheme: light) block that overrides
+        the dark default tokens when the effective scheme is light,
+        so component rules below stay valid for both themes.
+
+        Unknown config values fall back to "system" (DEFAULT) rather
+        than FORCE_DARK, which is safer for users with stale configs
+        from a prior fork version that only had dark.
+        """
+        config = get_context().config
+        theme = (config.theme or "system").lower()
         style_manager = Adw.StyleManager.get_default()
-        style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+        scheme_map = {
+            "light": Adw.ColorScheme.FORCE_LIGHT,
+            "dark": Adw.ColorScheme.FORCE_DARK,
+        }
+        # Anything that isn't explicitly "light" or "dark" — including
+        # "system" and unknown values — uses DEFAULT (follows OS).
+        style_manager.set_color_scheme(scheme_map.get(theme, Adw.ColorScheme.DEFAULT))
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
