@@ -10,6 +10,13 @@ on:
     branches:
       - "**"
 
+# The SCA + perf-import jobs only check out the repo and upload
+# reports. No GITHUB_TOKEN write needed, so `contents: read` is
+# enough. Closes CodeQL alert "Workflow does not contain
+# permissions".
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
