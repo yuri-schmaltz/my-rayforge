@@ -623,6 +623,13 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # First-run walkthrough. Shown only if config.walkthrough_seen
+        # is False. The dialog persists a "seen" flag to config on
+        # any of: skip, done, or close, so it only runs once.
+        self._walkthrough: Optional[Adw.Dialog] = None
+        if not get_context().config.walkthrough_seen:
+            GLib.idle_add(self._show_walkthrough)
+
         # Command palette (Ctrl+Shift+P). Built lazily on first
         # open so the action map is fully populated by then.
         self._command_palette_window: Optional[Gtk.Window] = None
@@ -1862,6 +1869,34 @@ class MainWindow(Adw.ApplicationWindow):
             # Keep a reference to the palette so it isn't GC'd.
             window._palette = palette
         self._command_palette_window.present()
+
+    def _show_walkthrough(self) -> bool:
+        """Build and present the first-run walkthrough dialog.
+
+        Persists a 'seen' flag in config as soon as the dialog
+        is constructed, so even an early crash (e.g. user force-
+        quits during the dialog) doesn't make the dialog
+        re-appear next launch. The flag is also re-set on
+        Skip / Done, which is the canonical 'I read this' signal.
+        """
+        from .walkthrough import WalkthroughDialog
+
+        if self._walkthrough is not None:
+            self._walkthrough.present()
+            return False
+        dialog = WalkthroughDialog(transient_for=self)
+        dialog.set_can_close(False)  # user must click Skip or Done
+        # Persist 'seen' on any dismissal: Skip, Done, or
+        # close-attempt. We attach a single handler that always
+        # marks the flag, so even an unexpected close path
+        # (Esc on the header, etc.) does the right thing.
+        def _on_close(_dlg):
+            get_context().config.set_walkthrough_seen(True)
+            self._walkthrough = None
+        dialog.connect("closed", _on_close)
+        self._walkthrough = dialog
+        dialog.present()
+        return False  # remove the idle source
 
     def _on_unit_changed(self, unit: str) -> None:
         """Persist the display unit when the user changes it
