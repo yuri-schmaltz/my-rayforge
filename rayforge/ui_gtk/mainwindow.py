@@ -269,6 +269,20 @@ class MainWindow(Adw.ApplicationWindow):
 
         vbox.append(self._status_overlay)
 
+        # Coordinate bar: live X/Y/L/W/H readout with unit
+        # selector. Sits between the header and the canvas so
+        # the user always has the cursor position and selection
+        # dimensions visible without needing to open any panel.
+        from .coordinate_bar import CoordinateBar
+
+        self.coordinate_bar = CoordinateBar()
+        vbox.append(self.coordinate_bar)
+        # Connect unit changes so the canvas can re-render
+        # coordinates in the new unit.
+        self.coordinate_bar.connect_unit_changed(self._on_unit_changed)
+        # Initial unit comes from config.
+        self._on_unit_changed_apply_initial()
+
         # Persistent status bar at the bottom of the window. Sits
         # below the bottom panel (which lives inside _status_overlay
         # / vertical_paned). The status bar gives the user a single
@@ -1795,6 +1809,21 @@ class MainWindow(Adw.ApplicationWindow):
         show_all = mode == "all"
         if hasattr(self, "toolbar"):
             self.toolbar.apply_toolbar_mode(show_all)
+
+    def _on_unit_changed(self, unit: str) -> None:
+        """Persist the display unit when the user changes it
+        in the coordinate bar."""
+        if unit in ("mm", "in"):
+            get_context().config.set_unit_preference("length", unit)
+
+    def _on_unit_changed_apply_initial(self) -> None:
+        """Apply the unit saved in config on app startup so the
+        coordinate bar shows the user's preferred unit from
+        the first frame."""
+        unit = get_context().config.unit_preferences.get("length", "mm")
+        if unit not in ("mm", "in"):
+            unit = "mm"
+        self.coordinate_bar.set_unit(unit)
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()

@@ -444,3 +444,21 @@ window.splash-window {
     font-family: monospace;
     font-variant-numeric: tabular-nums;
 }
+
+/* ---- Coordinate bar (between header and canvas) ----
+ *
+ * Live readout of cursor position and selection dimensions.
+ * Monospace + tabular numerals so the digits don't dance when
+ * the cursor moves. The unit selector lives at the right end.
+ */
+.forge-coordinate-bar {
+    background-color: alpha(@forge_panel, 0.85);
+    border-bottom: 1px solid @forge_border;
+    padding: 3px 8px;
+    min-height: 24px;
+}
+.forge-coord-mono {
+    font-family: monospace;
+    font-variant-numeric: tabular-nums;
+    color: @forge_text;
+}
