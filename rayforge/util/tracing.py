@@ -64,6 +64,12 @@ class _Span:
         self.attrs: dict = {}
 
 
+# Event tuple: (name, start_ns, end_ns, attrs).
+# For instant events (mark()), start_ns == end_ns and the
+# exporter renders them as "i" (instant) events.
+Event = Tuple[str, int, int, dict]
+
+
 class Tracer:
     """In-process event recorder.
 
@@ -73,7 +79,7 @@ class Tracer:
     """
 
     def __init__(self) -> None:
-        self._events: List[Tuple[str, int, dict]] = []
+        self._events: List[Event] = []
         self._current: Optional[_Span] = None
         self._enabled = bool(os.environ.get("RAYFORGE_TRACE"))
 
@@ -112,7 +118,7 @@ class Tracer:
         finally:
             sp.end_ns = time.perf_counter_ns()
             self._events.append(
-                (sp.name, sp.end_ns - sp.start_ns, sp.attrs)
+                (sp.name, sp.start_ns, sp.end_ns, dict(sp.attrs))
             )
             self._current = sp.parent
 
@@ -126,9 +132,8 @@ class Tracer:
         """
         if not self._enabled:
             return
-        # Zero-duration events appear in the report but
-        # naturally sort to the bottom (since they're zero).
-        self._events.append((name, 0, attrs))
+        now = time.perf_counter_ns()
+        self._events.append((name, now, now, dict(attrs)))
 
     def clear(self) -> None:
         """Drop all recorded events. Useful between benchmark
@@ -149,11 +154,11 @@ class Tracer:
             return "(no trace events recorded)"
         # Aggregate by name
         agg: dict = {}
-        for name, dur, attrs in self._events:
+        for name, start_ns, end_ns, attrs in self._events:
             if name not in agg:
                 agg[name] = [0, 0, attrs]
             agg[name][0] += 1
-            agg[name][1] += dur
+            agg[name][1] += end_ns - start_ns
         # Sort by total time, descending
         rows = sorted(agg.items(), key=lambda kv: -kv[1][1])
         lines = ["trace report (top {}):".format(min(top_n, len(rows)))]
@@ -168,6 +173,122 @@ class Tracer:
                 f"{_format_ns(total):>12} {_format_ns(avg):>12}"
             )
         return "\n".join(lines)
+
+    def export_chrome(self, path: str, process_name: str = "pires-forge") -> None:
+        """Export events in Chrome Trace Event Format.
+
+        The output JSON can be opened in `chrome://tracing`
+        (Chrome DevTools), Perfetto UI
+        (https://ui.perfetto.dev), or any other tool that
+        understands the format. The result is a flame
+        graph: each span is a horizontal bar whose width
+        is its duration, nested according to start/end
+        ordering.
+
+        Format reference:
+        https://docs.google.com/document/d/1CvAClvFfyA5R-PhYUmn5OOQtYMH4h6I0nSsKchNAySU
+
+        The output is:
+          {
+            "traceEvents": [
+              {"name": "span_name", "ph": "X", "ts": 0, "dur": 1234,
+               "pid": 0, "tid": 0, "args": {...}},
+              ...
+            ],
+            "displayTimeUnit": "ms"
+          }
+
+        The `ph` field is "X" for a complete event (with
+        start + duration), "i" for an instant event (mark()).
+        `ts` is in microseconds (Chrome format); we convert
+        from our nanoseconds.
+
+        Nesting recovery: events are sorted by start_ns.
+        We assign each event a thread id (tid) based on
+        depth-in-stack: a span that starts while another is
+        in flight gets a higher tid. This produces a
+        readable flame graph on the visualizer side. For
+        true per-thread tracing, plug a real tracer
+        (perfetto ftrace, eBPF, OTel) — this is a heuristic.
+        """
+        if not self._events:
+            with open(path, "w") as f:
+                f.write('{"traceEvents": [], "displayTimeUnit": "ms"}')
+            return
+
+        # Sort by start time. The original insertion order
+        # is reverse-close (innermost closes first, gets
+        # appended first), which is wrong for the timeline
+        # view. Re-sort by start_ns to recover the true order.
+        sorted_events = sorted(self._events, key=lambda e: e[1])
+
+        # Compute a relative time origin (the first event's
+        # start time becomes 0). This keeps ts values small
+        # (Chrome's UI displays microseconds).
+        t0 = sorted_events[0][1]
+
+        # Walk events in time order. Track an active stack
+        # of (end_ns, tid) so we can assign a new tid to
+        # any event that starts while an outer one is in
+        # flight.
+        events_out = []
+        active: List = []  # stack of (end_ns, tid)
+        next_tid = 0
+        for name, start_ns, end_ns, attrs in sorted_events:
+            # Pop finished events from the stack
+            while active and active[-1][0] <= start_ns:
+                active.pop()
+
+            # Pick a tid: the next unused below the stack
+            # depth, or a fresh one if all in use.
+            depth = len(active)
+            used_tids = {t for _, t in active}
+            tid = None
+            for candidate in range(depth + 1):
+                if candidate not in used_tids:
+                    tid = candidate
+                    break
+            if tid is None:
+                tid = next_tid
+                next_tid += 1
+
+            ts_us = (start_ns - t0) // 1000
+            dur_ns = end_ns - start_ns
+            if dur_ns == 0:
+                # Instant event (mark())
+                events_out.append({
+                    "name": name,
+                    "ph": "i",
+                    "ts": ts_us,
+                    "pid": 0,
+                    "tid": tid,
+                    "s": "g",
+                })
+            else:
+                dur_us = max(dur_ns // 1000, 1)
+                events_out.append({
+                    "name": name,
+                    "ph": "X",
+                    "ts": ts_us,
+                    "dur": dur_us,
+                    "pid": 0,
+                    "tid": tid,
+                    "args": dict(attrs) if attrs else {},
+                })
+            active.append((end_ns, tid))
+
+        import json
+
+        with open(path, "w") as f:
+            json.dump(
+                {
+                    "traceEvents": events_out,
+                    "displayTimeUnit": "ms",
+                    "process_name": process_name,
+                },
+                f,
+                indent=2,
+            )
 
 
 def _format_ns(ns: int) -> str:
