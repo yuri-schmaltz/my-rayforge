@@ -127,6 +127,20 @@ See [`docs/BUILDING.md`](docs/BUILDING.md) for build instructions. The
 project uses [pixi](https://pixi.sh) for reproducible development
 environments and is tested on Linux, macOS, and Windows.
 
+## Interface
+
+- **Light and dark themes** — pick in `Preferences → General →
+  Appearance → Theme`. The selection persists across restarts.
+- **Responsive layout** — the right panel (workflow + item
+  properties) auto-hides on windows narrower than 900px. Click
+  the info button in the header bar to bring it back.
+- **Splash screen** — short branded splash on launch.
+- **Accessibility** — keyboard-navigable, screen-reader friendly
+  (icon-only buttons announce from their tooltips), respects
+  the system "reduce motion" setting.
+- **Design system** — see [`docs/DESIGN_SYSTEM.md`](docs/DESIGN_SYSTEM.md)
+  for tokens, components, and the rules for extending the UI.
+
 ## Support
 
 For troubleshooting, common issues, and how to enable debug logging,

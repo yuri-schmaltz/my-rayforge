@@ -44,6 +44,13 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
     THEME_MAP = ["system", "light", "dark"]
     THEME_LABELS = [_("System"), _("Light"), _("Dark")]
 
+    # Map for UI density. "compact" tightens row heights and
+    # paddings for users who want more content on screen;
+    # "comfortable" is the default and matches the visual rhythm
+    # the rest of the design system assumes (see DESIGN_SYSTEM.md).
+    UI_DENSITY_MAP = ["comfortable", "compact"]
+    UI_DENSITY_LABELS = [_("Comfortable"), _("Compact")]
+
     # Map for startup behavior options
     STARTUP_BEHAVIOR_MAP = [
         StartupBehavior.NONE.value,
@@ -98,6 +105,27 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
 
         self.theme_row.connect("notify::selected", self.on_theme_changed)
         app_settings_group.add(self.theme_row)
+
+        # UI density picker (compact / comfortable).
+        self.ui_density_row = Adw.ComboRow(
+            model=Gtk.StringList.new(self.UI_DENSITY_LABELS)
+        )
+        self.ui_density_row.set_title(_("Interface density"))
+        self.ui_density_row.set_subtitle(
+            _(
+                "Compact reduces row heights and paddings for "
+                "more content on screen. Comfortable is the default."
+            )
+        )
+        try:
+            density_index = self.UI_DENSITY_MAP.index(config.ui_density)
+        except ValueError:
+            density_index = 0
+        self.ui_density_row.set_selected(density_index)
+        self.ui_density_row.connect(
+            "notify::selected", self.on_ui_density_changed
+        )
+        app_settings_group.add(self.ui_density_row)
 
         # Language selector
         self.language_row = Adw.ComboRow(
@@ -367,6 +395,68 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         selected_index = combo_row.get_selected()
         theme_string = self.THEME_MAP[selected_index]
         get_context().config.set_theme(theme_string)
+
+        # Visual confirmation: surface a transient toast on the main
+        # window so the user sees the theme swap (otherwise the only
+        # feedback is the panel re-coloring, which is easy to miss
+        # if focus is in the preferences dialog). The toast is best
+        # effort — if we can't find the MainWindow (e.g. running
+        # headless or in a test harness) we silently skip it.
+        try:
+            main_window = combo_row.get_root()
+            # Walk the ancestor chain looking for the MainWindow.
+            from .mainwindow import MainWindow
+            from gi.repository import Gtk
+
+            widget = combo_row
+            while widget is not None and not isinstance(
+                widget, MainWindow
+            ):
+                widget = widget.get_parent()
+            if widget is not None:
+                label = self.THEME_LABELS[selected_index]
+                toast = Adw.Toast.new(_("Theme set to {label}").format(label=label))
+                toast.set_timeout(2)
+                widget._add_toast(toast)
+        except Exception:
+            logger.debug(
+                "Could not surface theme-change toast", exc_info=True
+            )
+
+    def on_ui_density_changed(self, combo_row, _):
+        """Called when the user picks a new interface density.
+
+        Saves the preference and surfaces a toast so the user
+        sees the change applied (the only other feedback is the
+        paddings tightening, which is easy to miss when focus
+        is in the preferences dialog).
+        """
+        selected_index = combo_row.get_selected()
+        if selected_index < 0:
+            return
+        density_string = self.UI_DENSITY_MAP[selected_index]
+        get_context().config.set_ui_density(density_string)
+
+        # Visual confirmation: same pattern as on_theme_changed.
+        try:
+            from .mainwindow import MainWindow
+
+            widget = combo_row
+            while widget is not None and not isinstance(
+                widget, MainWindow
+            ):
+                widget = widget.get_parent()
+            if widget is not None:
+                label = self.UI_DENSITY_LABELS[selected_index]
+                toast = Adw.Toast.new(
+                    _("Interface density set to {label}").format(label=label)
+                )
+                toast.set_timeout(2)
+                widget._add_toast(toast)
+        except Exception:
+            logger.debug(
+                "Could not surface density-change toast", exc_info=True
+            )
 
     def on_language_changed(self, combo_row, _param):
         """Called when the user selects a new language.

@@ -6,6 +6,7 @@ from gi.repository import Gdk, Gtk
 
 from .action_registry import action_registry
 from .icons import get_icon
+from .shared.a11y import propagate_tooltip_to_accessible_label
 from .shared.splitbutton import SplitMenuButton
 from .shared.undo_button import RedoButton, UndoButton
 from .sim3d import initialized as canvas3d_initialized
@@ -209,6 +210,23 @@ class MainToolbar(Gtk.Box):
 
         # Connect to action registry changes for dynamic toolbar updates
         action_registry.changed.connect(self._on_action_registry_changed)
+
+        # Accessibility: icon-only buttons (which make up most of the
+        # toolbar) have a tooltip but no visible text. GTK doesn't
+        # automatically copy the tooltip to the AT-SPI accessible
+        # label, so screen readers announce them as 'button' with no
+        # name. Walk every descendant and propagate the tooltip into
+        # the accessible label. No-op for widgets that have no
+        # tooltip set.
+        self._apply_accessible_labels_recursive(self)
+
+    def _apply_accessible_labels_recursive(self, widget):
+        """Set accessible label from tooltip for every descendant."""
+        propagate_tooltip_to_accessible_label(widget)
+        child = widget.get_first_child()
+        while child is not None:
+            self._apply_accessible_labels_recursive(child)
+            child = child.get_next_sibling()
 
     def _on_recalculate_pressed(self, gesture, n_press, x, y):
         self._recalculate_force = bool(

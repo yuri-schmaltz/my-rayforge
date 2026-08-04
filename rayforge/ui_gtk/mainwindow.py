@@ -73,145 +73,74 @@ from .view_mode_cmd import ViewModeCmd
 logger = logging.getLogger(__name__)
 
 
-css = """
-/* Forge design tokens — keep in sync with rayforge/resources/styles/.
- * Tokens use the `forge_` prefix to match the app's "spark burst"
- * brand identity (laser strike on material).
- *
- * NOTE: This CSS lives inline in mainwindow.py for now. A future PR
- * will extract it to rayforge/resources/styles/forge.css and load it
- * via Gtk.CssProvider.load_from_resource() so the styles can be
- * shared by dialogs, addons, and the light theme variant. Renaming
- * is intentionally in a separate commit so each step is reviewable.
- */
-@define-color forge_bg #2b2b2b;
-@define-color forge_bg_alt #313131;
-@define-color forge_bg_soft #3a3a3a;
-@define-color forge_panel #252525;
-@define-color forge_border #4a4a4a;
-@define-color forge_text #d6d6d6;
-@define-color forge_text_dim #a9a9a9;
-@define-color forge_accent #4f84c4;
+def _resolve_forge_css_path():
+    """Locate rayforge/resources/styles/forge.css, bundle-aware.
 
-.forge-theme,
-.forge-theme window,
-.forge-theme box,
-.forge-theme viewport,
-.forge-theme scrolledwindow,
-.forge-theme stack,
-.forge-theme paned {
-    background-color: @forge_bg;
-    color: @forge_text;
-}
+    Dev:    <repo>/rayforge/resources/styles/forge.css
+    Bundle: <sys._MEIPASS>/rayforge/resources/styles/forge.css
+    Returns the Path or None if not found.
 
-.forge-theme headerbar {
-    min-height: 34px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    background: linear-gradient(to bottom, #3a3a3a, #323232);
-    border-bottom: 1px solid @forge_border;
-    color: @forge_text;
-}
+    Thin wrapper over rayforge.shared.util.resources.resource_path
+    so the bundle-aware resolution pattern lives in exactly one
+    place (see also splash._resolve_splash_svg).
+    """
+    from ..shared.util.resources import resource_path
 
-.forge-theme .main-toolbar {
-    min-height: 38px;
-    margin: 0;
-    padding: 4px 8px;
-    background: linear-gradient(to bottom, #3b3b3b, #303030);
-    border-bottom: 1px solid @forge_border;
-}
+    return resource_path(
+        "rayforge/resources/styles/forge.css", anchor_file=__file__
+    )
 
-.forge-theme button,
-.forge-theme menubutton > button,
-.forge-theme splitbutton > button,
-.forge-theme togglebutton {
-    border-radius: 3px;
-    border: 1px solid #5a5a5a;
-    background: linear-gradient(to bottom, #595959, #474747);
-    color: @forge_text;
-    box-shadow: none;
-}
 
-.forge-theme button:hover,
-.forge-theme menubutton > button:hover,
-.forge-theme splitbutton > button:hover,
-.forge-theme togglebutton:hover {
-    background: linear-gradient(to bottom, #666666, #535353);
-}
+# Module-level state: track whether the CssProvider for forge.css
+# has been installed for the current display. CssProvider installs
+# are display-global (they affect every widget on the GdkDisplay),
+# so a second call from MainWindow.__init__ is a no-op.
+_FORGE_CSS_INSTALLED = False
 
-.forge-theme button:checked,
-.forge-theme button:active,
-.forge-theme togglebutton:checked,
-.forge-theme splitbutton > button:checked,
-.forge-theme menubutton > button:checked {
-    background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
-    border-color: #78a3d4;
-    color: #f2f6fb;
-}
 
-.forge-theme separator {
-    background-color: @forge_border;
-    min-width: 1px;
-    min-height: 1px;
-}
+def install_forge_css_once():
+    """Install the forge.css stylesheet for the current display.
 
-.forge-theme popover,
-.forge-theme menu,
-.forge-theme .menu {
-    background-color: #2c2c2c;
-    color: @forge_text;
-    border: 1px solid @forge_border;
-}
+    Idempotent: subsequent calls are a no-op. Safe to call from
+    anywhere — App.do_activate calls it BEFORE showing the splash
+    so the splash window inherits the .splash-window rule
+    declared in forge.css, and MainWindow.__init__ calls it again
+    as a defensive measure (which becomes a no-op on the second
+    call).
 
-.right-panel-overlay {
-    background-color: alpha(@forge_panel, 0.94);
-    border-radius: 4px;
-    border: 1px solid @forge_border;
-    margin: 6px 12px 12px 6px;
-    box-shadow: 0 2px 12px alpha(black, 0.35);
-}
-
-.status-message-overlay {
-    background-color: #202020;
-    border: 1px solid @forge_border;
-    border-radius: 3px;
-    color: @forge_text;
-    padding: 4px 10px;
-    box-shadow: 0 2px 6px alpha(black, 0.25);
-}
-
-.in-header-menubar {
-    margin-left: 6px;
-    box-shadow: none;
-}
-
-.in-header-menubar item {
-    border-radius: 3px;
-    color: @forge_text;
-    padding: 6px 10px;
-}
-
-.in-header-menubar item:hover {
-    background: alpha(white, 0.08);
-}
-
-.menu separator {
-    border-top: 1px solid @forge_border;
-    margin-top: 5px;
-    margin-bottom: 5px;
-}
-
-.warning-label {
-    color: @warning_color;
-    font-weight: bold;
-}
-
-dropdown.machine-dropdown button {
-    min-height: 28px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-}
-"""
+    Without this, the splash shows for ~100-500ms with the
+    compositor's default background, which on a light WM theme
+    leaks white through the SVG's transparent corners.
+    """
+    global _FORGE_CSS_INSTALLED
+    if _FORGE_CSS_INSTALLED:
+        return
+    display = Gdk.Display.get_default()
+    if display is None:
+        # No display (e.g. running headless under a test harness).
+        # Nothing to install; the widgets will use Gtk defaults.
+        return
+    css_path = _resolve_forge_css_path()
+    provider = Gtk.CssProvider()
+    if css_path is not None:
+        try:
+            provider.load_from_path(str(css_path))
+        except GLib.Error as exc:
+            logger.warning(
+                "Failed to load forge.css from %s: %s; "
+                "falling back to no stylesheet",
+                css_path,
+                exc,
+            )
+    else:
+        logger.warning(
+            "forge.css not found at expected path; "
+            "the main window will render with GTK defaults."
+        )
+    Gtk.StyleContext.add_provider_for_display(
+        display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+    _FORGE_CSS_INSTALLED = True
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -298,6 +227,26 @@ class MainWindow(Adw.ApplicationWindow):
         self.machine_selector = MachineDropdown()
         self.header_bar.pack_end(self.machine_selector)
 
+        # Right-panel toggle (workflow + item properties). The button
+        # is an explicit affordance in addition to the Adw.Breakpoint
+        # auto-hide: on wide windows the panel floats over the canvas
+        # (default), on narrow windows the breakpoint hides it and
+        # the user re-enables it from this button. The active state
+        # stays in sync with the panel's visibility.
+        from .icons import get_icon
+
+        self._right_panel_toggle = Gtk.ToggleButton(
+            child=get_icon("info-symbolic"),
+            tooltip_text=_("Toggle right panel"),
+            action_name="win.toggle-right-panel",
+        )
+        # Initialize active state from the saved config so the toggle
+        # reflects reality after a restart.
+        self._right_panel_toggle.set_active(
+            get_context().config.right_panel_visible
+        )
+        self.header_bar.pack_end(self._right_panel_toggle)
+
         # Create a vertical paned for main content and bottom control panel
         self.vertical_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.vertical_paned.set_resize_start_child(True)
@@ -342,14 +291,15 @@ class MainWindow(Adw.ApplicationWindow):
         self._canvas_overlay.set_vexpand(True)
         main_ui_box.append(self._canvas_overlay)
 
-        # Apply styles
-        display = Gdk.Display.get_default()
-        if display:
-            provider = Gtk.CssProvider()
-            provider.load_from_string(css)
-            Gtk.StyleContext.add_provider_for_display(
-                display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            )
+        # Apply styles — load the forge.css stylesheet from disk so
+        # the source of truth lives next to other resources instead
+        # of being stringified in a Python file. install_forge_css_once
+        # is idempotent: App.do_activate already called it before
+        # showing the splash, so this is a no-op the second time
+        # around. Kept here as a defensive fallback for any code
+        # path that constructs a MainWindow without going through
+        # App.do_activate (tests, addons).
+        install_forge_css_once()
 
         # Determine initial machine dimensions for canvases.
         context = get_context()
@@ -612,6 +562,67 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Trigger startup tasks when window is shown
         self.connect("map", self._trigger_startup_tasks)
+
+        # Accessibility: respect the system 'reduce motion' preference.
+        # Installs a one-time listener that re-applies the motion
+        # preference across the widget tree whenever the system
+        # setting flips. Initial pass runs at install time so
+        # existing stacks/revealers are correct before the first
+        # transition fires.
+        from .shared.a11y import install_motion_preference_listener
+
+        install_motion_preference_listener(self)
+
+        # Responsive layout: when the window drops below 900px wide,
+        # the floating right panel (workflow + item properties) starts
+        # occluding the canvas. Auto-hide it in that case and show a
+        # one-time toast so the user knows where the toggle is. On
+        # wide windows we leave the panel state alone — the user's
+        # saved preference is respected.
+        self._narrow_mode = False
+        try:
+            narrow_bp = Adw.Breakpoint.new(
+                Adw.BreakpointCondition.parse("max-width: 900px")
+            )
+            narrow_bp.connect("apply", self._on_narrow_breakpoint_apply)
+            narrow_bp.connect("unapply", self._on_narrow_breakpoint_unapply)
+            self.add_breakpoint(narrow_bp)
+        except Exception as exc:
+            logger.warning(
+                "Could not install narrow-mode breakpoint: %s", exc
+            )
+
+    def _on_narrow_breakpoint_apply(self, _bp):
+        """Window dropped below 900px: hide the floating right panel.
+
+        We remember the prior visible state so unapply can restore it
+        if the user didn't explicitly toggle the panel in the
+        meantime. This is best-effort: if the user clicks the toggle
+        in narrow mode and then resizes back to wide, the new state
+        wins.
+        """
+        self._narrow_mode = True
+        if not self._right_pane.get_visible():
+            return  # Already hidden; nothing to do.
+        self._right_pane_was_visible_before_narrow = True
+        self._right_pane.set_visible(False)
+        self._right_panel_toggle.set_active(False)
+        get_context().config.set_right_panel_visible(False)
+        self._add_toast(
+            Adw.Toast.new(
+                _("Right panel hidden on small window — "
+                  "use the info button in the header to show it.")
+            )
+        )
+
+    def _on_narrow_breakpoint_unapply(self, _bp):
+        """Window grew past 900px: restore prior right-panel state."""
+        self._narrow_mode = False
+        if getattr(self, "_right_pane_was_visible_before_narrow", False):
+            self._right_pane_was_visible_before_narrow = False
+            self._right_pane.set_visible(True)
+            self._right_panel_toggle.set_active(True)
+            get_context().config.set_right_panel_visible(True)
 
     def _trigger_startup_tasks(self, widget):
         """
@@ -1585,6 +1596,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._update_actions_and_ui()
         self.apply_theme()
+        self.apply_ui_density()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1647,9 +1659,46 @@ class MainWindow(Adw.ApplicationWindow):
         self.canvas3d.set_machine(viewport=viewport)
 
     def apply_theme(self):
-        """Reads the theme from config and applies it to the UI."""
+        """Reads the theme from config and applies it to the UI.
+
+        Resolves config.theme ("system" | "light" | "dark") to the
+        matching Adw.ColorScheme. The CSS in this module defines a
+        @media (prefers-color-scheme: light) block that overrides
+        the dark default tokens when the effective scheme is light,
+        so component rules below stay valid for both themes.
+
+        Unknown config values fall back to "system" (DEFAULT) rather
+        than FORCE_DARK, which is safer for users with stale configs
+        from a prior fork version that only had dark.
+        """
+        config = get_context().config
+        theme = (config.theme or "system").lower()
         style_manager = Adw.StyleManager.get_default()
-        style_manager.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
+        scheme_map = {
+            "light": Adw.ColorScheme.FORCE_LIGHT,
+            "dark": Adw.ColorScheme.FORCE_DARK,
+        }
+        # Anything that isn't explicitly "light" or "dark" — including
+        # "system" and unknown values — uses DEFAULT (follows OS).
+        style_manager.set_color_scheme(scheme_map.get(theme, Adw.ColorScheme.DEFAULT))
+
+    def apply_ui_density(self):
+        """Toggle the .forge-density-compact style class based on
+        config.ui_density.
+
+        The class is consumed by forge.css:
+            .forge-theme.forge-density-compact .row { ... }
+        so the right CSS rules activate without any per-widget
+        Python changes. Unknown density values fall back to the
+        'comfortable' class (which is a no-op since the default
+        rule already assumes comfortable).
+        """
+        config = get_context().config()
+        density = (config.ui_density or "comfortable").lower()
+        if density == "compact":
+            self.add_css_class("forge-density-compact")
+        else:
+            self.remove_css_class("forge-density-compact")
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
@@ -1964,6 +2013,19 @@ class MainWindow(Adw.ApplicationWindow):
         is_visible = value.get_boolean()
         action.set_state(value)
         self._right_pane.set_visible(is_visible)
+        # Sync the header-bar toggle so it reflects reality when the
+        # action is fired from the menu, a keyboard shortcut, or the
+        # breakpoint. Guarded with hasattr because this method can
+        # be called during early construction (before the toggle is
+        # added to the header bar).
+        toggle = getattr(self, "_right_panel_toggle", None)
+        if toggle is not None:
+            toggle.set_active(is_visible)
+        # If the user explicitly toggles in narrow mode, drop the
+        # auto-restore hint so the breakpoint unapply doesn't undo
+        # their choice.
+        if is_visible and getattr(self, "_narrow_mode", False):
+            self._right_pane_was_visible_before_narrow = True
         get_context().config.set_right_panel_visible(is_visible)
 
     def _on_dialog_notification(self, sender, message: str = ""):

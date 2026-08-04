@@ -55,6 +55,11 @@ class Config:
     def __init__(self):
         self.machine: Optional[Machine] = None
         self.theme: str = "system"
+        # UI density: "comfortable" (default, current spacing),
+        # "compact" (tighter rows, smaller paddings for users
+        # who want more content on screen). The runtime applies
+        # this via a CSS class on the main window.
+        self.ui_density: str = "comfortable"
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -104,6 +109,18 @@ class Config:
         if self.theme == theme:
             return
         self.theme = theme
+        self.changed.send(self)
+
+    def set_ui_density(self, density: str):
+        """Sets the UI density.
+
+        Recognized values: "comfortable" (default), "compact".
+        Any other value is stored verbatim; the runtime apply
+        step in MainWindow treats unknown values as "comfortable".
+        """
+        if self.ui_density == density:
+            return
+        self.ui_density = density
         self.changed.send(self)
 
     def set_unit_preference(self, quantity: str, unit_name: str):
@@ -219,6 +236,7 @@ class Config:
         return {
             "machine": self.machine.id if self.machine else None,
             "theme": self.theme,
+            "ui_density": self.ui_density,
             "unit_preferences": self.unit_preferences,
             "startup_behavior": self.startup_behavior,
             "startup_project_path": (
@@ -246,6 +264,7 @@ class Config:
     def from_dict(cls, data: Dict[str, Any], get_machine_by_id) -> "Config":
         config = cls()
         config.theme = data.get("theme", "system")
+        config.ui_density = data.get("ui_density", "comfortable")
 
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {

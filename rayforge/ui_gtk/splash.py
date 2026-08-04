@@ -25,7 +25,6 @@ plain black window so startup never blocks on cosmetic assets.
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -46,16 +45,16 @@ _SPLASH_HEIGHT = 500
 def _resolve_splash_svg() -> Optional[Path]:
     """Locate splash.svg, respecting PyInstaller bundle layout.
 
-    In dev: `<repo_root>/data/splash/splash.svg`
-    In bundle: `<sys._MEIPASS>/data/splash/splash.svg`
+    Thin wrapper over rayforge.shared.util.resources.resource_path
+    so the bundle-aware resolution pattern lives in exactly one
+    place. Returns None if the SVG cannot be located (the splash
+    then falls back to a black 800x500 box).
     """
-    base_dir = (
-        Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        if hasattr(sys, "_MEIPASS")
-        else Path(__file__).resolve().parent.parent.parent
+    from ..shared.util.resources import resource_path
+
+    return resource_path(
+        "data/splash/splash.svg", anchor_file=__file__
     )
-    candidate = base_dir / "data" / "splash" / "splash.svg"
-    return candidate if candidate.is_file() else None
 
 
 class SplashScreen(Gtk.Window):
@@ -82,18 +81,15 @@ class SplashScreen(Gtk.Window):
         self.set_default_size(_SPLASH_WIDTH, _SPLASH_HEIGHT)
 
         # Solid background so the SVG blends on every WM theme.
-        # (Libadwaita dark backgrounds in compositor preview modes can
-        # otherwise leak through transparent SVG corners.)
-        css_provider = Gtk.CssProvider()
-        css_provider.load_from_string(
-            "window.splash-window { background-color: #0a0a0a; }"
-        )
+        # (Libadwaita dark backgrounds in compositor preview modes
+        # can otherwise leak through transparent SVG corners.)
+        #
+        # The `window.splash-window` rule is declared in
+        # rayforge/resources/styles/forge.css and is installed
+        # globally by App.do_activate() before the splash is
+        # presented (see install_forge_css_once in mainwindow.py).
+        # No local CssProvider needed here.
         self.add_css_class("splash-window")
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        )
 
         # Content: a Gtk.Picture loading the SVG, or a plain Box on
         # failure. Using keep-aspect-ratio + contain so the image
