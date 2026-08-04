@@ -623,6 +623,11 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Command palette (Ctrl+Shift+P). Built lazily on first
+        # open so the action map is fully populated by then.
+        self._command_palette_window: Optional[Gtk.Window] = None
+        self._install_palette_shortcut()
+
         # Apply saved visibility state
         self._apply_saved_visibility_state()
 
@@ -1809,6 +1814,54 @@ class MainWindow(Adw.ApplicationWindow):
         show_all = mode == "all"
         if hasattr(self, "toolbar"):
             self.toolbar.apply_toolbar_mode(show_all)
+
+    def _install_palette_shortcut(self):
+        """Register Ctrl+Shift+P as the open-command-palette shortcut."""
+        from .shared.keyboard import PRIMARY_ACCEL
+
+        # Use the GTK shortcut controller. The primary accel is
+        # Ctrl on Linux/Windows, Cmd on macOS. The key combo
+        # matches VS Code / Sublime / Blender convention.
+        shortcut_ctrl = Gtk.ShortcutController()
+        shortcut_ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
+        trigger = Gtk.ShortcutTrigger.parse_string(
+            f"{PRIMARY_ACCEL}shift+p"
+        )
+        if trigger is None:
+            logger.warning("Could not parse Ctrl+Shift+P shortcut")
+            return
+        action = Gtk.ShortcutAction.parse_string("signal::open-palette")
+        if action is None:
+            logger.warning("Could not parse open-palette action")
+            return
+        shortcut = Gtk.Shortcut(trigger=trigger, action=action)
+        shortcut_ctrl.add_shortcut(shortcut)
+        self.add_controller(shortcut_ctrl)
+        # Connect the signal: when the shortcut fires, open the palette.
+        self.connect("open-palette", lambda *_: self._open_command_palette())
+
+    def _open_command_palette(self):
+        """Build (once) and present the command palette overlay."""
+        from .command_palette import CommandPalette
+
+        if self._command_palette_window is None:
+            window = Gtk.Window()
+            window.set_transient_for(self)
+            window.set_modal(True)
+            window.set_decorated(False)
+            window.set_resizable(False)
+            window.set_halign(Gtk.Align.CENTER)
+            window.set_valign(Gtk.Align.START)
+            window.set_margin_top(120)
+            window.add_css_class("forge-command-palette-window")
+            palette = CommandPalette(on_close=window.close)
+            # Populate from the MainWindow's own action map.
+            palette.populate_from_action_map(self)
+            window.set_child(palette)
+            self._command_palette_window = window
+            # Keep a reference to the palette so it isn't GC'd.
+            window._palette = palette
+        self._command_palette_window.present()
 
     def _on_unit_changed(self, unit: str) -> None:
         """Persist the display unit when the user changes it
