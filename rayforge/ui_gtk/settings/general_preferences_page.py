@@ -368,6 +368,33 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         theme_string = self.THEME_MAP[selected_index]
         get_context().config.set_theme(theme_string)
 
+        # Visual confirmation: surface a transient toast on the main
+        # window so the user sees the theme swap (otherwise the only
+        # feedback is the panel re-coloring, which is easy to miss
+        # if focus is in the preferences dialog). The toast is best
+        # effort — if we can't find the MainWindow (e.g. running
+        # headless or in a test harness) we silently skip it.
+        try:
+            main_window = combo_row.get_root()
+            # Walk the ancestor chain looking for the MainWindow.
+            from .mainwindow import MainWindow
+            from gi.repository import Gtk
+
+            widget = combo_row
+            while widget is not None and not isinstance(
+                widget, MainWindow
+            ):
+                widget = widget.get_parent()
+            if widget is not None:
+                label = self.THEME_LABELS[selected_index]
+                toast = Adw.Toast.new(_("Theme set to {label}").format(label=label))
+                toast.set_timeout(2)
+                widget._add_toast(toast)
+        except Exception:
+            logger.debug(
+                "Could not surface theme-change toast", exc_info=True
+            )
+
     def on_language_changed(self, combo_row, _param):
         """Called when the user selects a new language.
 
