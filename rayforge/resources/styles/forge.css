@@ -180,6 +180,40 @@ window.splash-window {
     background-color: #0a0a0a;
 }
 
+/* ---- Density: compact mode ----
+ *
+ * Toggled by MainWindow.apply_ui_density based on config.ui_density.
+ * When the .forge-density-compact class is present on the main
+ * window, every descendant row / list item tightens its padding
+ * and min-height. The user picks between 'comfortable' (default,
+ * no class) and 'compact' in
+ * Preferences → General → Appearance → Interface density.
+ *
+ * The values here are NOT 50% of the comfortable ones — they
+ * are the floor of what still feels tappable on a touch
+ * device. Going tighter (e.g. 18px row height) is an a11y
+ * regression and was rejected.
+ */
+.forge-theme.forge-density-compact .main-toolbar {
+    min-height: 30px;
+    padding: 2px 6px;
+}
+.forge-theme.forge-density-compact headerbar {
+    min-height: 28px;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+.forge-theme.forge-density-compact button,
+.forge-theme.forge-density-compact menubutton > button,
+.forge-theme.forge-density-compact splitbutton > button,
+.forge-theme.forge-density-compact togglebutton {
+    min-height: 24px;
+    padding: 2px 8px;
+}
+.forge-theme.forge-density-compact .status-message-overlay {
+    padding: 2px 8px;
+}
+
 /* ---- Light theme overrides for hardcoded dark colors ---- */
 
 @media (prefers-color-scheme: light) {
