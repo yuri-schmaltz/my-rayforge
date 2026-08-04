@@ -224,3 +224,139 @@ window.splash-window {
         background-color: #ffffff;
     }
 }
+
+/* ---- High contrast: respect prefers-contrast: more ----
+ *
+ * Users with low vision or working in bright sunlight can ask
+ * their OS for higher-contrast UI. We respond by:
+ *  - Switching borders to 2px (was 1px) for stronger figure/ground
+ *  - Dropping the soft alpha overlays on buttons (they wash out
+ *    under the contrast boost)
+ *  - Forcing pure black/white text and surfaces so the body
+ *    content hits WCAG AAA contrast (7:1+)
+ *
+ * This works in both light and dark color schemes because each
+ * branch re-defines the relevant tokens. The tokens overridden
+ * here are the same ones the @media (prefers-color-scheme: light)
+ * block redefines, so the cascade is predictable.
+ *
+ * GNOME exposes a 'High Contrast' toggle in Accessibility
+ * settings; KDE/macOS-Cinnamon expose equivalents. All of them
+ * set the prefers-contrast media query to 'more' when active.
+ */
+@media (prefers-contrast: more) {
+    .forge-theme,
+    .forge-theme window,
+    .forge-theme box,
+    .forge-theme viewport,
+    .forge-theme scrolledwindow,
+    .forge-theme stack,
+    .forge-theme paned {
+        background-color: #000000;
+        color: #ffffff;
+    }
+    .forge-theme headerbar,
+    .forge-theme .main-toolbar {
+        background: #000000;
+        border-bottom: 2px solid #ffffff;
+    }
+    .forge-theme button,
+    .forge-theme menubutton > button,
+    .forge-theme splitbutton > button,
+    .forge-theme togglebutton {
+        border: 2px solid #ffffff;
+        background-color: #000000;
+        background-image: none;
+        color: #ffffff;
+    }
+    .forge-theme button:hover,
+    .forge-theme menubutton > button:hover,
+    .forge-theme splitbutton > button:hover,
+    .forge-theme togglebutton:hover {
+        background-color: #1a1a1a;
+    }
+    .forge-theme button:checked,
+    .forge-theme button:active,
+    .forge-theme togglebutton:checked,
+    .forge-theme splitbutton > button:checked,
+    .forge-theme menubutton > button:checked {
+        background-color: #ffff00;
+        border-color: #ffff00;
+        color: #000000;
+    }
+    .forge-theme separator {
+        background-color: #ffffff;
+        min-width: 2px;
+        min-height: 2px;
+    }
+    .forge-theme popover,
+    .forge-theme menu,
+    .forge-theme .menu {
+        background-color: #000000;
+        color: #ffffff;
+        border: 2px solid #ffffff;
+    }
+    .right-panel-overlay,
+    .status-message-overlay {
+        border-width: 2px;
+    }
+    .warning-label {
+        color: #ffff00;
+    }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: light) {
+    .forge-theme,
+    .forge-theme window,
+    .forge-theme box,
+    .forge-theme viewport,
+    .forge-theme scrolledwindow,
+    .forge-theme stack,
+    .forge-theme paned {
+        background-color: #ffffff;
+        color: #000000;
+    }
+    .forge-theme headerbar,
+    .forge-theme .main-toolbar {
+        background: #ffffff;
+        border-bottom: 2px solid #000000;
+    }
+    .forge-theme button,
+    .forge-theme menubutton > button,
+    .forge-theme splitbutton > button,
+    .forge-theme togglebutton {
+        border: 2px solid #000000;
+        background-color: #ffffff;
+        color: #000000;
+    }
+    .forge-theme button:hover,
+    .forge-theme menubutton > button:hover,
+    .forge-theme splitbutton > button:hover,
+    .forge-theme togglebutton:hover {
+        background-color: #e8e8e8;
+    }
+    .forge-theme button:checked,
+    .forge-theme button:active,
+    .forge-theme togglebutton:checked,
+    .forge-theme splitbutton > button:checked,
+    .forge-theme menubutton > button:checked {
+        background-color: #000000;
+        border-color: #000000;
+        color: #ffffff;
+    }
+    .forge-theme separator {
+        background-color: #000000;
+        min-width: 2px;
+        min-height: 2px;
+    }
+    .forge-theme popover,
+    .forge-theme menu,
+    .forge-theme .menu {
+        background-color: #ffffff;
+        color: #000000;
+        border: 2px solid #000000;
+    }
+    .warning-label {
+        color: #b00020;
+    }
+}
