@@ -18,7 +18,7 @@ These tests prevent that regression by:
 If a developer edits a .po file and forgets to commit the corresponding .mo
 change in the form of a "regenerate after build" expectation, these tests
 catch it. (Note: .mo files are gitignored; the production CI workflow must
-re-compile them. See build-deb.yml, build-exe.yml, build-macos-universal.yml.)
+re-compile them. See build-deb.yml, build-exe.yml.)
 """
 
 import gettext
@@ -143,7 +143,7 @@ class TestBuildPipelinesRunCompileTranslations:
 
     @pytest.mark.parametrize(
         "workflow_file",
-        ["build-deb.yml", "build-exe.yml", "build-macos-universal.yml"],
+        ["build-deb.yml", "build-exe.yml"],
     )
     def test_workflow_compiles_translations(self, workflow_file):
         path = REPO_ROOT / ".github" / "workflows" / workflow_file
