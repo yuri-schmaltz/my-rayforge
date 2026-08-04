@@ -78,6 +78,11 @@ css = """
  * Tokens use the `forge_` prefix to match the app's "spark burst"
  * brand identity (laser strike on material).
  *
+ * Spacing scale (4/8/12/16): used as multiples of 4 throughout.
+ * Radius scale (sm 6px / md 8px): consistent across buttons, items,
+ * overlays. Was 3-4px before; the tighter corners read as Win9x
+ * on a HiDPI display.
+ *
  * NOTE: This CSS lives inline in mainwindow.py for now. A future PR
  * will extract it to rayforge/resources/styles/forge.css and load it
  * via Gtk.CssProvider.load_from_resource() so the styles can be
@@ -125,7 +130,7 @@ css = """
 .forge-theme menubutton > button,
 .forge-theme splitbutton > button,
 .forge-theme togglebutton {
-    border-radius: 3px;
+    border-radius: 6px;
     border: 1px solid #5a5a5a;
     background: linear-gradient(to bottom, #595959, #474747);
     color: @forge_text;
@@ -165,30 +170,30 @@ css = """
 
 .right-panel-overlay {
     background-color: alpha(@forge_panel, 0.94);
-    border-radius: 4px;
+    border-radius: 8px;
     border: 1px solid @forge_border;
-    margin: 6px 12px 12px 6px;
+    margin: 8px 12px 12px 8px;
     box-shadow: 0 2px 12px alpha(black, 0.35);
 }
 
 .status-message-overlay {
     background-color: #202020;
     border: 1px solid @forge_border;
-    border-radius: 3px;
+    border-radius: 6px;
     color: @forge_text;
-    padding: 4px 10px;
+    padding: 4px 12px;
     box-shadow: 0 2px 6px alpha(black, 0.25);
 }
 
 .in-header-menubar {
-    margin-left: 6px;
+    margin-left: 8px;
     box-shadow: none;
 }
 
 .in-header-menubar item {
-    border-radius: 3px;
+    border-radius: 6px;
     color: @forge_text;
-    padding: 6px 10px;
+    padding: 6px 12px;
 }
 
 .in-header-menubar item:hover {
