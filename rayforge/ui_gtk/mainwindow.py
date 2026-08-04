@@ -73,230 +73,23 @@ from .view_mode_cmd import ViewModeCmd
 logger = logging.getLogger(__name__)
 
 
-css = """
-/* Forge design tokens — keep in sync with rayforge/resources/styles/.
- * Tokens use the `forge_` prefix to match the app's "spark burst"
- * brand identity (laser strike on material).
- *
- * Spacing scale (4/8/12/16): used as multiples of 4 throughout.
- * Radius scale (sm 6px / md 8px): consistent across buttons, items,
- * overlays. Was 3-4px before; the tighter corners read as Win9x
- * on a HiDPI display.
- *
- * NOTE: This CSS lives inline in mainwindow.py for now. A future PR
- * will extract it to rayforge/resources/styles/forge.css and load it
- * via Gtk.CssProvider.load_from_resource() so the styles can be
- * shared by dialogs, addons, and the light theme variant. Renaming
- * is intentionally in a separate commit so each step is reviewable.
- */
-@define-color forge_bg #2b2b2b;
-@define-color forge_bg_alt #313131;
-@define-color forge_bg_soft #3a3a3a;
-@define-color forge_panel #252525;
-@define-color forge_border #4a4a4a;
-@define-color forge_text #d6d6d6;
-@define-color forge_text_dim #a9a9a9;
-@define-color forge_accent #4f84c4;
+def _resolve_forge_css_path():
+    """Locate rayforge/resources/styles/forge.css, bundle-aware.
 
-/* Light theme overrides — the GTK CSS engine applies the
- * @media (prefers-color-scheme: light) block whenever
- * Adw.StyleManager.set_color_scheme() is FORCE_LIGHT or DEFAULT
- * and the system theme is light. Tokens are re-defined with light
- * values; component rules further down are inherited as-is (the
- * same @forge_bg, @forge_text, etc. now resolve to light values).
- */
-@media (prefers-color-scheme: light) {
-    @define-color forge_bg #fafafa;
-    @define-color forge_bg_alt #f0f0f0;
-    @define-color forge_bg_soft #e8e8e8;
-    @define-color forge_panel #ffffff;
-    @define-color forge_border #d0d0d0;
-    @define-color forge_text #2a2a2a;
-    @define-color forge_text_dim #6a6a6a;
-    /* forge_accent kept — the cobalt #4f84c4 reads well on both
-     * dark and light backgrounds. WCAG AA contrast against
-     * #fafafa is 4.7:1, against #2a2a2a is 5.1:1. */
-}
+    Dev:    <repo>/rayforge/resources/styles/forge.css
+    Bundle: <sys._MEIPASS>/rayforge/resources/styles/forge.css
+    Returns the Path or None if not found.
+    """
+    import sys
+    from pathlib import Path
 
-.forge-theme,
-.forge-theme window,
-.forge-theme box,
-.forge-theme viewport,
-.forge-theme scrolledwindow,
-.forge-theme stack,
-.forge-theme paned {
-    background-color: @forge_bg;
-    color: @forge_text;
-}
-
-.forge-theme headerbar {
-    min-height: 34px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-    background: linear-gradient(to bottom, #3a3a3a, #323232);
-    border-bottom: 1px solid @forge_border;
-    color: @forge_text;
-}
-
-.forge-theme .main-toolbar {
-    min-height: 38px;
-    margin: 0;
-    padding: 4px 8px;
-    background: linear-gradient(to bottom, #3b3b3b, #303030);
-    border-bottom: 1px solid @forge_border;
-}
-
-.forge-theme button,
-.forge-theme menubutton > button,
-.forge-theme splitbutton > button,
-.forge-theme togglebutton {
-    border-radius: 6px;
-    border: 1px solid #5a5a5a;
-    /* Flat fill with a 1px top highlight to suggest depth without
-     * the dated gradient. Matches modern GTK4 / Adwaita button
-     * conventions better than a 0→1 stop linear-gradient. */
-    background-color: #4a4a4a;
-    background-image: linear-gradient(
-        to bottom,
-        alpha(white, 0.04),
-        alpha(black, 0.04)
-    );
-    color: @forge_text;
-    box-shadow: none;
-}
-
-.forge-theme button:hover,
-.forge-theme menubutton > button:hover,
-.forge-theme splitbutton > button:hover,
-.forge-theme togglebutton:hover {
-    background-color: #555555;
-}
-
-.forge-theme button:checked,
-.forge-theme button:active,
-.forge-theme togglebutton:checked,
-.forge-theme splitbutton > button:checked,
-.forge-theme menubutton > button:checked {
-    background-color: @forge_accent;
-    background-image: none;
-    border-color: #2f5e9a;
-    color: #ffffff;
-}
-
-.forge-theme separator {
-    background-color: @forge_border;
-    min-width: 1px;
-    min-height: 1px;
-}
-
-.forge-theme popover,
-.forge-theme menu,
-.forge-theme .menu {
-    background-color: #2c2c2c;
-    color: @forge_text;
-    border: 1px solid @forge_border;
-}
-
-/* Light theme overrides for hardcoded dark colors that wouldn't
- * be reachable through tokens alone. Headerbar, toolbar, button
- * gradients, popover backgrounds, and the checked-state text
- * color all need explicit light counterparts.
- */
-@media (prefers-color-scheme: light) {
-    .forge-theme headerbar {
-        background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
-    }
-    .forge-theme .main-toolbar {
-        background: linear-gradient(to bottom, #efefef, #e2e2e2);
-    }
-    .forge-theme button,
-    .forge-theme menubutton > button,
-    .forge-theme splitbutton > button,
-    .forge-theme togglebutton {
-        border-color: #b0b0b0;
-        background-color: #f5f5f5;
-        background-image: linear-gradient(
-            to bottom,
-            alpha(white, 0.6),
-            alpha(black, 0.02)
-        );
-        color: @forge_text;
-    }
-    .forge-theme button:hover,
-    .forge-theme menubutton > button:hover,
-    .forge-theme splitbutton > button:hover,
-    .forge-theme togglebutton:hover {
-        background-color: #ffffff;
-    }
-    .forge-theme button:checked,
-    .forge-theme button:active,
-    .forge-theme togglebutton:checked,
-    .forge-theme splitbutton > button:checked,
-    .forge-theme menubutton > button:checked {
-        /* Flat accent — same as dark mode so the active state reads
-         * identically across themes. Mid-tone blue against a light
-         * surface gives 4.6:1 contrast for the white label. */
-        background-color: @forge_accent;
-        background-image: none;
-        border-color: #2f5e9a;
-        color: #ffffff;
-    }
-    .forge-theme popover,
-    .forge-theme menu,
-    .forge-theme .menu {
-        background-color: #ffffff;
-    }
-}
-
-.right-panel-overlay {
-    background-color: alpha(@forge_panel, 0.94);
-    border-radius: 8px;
-    border: 1px solid @forge_border;
-    margin: 8px 12px 12px 8px;
-    box-shadow: 0 2px 12px alpha(black, 0.35);
-}
-
-.status-message-overlay {
-    background-color: #202020;
-    border: 1px solid @forge_border;
-    border-radius: 6px;
-    color: @forge_text;
-    padding: 4px 12px;
-    box-shadow: 0 2px 6px alpha(black, 0.25);
-}
-
-.in-header-menubar {
-    margin-left: 8px;
-    box-shadow: none;
-}
-
-.in-header-menubar item {
-    border-radius: 6px;
-    color: @forge_text;
-    padding: 6px 12px;
-}
-
-.in-header-menubar item:hover {
-    background: alpha(white, 0.08);
-}
-
-.menu separator {
-    border-top: 1px solid @forge_border;
-    margin-top: 5px;
-    margin-bottom: 5px;
-}
-
-.warning-label {
-    color: @warning_color;
-    font-weight: bold;
-}
-
-dropdown.machine-dropdown button {
-    min-height: 28px;
-    padding-top: 2px;
-    padding-bottom: 2px;
-}
-"""
+    base_dir = (
+        Path(sys._MEIPASS)  # type: ignore[attr-defined]
+        if hasattr(sys, "_MEIPASS")
+        else Path(__file__).resolve().parent.parent
+    )
+    candidate = base_dir / "rayforge" / "resources" / "styles" / "forge.css"
+    return candidate if candidate.is_file() else None
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -447,11 +240,31 @@ class MainWindow(Adw.ApplicationWindow):
         self._canvas_overlay.set_vexpand(True)
         main_ui_box.append(self._canvas_overlay)
 
-        # Apply styles
+        # Apply styles — load the forge.css stylesheet from disk so
+        # the source of truth lives next to other resources instead
+        # of being stringified in a Python file. load_from_path is
+        # used (not load_from_resource) to avoid the GResource build
+        # step; the same path resolution that the splash screen
+        # uses handles dev vs PyInstaller-bundle layouts.
         display = Gdk.Display.get_default()
         if display:
+            css_path = _resolve_forge_css_path()
             provider = Gtk.CssProvider()
-            provider.load_from_string(css)
+            if css_path is not None:
+                try:
+                    provider.load_from_path(str(css_path))
+                except GLib.Error as exc:
+                    logger.warning(
+                        "Failed to load forge.css from %s: %s; "
+                        "falling back to no stylesheet",
+                        css_path,
+                        exc,
+                    )
+            else:
+                logger.warning(
+                    "forge.css not found at expected path; "
+                    "the main window will render with GTK defaults."
+                )
             Gtk.StyleContext.add_provider_for_display(
                 display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )
