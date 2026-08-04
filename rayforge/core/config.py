@@ -60,6 +60,15 @@ class Config:
         # who want more content on screen). The runtime applies
         # this via a CSS class on the main window.
         self.ui_density: str = "comfortable"
+        # Toolbar mode: "essential" (default — only the most-used
+        # buttons are visible) or "all" (every button). The user
+        # toggles a "..." button in the toolbar; the choice is
+        # persisted here.
+        self.toolbar_mode: str = "essential"
+        # Walkthrough seen flag. False on first launch so the
+        # 5-card intro dialog appears; True after the user
+        # dismisses it (Skip / Done / close button).
+        self.walkthrough_seen: bool = False
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -121,6 +130,31 @@ class Config:
         if self.ui_density == density:
             return
         self.ui_density = density
+        self.changed.send(self)
+
+    def set_toolbar_mode(self, mode: str):
+        """Sets the toolbar mode.
+
+        Recognized values: "essential" (default — only the most-
+        used buttons are visible) or "all" (every button). The
+        toolbar Mode button toggles between these.
+        """
+        if self.toolbar_mode == mode:
+            return
+        self.toolbar_mode = mode
+        self.changed.send(self)
+
+    def set_walkthrough_seen(self, seen: bool = True):
+        """Mark the first-run walkthrough as seen.
+
+        Called when the user dismisses the walkthrough dialog
+        (Skip, Done, or close button). The flag is persisted to
+        config so the dialog never shows again unless the user
+        re-opens it from the Help menu.
+        """
+        if self.walkthrough_seen == seen:
+            return
+        self.walkthrough_seen = seen
         self.changed.send(self)
 
     def set_unit_preference(self, quantity: str, unit_name: str):
@@ -237,6 +271,8 @@ class Config:
             "machine": self.machine.id if self.machine else None,
             "theme": self.theme,
             "ui_density": self.ui_density,
+            "toolbar_mode": self.toolbar_mode,
+            "walkthrough_seen": self.walkthrough_seen,
             "unit_preferences": self.unit_preferences,
             "startup_behavior": self.startup_behavior,
             "startup_project_path": (
@@ -265,6 +301,8 @@ class Config:
         config = cls()
         config.theme = data.get("theme", "system")
         config.ui_density = data.get("ui_density", "comfortable")
+        config.toolbar_mode = data.get("toolbar_mode", "essential")
+        config.walkthrough_seen = data.get("walkthrough_seen", False)
 
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {

@@ -269,6 +269,30 @@ class MainWindow(Adw.ApplicationWindow):
 
         vbox.append(self._status_overlay)
 
+        # Coordinate bar: live X/Y/L/W/H readout with unit
+        # selector. Sits between the header and the canvas so
+        # the user always has the cursor position and selection
+        # dimensions visible without needing to open any panel.
+        from .coordinate_bar import CoordinateBar
+
+        self.coordinate_bar = CoordinateBar()
+        vbox.append(self.coordinate_bar)
+        # Connect unit changes so the canvas can re-render
+        # coordinates in the new unit.
+        self.coordinate_bar.connect_unit_changed(self._on_unit_changed)
+        # Initial unit comes from config.
+        self._on_unit_changed_apply_initial()
+
+        # Persistent status bar at the bottom of the window. Sits
+        # below the bottom panel (which lives inside _status_overlay
+        # / vertical_paned). The status bar gives the user a single
+        # glanceable source of truth for mode, cursor, layer,
+        # operation, and job progress.
+        from .status_bar import StatusBar
+
+        self.status_bar = StatusBar()
+        vbox.append(self.status_bar)
+
         # Create a stack for switching between main view and addon pages
         self.main_stack = Gtk.Stack()
         self.main_stack.set_vexpand(True)
@@ -410,23 +434,66 @@ class MainWindow(Adw.ApplicationWindow):
             self.doc_editor.history_manager
         )
 
-        # Create a vertical paned for the right pane content
-        self._right_pane = Gtk.ScrolledWindow()
-        self._right_pane.set_policy(
+        # Create a right pane with tabs (Workflow | Properties)
+        # instead of a single ScrolledWindow that stacked both
+        # sections. The user previously had to scroll up and down
+        # to switch between viewing the workflow steps and the
+        # properties of the selected item; with tabs the same height
+        # hosts two distinct contexts that the user clicks between.
+        # (Wave 9 in the UI/UX wave — Inkscape/Krita pattern.)
+        right_pane_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        right_pane_outer.set_size_request(400, -1)
+        right_pane_outer.add_css_class("right-panel-overlay")
+        right_pane_outer.set_halign(Gtk.Align.END)
+        right_pane_outer.set_valign(Gtk.Align.START)
+
+        # ViewSwitcher bar at the top, with the two tabs.
+        right_pane_switcher = Adw.ViewSwitcher()
+        right_pane_switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        right_pane_switcher.set_margin_top(4)
+        right_pane_switcher.set_margin_start(8)
+        right_pane_switcher.set_margin_end(8)
+
+        right_pane_stack = Adw.ViewStack()
+        right_pane_stack.set_vexpand(True)
+        right_pane_stack.set_hexpand(False)
+        right_pane_switcher.set_stack(right_pane_stack)
+        # Save on self so _on_selection_changed can auto-switch
+        # to the Properties tab when the user selects an item.
+        self._right_pane_stack = right_pane_stack
+
+        # The ViewStack goes inside a ScrolledWindow so each page
+        # can have its own scrollable content. We bind the switcher
+        # to the stack via set_stack above.
+        scrolled_workflow = Gtk.ScrolledWindow()
+        scrolled_workflow.set_policy(
             Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
         )
-        self._right_pane.set_vexpand(True)
-        self._right_pane.add_css_class("right-panel-overlay")
-        self._right_pane.set_halign(Gtk.Align.END)
-        self._right_pane.set_valign(Gtk.Align.START)
+        scrolled_workflow.set_vexpand(True)
+
+        scrolled_props = Gtk.ScrolledWindow()
+        scrolled_props.set_policy(
+            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
+        )
+        scrolled_props.set_vexpand(True)
+
+        right_pane_stack.add(
+            scrolled_workflow, "workflow", _("Workflow")
+        )
+        right_pane_stack.add(
+            scrolled_props, "properties", _("Properties")
+        )
+
+        right_pane_outer.append(right_pane_switcher)
+        right_pane_outer.append(right_pane_stack)
+
+        # The outer widget still goes into the canvas overlay (so
+        # it floats on the canvas), but the layout inside is now
+        # a tabbed stack. The legacy _right_pane attribute points
+        # to the outer box for any code that toggles its visibility.
+        self._right_pane = right_pane_outer
         self._right_pane.set_propagate_natural_height(True)
         self._canvas_overlay.add_overlay(self._right_pane)
-
-        # Create a vertical box to organize the content within the
-        # ScrolledWindow.
-        right_pane_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        right_pane_box.set_size_request(400, -1)
-        self._right_pane.set_child(right_pane_box)
 
         # The WorkflowView will be updated when a layer is activated.
         initial_workflow = self.doc_editor.doc.active_layer.workflow
@@ -437,18 +504,20 @@ class MainWindow(Adw.ApplicationWindow):
             step_factories=step_registry.get_factories(),
         )
         self.workflowview.set_margin_top(6)
+        self.workflowview.set_margin_start(12)
         self.workflowview.set_margin_end(12)
-        right_pane_box.append(self.workflowview)
+        scrolled_workflow.set_child(self.workflowview)
 
         # Register built-in property providers before creating the widget
         register_builtin_providers()
 
-        # Add the WorkpiecePropertiesWidget
+        # Add the WorkpiecePropertiesWidget to the Properties tab
         self.item_props_widget = DocItemPropertiesWidget(
             editor=self.doc_editor
         )
         item_props_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.item_props_widget.set_margin_top(6)
+        self.item_props_widget.set_margin_start(12)
         self.item_props_widget.set_margin_end(12)
         item_props_container.append(self.item_props_widget)
 
@@ -458,7 +527,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.item_revealer.set_transition_type(
             Gtk.RevealerTransitionType.SLIDE_UP
         )
-        right_pane_box.append(self.item_revealer)
+        scrolled_props.set_child(self.item_revealer)
 
         # Connect signals for item selection and actions
         self.surface.selection_changed.connect(self._on_selection_changed)
@@ -553,6 +622,18 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Set initial state
         self.on_config_changed(None)
+
+        # First-run walkthrough. Shown only if config.walkthrough_seen
+        # is False. The dialog persists a "seen" flag to config on
+        # any of: skip, done, or close, so it only runs once.
+        self._walkthrough: Optional[Adw.Dialog] = None
+        if not get_context().config.walkthrough_seen:
+            GLib.idle_add(self._show_walkthrough)
+
+        # Command palette (Ctrl+Shift+P). Built lazily on first
+        # open so the action map is fully populated by then.
+        self._command_palette_window: Optional[Gtk.Window] = None
+        self._install_palette_shortcut()
 
         # Apply saved visibility state
         self._apply_saved_visibility_state()
@@ -1157,9 +1238,19 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar.machine_warning_clicked.connect(
             self.on_machine_warning_clicked
         )
+        self.toolbar.toolbar_mode_changed.connect(
+            self.on_toolbar_mode_changed
+        )
         self.machine_selector.machine_selected.connect(
             self.on_machine_selected_by_selector
         )
+
+    def on_toolbar_mode_changed(self, sender, **kwargs):
+        """Persist the toolbar mode when the user toggles the '...'
+        button. Mode is 'all' (every button visible) or 'essential'
+        (curated subset). Stored in config.toolbar_mode."""
+        show_all = kwargs.get("show_all", False)
+        get_context().config.set_toolbar_mode("all" if show_all else "essential")
 
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
@@ -1562,6 +1653,20 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.item_props_widget.set_items(selected_items)
         self.item_revealer.set_reveal_child(bool(selected_items))
+        # If the user selected something, auto-switch the right
+        # pane to the Properties tab so they immediately see what
+        # changed. If they de-selected, switch back to the Workflow
+        # tab so the workflow is the default focus.
+        if hasattr(self, "_right_pane_stack") and selected_items:
+            try:
+                self._right_pane_stack.set_visible_child_name("properties")
+            except Exception:
+                pass
+        elif hasattr(self, "_right_pane_stack"):
+            try:
+                self._right_pane_stack.set_visible_child_name("workflow")
+            except Exception:
+                pass
         self.bottom_panel.update_position_menu_sensitivity()
         self._update_actions_and_ui()
         selected_uids = {item.uid for item in selected_items}
@@ -1597,6 +1702,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_actions_and_ui()
         self.apply_theme()
         self.apply_ui_density()
+        self.apply_toolbar_mode()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1700,6 +1806,113 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.remove_css_class("forge-density-compact")
 
+    def apply_toolbar_mode(self):
+        """Apply config.toolbar_mode to the MainToolbar.
+
+        The toolbar exposes a Mode toggle (the "..." button) that
+        switches between "essential" (a curated subset of buttons,
+        default — designed for first-time users and quick
+        navigation) and "all" (every button visible, for power
+        users). The choice is persisted to config and applied
+        here whenever config changes.
+        """
+        config = get_context().config()
+        mode = (config.toolbar_mode or "essential").lower()
+        show_all = mode == "all"
+        if hasattr(self, "toolbar"):
+            self.toolbar.apply_toolbar_mode(show_all)
+
+    def _install_palette_shortcut(self):
+        """Register Ctrl+Shift+P as the open-command-palette shortcut."""
+        from .shared.keyboard import PRIMARY_ACCEL
+
+        # Use the GTK shortcut controller. The primary accel is
+        # Ctrl on Linux/Windows, Cmd on macOS. The key combo
+        # matches VS Code / Sublime / Blender convention.
+        shortcut_ctrl = Gtk.ShortcutController()
+        shortcut_ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
+        trigger = Gtk.ShortcutTrigger.parse_string(
+            f"{PRIMARY_ACCEL}shift+p"
+        )
+        if trigger is None:
+            logger.warning("Could not parse Ctrl+Shift+P shortcut")
+            return
+        action = Gtk.ShortcutAction.parse_string("signal::open-palette")
+        if action is None:
+            logger.warning("Could not parse open-palette action")
+            return
+        shortcut = Gtk.Shortcut(trigger=trigger, action=action)
+        shortcut_ctrl.add_shortcut(shortcut)
+        self.add_controller(shortcut_ctrl)
+        # Connect the signal: when the shortcut fires, open the palette.
+        self.connect("open-palette", lambda *_: self._open_command_palette())
+
+    def _open_command_palette(self):
+        """Build (once) and present the command palette overlay."""
+        from .command_palette import CommandPalette
+
+        if self._command_palette_window is None:
+            window = Gtk.Window()
+            window.set_transient_for(self)
+            window.set_modal(True)
+            window.set_decorated(False)
+            window.set_resizable(False)
+            window.set_halign(Gtk.Align.CENTER)
+            window.set_valign(Gtk.Align.START)
+            window.set_margin_top(120)
+            window.add_css_class("forge-command-palette-window")
+            palette = CommandPalette(on_close=window.close)
+            # Populate from the MainWindow's own action map.
+            palette.populate_from_action_map(self)
+            window.set_child(palette)
+            self._command_palette_window = window
+            # Keep a reference to the palette so it isn't GC'd.
+            window._palette = palette
+        self._command_palette_window.present()
+
+    def _show_walkthrough(self) -> bool:
+        """Build and present the first-run walkthrough dialog.
+
+        Persists a 'seen' flag in config as soon as the dialog
+        is constructed, so even an early crash (e.g. user force-
+        quits during the dialog) doesn't make the dialog
+        re-appear next launch. The flag is also re-set on
+        Skip / Done, which is the canonical 'I read this' signal.
+        """
+        from .walkthrough import WalkthroughDialog
+
+        if self._walkthrough is not None:
+            self._walkthrough.present()
+            return False
+        dialog = WalkthroughDialog(transient_for=self)
+        dialog.set_can_close(False)  # user must click Skip or Done
+        # Persist 'seen' on any dismissal: Skip, Done, or
+        # close-attempt. We attach a single handler that always
+        # marks the flag, so even an unexpected close path
+        # (Esc on the header, etc.) does the right thing.
+        def _on_close(_dlg):
+            get_context().config.set_walkthrough_seen(True)
+            self._walkthrough = None
+        dialog.connect("closed", _on_close)
+        self._walkthrough = dialog
+        dialog.present()
+        return False  # remove the idle source
+
+    def _on_unit_changed(self, unit: str) -> None:
+        """Persist the display unit when the user changes it
+        in the coordinate bar."""
+        if unit in ("mm", "in"):
+            get_context().config.set_unit_preference("length", unit)
+
+    def _on_unit_changed_apply_initial(self) -> None:
+        """Apply the unit saved in config on app startup so the
+        coordinate bar shows the user's preferred unit from
+        the first frame."""
+        unit = get_context().config.unit_preferences.get("length", "mm")
+        if unit not in ("mm", "in"):
+            unit = "mm"
+        self.coordinate_bar.set_unit(unit)
+
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
         self._update_status_message(tasks)
@@ -1707,6 +1920,8 @@ class MainWindow(Adw.ApplicationWindow):
     def _update_status_message(self, tasks):
         if not tasks:
             self._status_message_label.set_visible(False)
+            self.status_bar.set_mode("designing")
+            self.status_bar.set_progress(None)
             return
 
         oldest_task = tasks[0]
@@ -1720,6 +1935,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._status_message_label.set_text(status_text)
         self._status_message_label.set_visible(bool(status_text))
+
+        # Update the persistent status bar with mode + progress.
+        # We pick 'sending' as the dominant mode when there's an
+        # active task; the caller can override with 'paused' or
+        # 'alarm' via the explicit setters when those apply.
+        self.status_bar.set_mode("sending", label=status_text or "Sending")
+        self.status_bar.set_progress(progress)
 
     def _update_actions_and_ui(self):
         config = get_context().config
