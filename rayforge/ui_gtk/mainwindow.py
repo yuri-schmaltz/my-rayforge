@@ -718,6 +718,16 @@ class MainWindow(Adw.ApplicationWindow):
         # Trigger startup tasks when window is shown
         self.connect("map", self._trigger_startup_tasks)
 
+        # Accessibility: respect the system 'reduce motion' preference.
+        # Installs a one-time listener that re-applies the motion
+        # preference across the widget tree whenever the system
+        # setting flips. Initial pass runs at install time so
+        # existing stacks/revealers are correct before the first
+        # transition fires.
+        from .shared.a11y import install_motion_preference_listener
+
+        install_motion_preference_listener(self)
+
         # Responsive layout: when the window drops below 900px wide,
         # the floating right panel (workflow + item properties) starts
         # occluding the canvas. Auto-hide it in that case and show a
