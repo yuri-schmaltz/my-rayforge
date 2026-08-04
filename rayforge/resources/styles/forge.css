@@ -1,0 +1,226 @@
+/*
+ * Forge — main window stylesheet.
+ *
+ * Source of truth for the application chrome (headerbar, toolbar,
+ * buttons, overlays, popovers, status messages). The widget
+ * instances that use these classes live in
+ * rayforge/ui_gtk/mainwindow.py and the toolbar module.
+ *
+ * Token usage: @forge_bg, @forge_panel, @forge_text, @forge_accent,
+ * etc. are defined in this file. The dark values are the default;
+ * the @media (prefers-color-scheme: light) block redefines them
+ * with light equivalents. Adw.StyleManager.set_color_scheme() in
+ * MainWindow.apply_theme() controls which block is active.
+ *
+ * Editing: prefer extending tokens over adding per-component hex
+ * values. Hardcoded colors should be reserved for things that
+ * really don't make sense as a token (e.g. the checked-state text
+ * color, which depends on the chosen accent in a way that varies
+ * between schemes).
+ */
+
+/* ---- Tokens (dark defaults) ---- */
+
+@define-color forge_bg #2b2b2b;
+@define-color forge_bg_alt #313131;
+@define-color forge_bg_soft #3a3a3a;
+@define-color forge_panel #252525;
+@define-color forge_border #4a4a4a;
+@define-color forge_text #d6d6d6;
+@define-color forge_text_dim #a9a9a9;
+@define-color forge_accent #4f84c4;
+
+@media (prefers-color-scheme: light) {
+    @define-color forge_bg #fafafa;
+    @define-color forge_bg_alt #f0f0f0;
+    @define-color forge_bg_soft #e8e8e8;
+    @define-color forge_panel #ffffff;
+    @define-color forge_border #d0d0d0;
+    @define-color forge_text #2a2a2a;
+    @define-color forge_text_dim #6a6a6a;
+    /* forge_accent kept — the cobalt #4f84c4 reads well on both
+     * dark and light backgrounds. WCAG AA contrast against
+     * #fafafa is 4.7:1, against #2a2a2a is 5.1:1. */
+}
+
+/* ---- Base surfaces (headerbar, toolbar, paned, viewport, scrolledwindow) ---- */
+
+.forge-theme,
+.forge-theme window,
+.forge-theme box,
+.forge-theme viewport,
+.forge-theme scrolledwindow,
+.forge-theme stack,
+.forge-theme paned {
+    background-color: @forge_bg;
+    color: @forge_text;
+}
+
+.forge-theme headerbar {
+    min-height: 34px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    background: linear-gradient(to bottom, #3a3a3a, #323232);
+    border-bottom: 1px solid @forge_border;
+    color: @forge_text;
+}
+
+.forge-theme .main-toolbar {
+    min-height: 38px;
+    margin: 0;
+    padding: 4px 8px;
+    background: linear-gradient(to bottom, #3b3b3b, #303030);
+    border-bottom: 1px solid @forge_border;
+}
+
+/* ---- Buttons (flat fill with 1px highlight) ---- */
+
+.forge-theme button,
+.forge-theme menubutton > button,
+.forge-theme splitbutton > button,
+.forge-theme togglebutton {
+    border-radius: 6px;
+    border: 1px solid #5a5a5a;
+    background-color: #4a4a4a;
+    background-image: linear-gradient(
+        to bottom,
+        alpha(white, 0.04),
+        alpha(black, 0.04)
+    );
+    color: @forge_text;
+    box-shadow: none;
+}
+
+.forge-theme button:hover,
+.forge-theme menubutton > button:hover,
+.forge-theme splitbutton > button:hover,
+.forge-theme togglebutton:hover {
+    background-color: #555555;
+}
+
+.forge-theme button:checked,
+.forge-theme button:active,
+.forge-theme togglebutton:checked,
+.forge-theme splitbutton > button:checked,
+.forge-theme menubutton > button:checked {
+    background-color: @forge_accent;
+    background-image: none;
+    border-color: #2f5e9a;
+    color: #ffffff;
+}
+
+/* ---- Separators, popovers, menus ---- */
+
+.forge-theme separator {
+    background-color: @forge_border;
+    min-width: 1px;
+    min-height: 1px;
+}
+
+.forge-theme popover,
+.forge-theme menu,
+.forge-theme .menu {
+    background-color: #2c2c2c;
+    color: @forge_text;
+    border: 1px solid @forge_border;
+}
+
+.right-panel-overlay {
+    background-color: alpha(@forge_panel, 0.94);
+    border-radius: 8px;
+    border: 1px solid @forge_border;
+    margin: 8px 12px 12px 8px;
+    box-shadow: 0 2px 12px alpha(black, 0.35);
+}
+
+.status-message-overlay {
+    background-color: #202020;
+    border: 1px solid @forge_border;
+    border-radius: 6px;
+    color: @forge_text;
+    padding: 4px 12px;
+    box-shadow: 0 2px 6px alpha(black, 0.25);
+}
+
+.in-header-menubar {
+    margin-left: 8px;
+    box-shadow: none;
+}
+
+.in-header-menubar item {
+    border-radius: 6px;
+    color: @forge_text;
+    padding: 6px 12px;
+}
+
+.in-header-menubar item:hover {
+    background: alpha(white, 0.08);
+}
+
+.menu separator {
+    border-top: 1px solid @forge_border;
+    margin-top: 5px;
+    margin-bottom: 5px;
+}
+
+.warning-label {
+    color: @warning_color;
+    font-weight: bold;
+}
+
+dropdown.machine-dropdown button {
+    min-height: 28px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+/* ---- Splash window background ---- */
+
+window.splash-window {
+    background-color: #0a0a0a;
+}
+
+/* ---- Light theme overrides for hardcoded dark colors ---- */
+
+@media (prefers-color-scheme: light) {
+    .forge-theme headerbar {
+        background: linear-gradient(to bottom, #f5f5f5, #e8e8e8);
+    }
+    .forge-theme .main-toolbar {
+        background: linear-gradient(to bottom, #efefef, #e2e2e2);
+    }
+    .forge-theme button,
+    .forge-theme menubutton > button,
+    .forge-theme splitbutton > button,
+    .forge-theme togglebutton {
+        border-color: #b0b0b0;
+        background-color: #f5f5f5;
+        background-image: linear-gradient(
+            to bottom,
+            alpha(white, 0.6),
+            alpha(black, 0.02)
+        );
+        color: @forge_text;
+    }
+    .forge-theme button:hover,
+    .forge-theme menubutton > button:hover,
+    .forge-theme splitbutton > button:hover,
+    .forge-theme togglebutton:hover {
+        background-color: #ffffff;
+    }
+    .forge-theme button:checked,
+    .forge-theme button:active,
+    .forge-theme togglebutton:checked,
+    .forge-theme splitbutton > button:checked,
+    .forge-theme menubutton > button:checked {
+        background-color: @forge_accent;
+        background-image: none;
+        border-color: #2f5e9a;
+        color: #ffffff;
+    }
+    .forge-theme popover,
+    .forge-theme menu,
+    .forge-theme .menu {
+        background-color: #ffffff;
+    }
+}
