@@ -368,6 +368,26 @@ class MainWindow(Adw.ApplicationWindow):
         self.machine_selector = MachineDropdown()
         self.header_bar.pack_end(self.machine_selector)
 
+        # Right-panel toggle (workflow + item properties). The button
+        # is an explicit affordance in addition to the Adw.Breakpoint
+        # auto-hide: on wide windows the panel floats over the canvas
+        # (default), on narrow windows the breakpoint hides it and
+        # the user re-enables it from this button. The active state
+        # stays in sync with the panel's visibility.
+        from .icons import get_icon
+
+        self._right_panel_toggle = Gtk.ToggleButton(
+            child=get_icon("info-symbolic"),
+            tooltip_text=_("Toggle right panel"),
+            action_name="win.toggle-right-panel",
+        )
+        # Initialize active state from the saved config so the toggle
+        # reflects reality after a restart.
+        self._right_panel_toggle.set_active(
+            get_context().config.right_panel_visible
+        )
+        self.header_bar.pack_end(self._right_panel_toggle)
+
         # Create a vertical paned for main content and bottom control panel
         self.vertical_paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.vertical_paned.set_resize_start_child(True)
@@ -682,6 +702,57 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Trigger startup tasks when window is shown
         self.connect("map", self._trigger_startup_tasks)
+
+        # Responsive layout: when the window drops below 900px wide,
+        # the floating right panel (workflow + item properties) starts
+        # occluding the canvas. Auto-hide it in that case and show a
+        # one-time toast so the user knows where the toggle is. On
+        # wide windows we leave the panel state alone — the user's
+        # saved preference is respected.
+        self._narrow_mode = False
+        try:
+            narrow_bp = Adw.Breakpoint.new(
+                Adw.BreakpointCondition.parse("max-width: 900px")
+            )
+            narrow_bp.connect("apply", self._on_narrow_breakpoint_apply)
+            narrow_bp.connect("unapply", self._on_narrow_breakpoint_unapply)
+            self.add_breakpoint(narrow_bp)
+        except Exception as exc:
+            logger.warning(
+                "Could not install narrow-mode breakpoint: %s", exc
+            )
+
+    def _on_narrow_breakpoint_apply(self, _bp):
+        """Window dropped below 900px: hide the floating right panel.
+
+        We remember the prior visible state so unapply can restore it
+        if the user didn't explicitly toggle the panel in the
+        meantime. This is best-effort: if the user clicks the toggle
+        in narrow mode and then resizes back to wide, the new state
+        wins.
+        """
+        self._narrow_mode = True
+        if not self._right_pane.get_visible():
+            return  # Already hidden; nothing to do.
+        self._right_pane_was_visible_before_narrow = True
+        self._right_pane.set_visible(False)
+        self._right_panel_toggle.set_active(False)
+        get_context().config.set_right_panel_visible(False)
+        self._add_toast(
+            Adw.Toast.new(
+                _("Right panel hidden on small window — "
+                  "use the info button in the header to show it.")
+            )
+        )
+
+    def _on_narrow_breakpoint_unapply(self, _bp):
+        """Window grew past 900px: restore prior right-panel state."""
+        self._narrow_mode = False
+        if getattr(self, "_right_pane_was_visible_before_narrow", False):
+            self._right_pane_was_visible_before_narrow = False
+            self._right_pane.set_visible(True)
+            self._right_panel_toggle.set_active(True)
+            get_context().config.set_right_panel_visible(True)
 
     def _trigger_startup_tasks(self, widget):
         """
@@ -2053,6 +2124,19 @@ class MainWindow(Adw.ApplicationWindow):
         is_visible = value.get_boolean()
         action.set_state(value)
         self._right_pane.set_visible(is_visible)
+        # Sync the header-bar toggle so it reflects reality when the
+        # action is fired from the menu, a keyboard shortcut, or the
+        # breakpoint. Guarded with hasattr because this method can
+        # be called during early construction (before the toggle is
+        # added to the header bar).
+        toggle = getattr(self, "_right_panel_toggle", None)
+        if toggle is not None:
+            toggle.set_active(is_visible)
+        # If the user explicitly toggles in narrow mode, drop the
+        # auto-restore hint so the breakpoint unapply doesn't undo
+        # their choice.
+        if is_visible and getattr(self, "_narrow_mode", False):
+            self._right_pane_was_visible_before_narrow = True
         get_context().config.set_right_panel_visible(is_visible)
 
     def _on_dialog_notification(self, sender, message: str = ""):
