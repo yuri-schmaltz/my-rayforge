@@ -1,0 +1,119 @@
+name: Performance benchmarks
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "*"
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+# The benchmark job only needs checkout + upload. No write
+# access required. Closes CodeQL alert "Workflow does not
+# contain permissions".
+permissions:
+  contents: read
+
+jobs:
+  perf-bench:
+    name: Performance regression check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.68.1
+          frozen: true
+          cache: true
+          cache-key: pixi-${{ runner.os }}-${{ hashFiles('pixi.lock') }}
+
+      - name: Run benchmarks on PR
+        # On pull_request runs, capture the current benchmarks
+        # so a reviewer (or the workflow comparison step) can
+        # see what changed. The output is uploaded as an
+        # artifact for the compare job.
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p bench-output
+          pixi run python -m rayforge.util.benchmarks \
+            --output bench-output/current.json
+        env:
+          RAYFORGE_TRACE: "0"
+
+      - name: Fetch baseline from main
+        # On a pull_request run, fetch the benchmark JSON
+        # from the most recent successful main-branch run.
+        # The artifact is attached to the workflow run;
+        # we use the GitHub API to find the latest main
+        # run that has a benchmark artifact.
+        if: github.event_name == 'pull_request'
+        id: baseline
+        run: |
+          set -e
+          # Use the GitHub CLI to find the latest successful
+          # main-branch run that uploaded a bench artifact.
+          BASELINE_URL=$(gh api \
+            "repos/${{ github.repository }}/actions/runs?branch=main&status=success&per_page=20" \
+            --jq '.workflow_runs[] | select(.name == "Performance benchmarks") | .artifacts_url' \
+            | head -1)
+          if [ -z "$BASELINE_URL" ]; then
+            echo "No baseline found; skipping comparison"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          ARTIFACT_URL=$(gh api "$BASELINE_URL" \
+            --jq '.artifacts[] | select(.name == "benchmark-baseline") | .archive_download_url')
+          if [ -z "$ARTIFACT_URL" ]; then
+            echo "No baseline artifact found; skipping comparison"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          gh api "$ARTIFACT_URL" > bench-output/baseline.zip
+          cd bench-output && unzip -o baseline.zip && cd ..
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Compare against baseline
+        # Fails the PR if any benchmark regressed by more than
+        # the threshold (default 10%) vs main. The threshold
+        # is exposed as an env var so maintainers can tighten
+        # or loosen it per repo without editing this file.
+        if: github.event_name == 'pull_request' && steps.baseline.outputs.skip != 'true'
+        run: |
+          pixi run python -m rayforge.util.benchmarks \
+            --compare bench-output/baseline.json \
+            --output bench-output/current.json \
+            --fail-on-regression ${BENCH_REGRESSION_THRESHOLD_PCT:-10}
+        env:
+          BENCH_REGRESSION_THRESHOLD_PCT: "10"
+
+      - name: Upload current benchmarks
+        # On a main-branch run, the current benchmark JSON
+        # becomes the new baseline for future PRs to compare
+        # against.
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-baseline
+          path: bench-output/current.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload PR benchmark report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-pr-report
+          path: bench-output/current.json
+          if-no-files-found: warn
+          retention-days: 14
