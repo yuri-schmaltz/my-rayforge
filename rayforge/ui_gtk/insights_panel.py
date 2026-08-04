@@ -34,9 +34,9 @@ state beyond the tracker's own (in-memory) counters.
 from __future__ import annotations
 
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
-from gi.repository import Gtk, Adw, GLib
+from gi.repository import Gtk, Adw
 
 if TYPE_CHECKING:
     from ..util.local_tracker import LocalTracker
@@ -155,9 +155,6 @@ class InsightsDialog(Adw.Dialog):
         with add_row. The title is rendered as an Adw
         preferences group (since the rest of the app uses
         those)."""
-        from ..core.config import get_context
-
-        config = get_context().config()
         group = Adw.PreferencesGroup()
         group.set_title(title)
         listbox = Gtk.ListBox()

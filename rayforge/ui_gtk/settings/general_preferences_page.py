@@ -403,10 +403,8 @@ class GeneralPreferencesPage(TrackedPreferencesPage):
         # effort — if we can't find the MainWindow (e.g. running
         # headless or in a test harness) we silently skip it.
         try:
-            main_window = combo_row.get_root()
             # Walk the ancestor chain looking for the MainWindow.
             from .mainwindow import MainWindow
-            from gi.repository import Gtk
 
             widget = combo_row
             while widget is not None and not isinstance(

@@ -674,8 +674,6 @@ class MainWindow(Adw.ApplicationWindow):
         # response to first-interaction triggers. Popovers
         # are not created until the first interaction so the
         # initial paint isn't delayed.
-        from .coach_marks import CoachMark, COACH_MARKS
-
         self._coach_marks: dict = {}
         self._coach_mark_pending: Optional[str] = None
         # Suppresses the very first user click on a zone if
@@ -2131,7 +2129,7 @@ class MainWindow(Adw.ApplicationWindow):
         button, and both popovers fight for the same screen
         space.
         """
-        from .coach_marks import CoachMark, COACH_MARKS
+        from .coach_marks import COACH_MARKS
 
         config = get_context().config()
         if zone in config.coach_marks_seen:

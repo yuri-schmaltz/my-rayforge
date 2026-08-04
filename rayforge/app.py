@@ -175,7 +175,7 @@ def main():
     import gi
 
     gi.require_version("Adw", "1")
-    from gi.repository import Adw, Gio, GLib, Gtk
+    from gi.repository import Adw, Gio, GLib
 
     from rayforge.context import get_context
 

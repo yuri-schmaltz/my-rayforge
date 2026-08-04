@@ -146,8 +146,6 @@ def bench_i18n_lookup(iterations: int = 1000) -> dict:
     the user pays on every render of an i18n-marked UI
     string.
     """
-    from rayforge.shared.util.localized import _
-
     def run() -> None:
         for _ in range(100):
             _("Save")

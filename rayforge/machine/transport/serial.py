@@ -4,7 +4,6 @@ import logging
 import os
 import threading
 import time
-from gettext import gettext as _
 from typing import List, Optional
 
 import serial

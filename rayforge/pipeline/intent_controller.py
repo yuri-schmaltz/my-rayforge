@@ -452,9 +452,6 @@ class IntentController:
         callback can reattach outputs onto the originating WorkPiece or
         Step without needing to re-walk the Doc.
         """
-        from ..core.step import Step
-        from ..core.workpiece import WorkPiece
-
         self._key_to_item = {}
         if self._doc is None:
             return
