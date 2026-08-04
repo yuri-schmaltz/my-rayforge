@@ -1341,3 +1341,71 @@ def test_machine_transform_wcs_offset_in_gcode(
     # First G1 cut: world (95.5, -4.5) minus WCS (50, 30) = (45.5, -34.5).
     assert coords[1][0] == pytest.approx(45.5, abs=0.1)
     assert coords[1][1] == pytest.approx(-34.5, abs=0.1)
+
+
+# ----------------------------------------------------------------------
+# _hash_int regression tests
+# ----------------------------------------------------------------------
+# These cover the cache-key hash that ``_hash_int`` produces for the
+# step/job/workpiece tokens. The tests guard two contracts:
+#   1. The hash is stable across calls (deterministic per input).
+#   2. The hash is a 63-bit positive int (the high bit is masked off).
+#
+# They also act as a canary if a future contributor tries to revert the
+# algorithm to SHA-1 or another weak hash; the implementation is
+# pinned to SHA-256 in :func:`_hash_int` to silence the CodeQL
+# ``py/weak-cryptographic-hashing-algorithm`` rule that fired on
+# SHA-1 even with ``usedforsecurity=False``.
+
+
+def test_hash_int_uses_sha256():
+    """_hash_int must use SHA-256 (not SHA-1) to silence CodeQL."""
+    import hashlib
+    from rayforge.pipeline.intent_builder import _hash_int
+
+    # Patch hashlib.sha256 to verify it's the one called.
+    original = hashlib.sha256
+    called = {"n": 0}
+
+    def spy(data, *a, **kw):
+        called["n"] += 1
+        return original(data, *a, **kw)
+
+    hashlib.sha256 = spy
+    try:
+        _hash_int({"a": 1})
+    finally:
+        hashlib.sha256 = original
+    assert called["n"] == 1
+
+
+def test_hash_int_is_deterministic():
+    """Same payload -> same int, across calls and process invocations."""
+    from rayforge.pipeline.intent_builder import _hash_int
+
+    payload = {"kind": "step", "id": 42, "params": [1, 2, 3]}
+    first = _hash_int(payload)
+    second = _hash_int(payload)
+    assert first == second
+    # Different payload -> different hash (with overwhelming probability).
+    assert first != _hash_int({"kind": "step", "id": 43, "params": [1, 2, 3]})
+
+
+def test_hash_int_is_63bit_positive():
+    """_hash_int must return a 63-bit positive int (sign bit masked)."""
+    from rayforge.pipeline.intent_builder import _hash_int
+
+    for i in range(64):
+        h = _hash_int({"i": i})
+        assert 0 <= h < (1 << 63)
+        assert isinstance(h, int)
+
+
+def test_hash_int_key_order_does_not_matter():
+    """Canonical-JSON encoding sorts keys, so dict order is irrelevant."""
+    from rayforge.pipeline.intent_builder import _hash_int
+
+    a = _hash_int({"a": 1, "b": 2, "c": [3, 4]})
+    b = _hash_int({"c": [3, 4], "b": 2, "a": 1})
+    assert a == b
+
