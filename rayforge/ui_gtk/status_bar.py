@@ -78,6 +78,38 @@ class StatusBar(Gtk.Box):
         self._y_label.add_css_class("forge-statusbar-mono")
         self.append(self._y_label)
 
+        # ---- Accessibility ----
+        # The status bar is a live region (the screen reader
+        # re-announces its contents when they change). Each
+        # sub-widget gets a role + label so orca can announce
+        # 'X: 12.5, Y: 8.0' instead of just 'label'.
+        from ..shared.util.a11y import (
+            set_a11y_label,
+            mark_live_region,
+        )
+
+        set_a11y_label(
+            self._mode_badge,
+            _("Mode indicator"),
+            description=_(
+                "Current app state: designing, framing, "
+                "sending, paused, alarm, or idle"
+            ),
+            role=Gtk.AccessibleRole.STATUS,
+        )
+        set_a11y_label(
+            self._x_label,
+            _("Cursor X coordinate"),
+            role=Gtk.AccessibleRole.LABEL,
+        )
+        set_a11y_label(
+            self._y_label,
+            _("Cursor Y coordinate"),
+            role=Gtk.AccessibleRole.LABEL,
+        )
+        # The bar itself is the live region root.
+        mark_live_region(self)
+
         # ---- Layer + operation info ----
         self._separator2 = Gtk.Separator(
             orientation=Gtk.Orientation.VERTICAL
@@ -140,14 +172,15 @@ class StatusBar(Gtk.Box):
 
         Pass None for either axis to show '—' (no data).
         """
+        from ..shared.util.localized import _
         if x is None:
-            self._x_label.set_text("X: —")
+            self._x_label.set_text(_("X: —"))
         else:
-            self._x_label.set_text(f"X: {x:.2f}")
+            self._x_label.set_text(_("X: %.2f") % x)
         if y is None:
-            self._y_label.set_text("Y: —")
+            self._y_label.set_text(_("Y: —"))
         else:
-            self._y_label.set_text(f"Y: {y:.2f}")
+            self._y_label.set_text(_("Y: %.2f") % y)
 
     def set_layer_info(self, current: Optional[int], total: Optional[int]) -> None:
         """Show the current layer index and total count.
