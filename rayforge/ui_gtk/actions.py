@@ -251,6 +251,12 @@ class ActionManager:
         self._add_action("export-object", self.win.on_export_object_clicked)
         self._add_action("about", self.win.show_about_dialog)
         self._add_action("save_debug_log", self.win.on_save_debug_log)
+        # Help menu items added in wave 17: re-trigger the
+        # first-run walkthrough, replay the per-zone coach
+        # marks, and open the local insights dialog.
+        self._add_action("show_tour", self.win._show_tour)
+        self._add_action("replay_coach_marks", self.win._replay_coach_marks)
+        self._add_action("show_insights", self.win._show_insights)
         self._add_action("settings", self.win.show_settings)
         self._add_action("machine-settings", self.win.show_machine_settings)
 
@@ -864,7 +870,20 @@ class ActionManager:
     ):
         """Helper to create, register, and store a simple Gio.SimpleAction."""
         action = Gio.SimpleAction.new(name, param)
-        action.connect("activate", callback)
+        # Wrap the activate callback so the local tracker
+        # records every action fire. Wrapping (vs. separate
+        # handler) keeps a single 'activate' connection,
+        # which avoids double-counting and the bookkeeping
+        # of two callbacks per action.
+        from ..util.local_tracker import get_local_tracker
+
+        tracker = get_local_tracker()
+
+        def _wrapped(action, *args, **kwargs):
+            tracker.record_action(name)
+            return callback(action, *args, **kwargs)
+
+        action.connect("activate", _wrapped)
         self.win.add_action(action)
         self.actions[name] = action
 
@@ -876,6 +895,14 @@ class ActionManager:
         # For stateful actions, we ONLY connect to 'change-state'. The default
         # 'activate' handler for boolean actions will correctly call this for
         # us.
-        action.connect("change-state", callback)
+        from ..util.local_tracker import get_local_tracker
+
+        tracker = get_local_tracker()
+
+        def _wrapped(action, value, *args, **kwargs):
+            tracker.record_action(name)
+            return callback(action, value, *args, **kwargs)
+
+        action.connect("change-state", _wrapped)
         self.win.add_action(action)
         self.actions[name] = action

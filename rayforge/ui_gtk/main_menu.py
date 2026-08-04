@@ -233,6 +233,11 @@ class MainMenu(Gio.Menu):
 
         # Help Menu
         help_menu = Gio.Menu()
+        help_menu.append(_("Show Tour"), "win.show_tour")
+        help_menu.append(
+            _("Replay Coach Marks"), "win.replay_coach_marks"
+        )
+        help_menu.append(_("Insights..."), "win.show_insights")
         help_menu.append(_("About"), "win.about")
         help_menu.append(_("Save Debug Log"), "win.save_debug_log")
         self.append_submenu(_("_Help"), help_menu)

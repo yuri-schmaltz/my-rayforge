@@ -123,6 +123,17 @@ class StatusBar(Gtk.Box):
         if label is None:
             label = mode.capitalize()
         self._mode_badge.set_text(label)
+        # Mirror the change to the local tracker so the
+        # Insights dialog can show "current mode" and
+        # "mode transitions since launch". Best-effort —
+        # we never want a tracker failure to break the
+        # status bar.
+        try:
+            from ..util.local_tracker import get_local_tracker
+
+            get_local_tracker().record_mode(mode)
+        except Exception:  # pragma: no cover
+            pass
 
     def set_cursor_position(self, x: Optional[float], y: Optional[float]) -> None:
         """Set the cursor coordinates shown in the status bar.

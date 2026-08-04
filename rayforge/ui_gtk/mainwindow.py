@@ -660,6 +660,15 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Local-only usage tracker. Records action fires +
+        # mode changes for the Insights dialog. Independent
+        # of the Umami tracker (which is opt-in cloud
+        # telemetry); this is always-on but never leaves
+        # the process.
+        from ..util.local_tracker import get_local_tracker
+
+        self._local_tracker = get_local_tracker()
+
         # Coach-mark controller. Lazily constructs one
         # CoachMark popover per zone and shows them in
         # response to first-interaction triggers. Popovers
@@ -697,6 +706,7 @@ class MainWindow(Adw.ApplicationWindow):
         # open so the action map is fully populated by then.
         self._command_palette_window: Optional[Gtk.Window] = None
         self._install_palette_shortcut()
+        self._install_insights_shortcut()
 
         # Apply saved visibility state
         self._apply_saved_visibility_state()
@@ -1352,6 +1362,42 @@ class MainWindow(Adw.ApplicationWindow):
         action.set_state(value)
         self.apply_panel_layout()
 
+    def _show_insights(self) -> None:
+        """Open the InsightsDialog (Help > Insights, Ctrl+Shift+I).
+
+        Lazy-built on first open. Re-uses the same instance
+        on subsequent opens; the dialog refreshes its stats
+        from the local tracker on every open.
+        """
+        from .insights_panel import InsightsDialog
+
+        if (
+            not hasattr(self, "_insights_dialog")
+            or self._insights_dialog is None
+        ):
+            self._insights_dialog = InsightsDialog(
+                transient_for=self, tracker=self._local_tracker
+            )
+        self._insights_dialog.present()
+
+    def _replay_coach_marks(self, *args) -> None:
+        """Reset the coach-mark seen flags so all 6 popovers
+        can re-show on the next interaction. Wired from the
+        Help > Replay Coach Marks menu item."""
+        get_context().config.reset_coach_marks()
+
+    def _show_tour(self, *args) -> None:
+        """Re-show the first-run walkthrough. Wired from the
+        Help > Show Tour menu item."""
+        # Reset the seen flag so the walkthrough logic
+        # decides to show. The dialog itself is built and
+        # presented via the same _show_walkthrough code
+        # path used on first launch.
+        get_context().config.set_walkthrough_seen(False)
+        # Drop any existing dialog so a fresh one builds.
+        self._walkthrough = None
+        GLib.idle_add(self._show_walkthrough)
+
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
         config = get_context().config
@@ -1983,6 +2029,33 @@ class MainWindow(Adw.ApplicationWindow):
         self.add_controller(shortcut_ctrl)
         # Connect the signal: when the shortcut fires, open the palette.
         self.connect("open-palette", lambda *_: self._open_command_palette())
+
+    def _install_insights_shortcut(self):
+        """Register Ctrl+Shift+I as the open-insights shortcut.
+
+        Mirrors the pattern in _install_palette_shortcut.
+        The action is a signal 'open-insights' that this
+        method also connects to."""
+        from .shared.keyboard import PRIMARY_ACCEL
+
+        shortcut_ctrl = Gtk.ShortcutController()
+        shortcut_ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
+        trigger = Gtk.ShortcutTrigger.parse_string(
+            f"{PRIMARY_ACCEL}shift+i"
+        )
+        if trigger is None:
+            return
+        action = Gtk.ShortcutAction.parse_string(
+            "signal::open-insights"
+        )
+        if action is None:
+            return
+        shortcut = Gtk.Shortcut(trigger=trigger, action=action)
+        shortcut_ctrl.add_shortcut(shortcut)
+        self.add_controller(shortcut_ctrl)
+        self.connect(
+            "open-insights", lambda *_: self._show_insights()
+        )
 
     def _open_command_palette(self):
         """Build (once) and present the command palette overlay."""
