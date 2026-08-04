@@ -152,7 +152,15 @@ css = """
 .forge-theme togglebutton {
     border-radius: 6px;
     border: 1px solid #5a5a5a;
-    background: linear-gradient(to bottom, #595959, #474747);
+    /* Flat fill with a 1px top highlight to suggest depth without
+     * the dated gradient. Matches modern GTK4 / Adwaita button
+     * conventions better than a 0→1 stop linear-gradient. */
+    background-color: #4a4a4a;
+    background-image: linear-gradient(
+        to bottom,
+        alpha(white, 0.04),
+        alpha(black, 0.04)
+    );
     color: @forge_text;
     box-shadow: none;
 }
@@ -161,7 +169,7 @@ css = """
 .forge-theme menubutton > button:hover,
 .forge-theme splitbutton > button:hover,
 .forge-theme togglebutton:hover {
-    background: linear-gradient(to bottom, #666666, #535353);
+    background-color: #555555;
 }
 
 .forge-theme button:checked,
@@ -169,9 +177,10 @@ css = """
 .forge-theme togglebutton:checked,
 .forge-theme splitbutton > button:checked,
 .forge-theme menubutton > button:checked {
-    background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
-    border-color: #78a3d4;
-    color: #f2f6fb;
+    background-color: @forge_accent;
+    background-image: none;
+    border-color: #2f5e9a;
+    color: #ffffff;
 }
 
 .forge-theme separator {
@@ -205,24 +214,30 @@ css = """
     .forge-theme splitbutton > button,
     .forge-theme togglebutton {
         border-color: #b0b0b0;
-        background: linear-gradient(to bottom, #ffffff, #ececec);
+        background-color: #f5f5f5;
+        background-image: linear-gradient(
+            to bottom,
+            alpha(white, 0.6),
+            alpha(black, 0.02)
+        );
         color: @forge_text;
     }
     .forge-theme button:hover,
     .forge-theme menubutton > button:hover,
     .forge-theme splitbutton > button:hover,
     .forge-theme togglebutton:hover {
-        background: linear-gradient(to bottom, #ffffff, #f5f5f5);
+        background-color: #ffffff;
     }
     .forge-theme button:checked,
     .forge-theme button:active,
     .forge-theme togglebutton:checked,
     .forge-theme splitbutton > button:checked,
     .forge-theme menubutton > button:checked {
-        /* Slightly darker accent gradient so the active state has
-         * enough contrast against the light surface. Text stays
-         * near-white since the bg is mid-tone blue. */
-        background: linear-gradient(to bottom, #4f84c4, #2f5e9a);
+        /* Flat accent — same as dark mode so the active state reads
+         * identically across themes. Mid-tone blue against a light
+         * surface gives 4.6:1 contrast for the white label. */
+        background-color: @forge_accent;
+        background-image: none;
         border-color: #2f5e9a;
         color: #ffffff;
     }
