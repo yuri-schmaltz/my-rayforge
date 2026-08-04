@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 here = Path(__file__).parent.parent.parent
-source_path = here / "website/static/images/favicon.png"
+source_path = here / "rayforge/resources/icons/org.piresforge.pires-forge.png"
 ico_path = here / "rayforge.ico"
 
 sizes = [(256, 256), (64, 64), (48, 48), (32, 32), (16, 16)]
