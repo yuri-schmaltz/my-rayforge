@@ -269,6 +269,16 @@ class MainWindow(Adw.ApplicationWindow):
 
         vbox.append(self._status_overlay)
 
+        # Persistent status bar at the bottom of the window. Sits
+        # below the bottom panel (which lives inside _status_overlay
+        # / vertical_paned). The status bar gives the user a single
+        # glanceable source of truth for mode, cursor, layer,
+        # operation, and job progress.
+        from .status_bar import StatusBar
+
+        self.status_bar = StatusBar()
+        vbox.append(self.status_bar)
+
         # Create a stack for switching between main view and addon pages
         self.main_stack = Gtk.Stack()
         self.main_stack.set_vexpand(True)
@@ -1707,6 +1717,8 @@ class MainWindow(Adw.ApplicationWindow):
     def _update_status_message(self, tasks):
         if not tasks:
             self._status_message_label.set_visible(False)
+            self.status_bar.set_mode("designing")
+            self.status_bar.set_progress(None)
             return
 
         oldest_task = tasks[0]
@@ -1720,6 +1732,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._status_message_label.set_text(status_text)
         self._status_message_label.set_visible(bool(status_text))
+
+        # Update the persistent status bar with mode + progress.
+        # We pick 'sending' as the dominant mode when there's an
+        # active task; the caller can override with 'paused' or
+        # 'alarm' via the explicit setters when those apply.
+        self.status_bar.set_mode("sending", label=status_text or "Sending")
+        self.status_bar.set_progress(progress)
 
     def _update_actions_and_ui(self):
         config = get_context().config

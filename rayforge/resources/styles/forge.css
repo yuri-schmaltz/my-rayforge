@@ -394,3 +394,53 @@ window.splash-window {
         color: #b00020;
     }
 }
+
+/* ---- Status bar (bottom of main window) ----
+ *
+ * Persistent bar with mode badge, cursor coords, layer, operation,
+ * progress. Always visible so the user has a single source of
+ * truth for "what is the app doing right now". The mode badge
+ * uses color to communicate the state at a glance:
+ *  - designing (green)  : normal editing
+ *  - framing  (blue)    : previewing the toolpath
+ *  - sending  (yellow)  : a job is running
+ *  - paused   (orange)  : user-paused
+ *  - alarm    (red)     : machine is in error/unlock
+ *  - idle     (gray)    : no specific mode active
+ */
+.forge-statusbar {
+    background-color: alpha(@forge_panel, 0.92);
+    border-top: 1px solid @forge_border;
+    padding: 4px 8px;
+    min-height: 26px;
+}
+.forge-statusbar-mode-badge {
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    color: #ffffff;
+    background-color: #6a6a6a;
+}
+.forge-statusbar-mode-idle {
+    background-color: #6a6a6a;
+}
+.forge-statusbar-mode-designing {
+    background-color: #2e7d32;  /* green */
+}
+.forge-statusbar-mode-framing {
+    background-color: #1565c0;  /* blue */
+}
+.forge-statusbar-mode-sending {
+    background-color: #f9a825;  /* yellow / amber */
+    color: #000000;
+}
+.forge-statusbar-mode-paused {
+    background-color: #ef6c00;  /* orange */
+}
+.forge-statusbar-mode-alarm {
+    background-color: #c62828;  /* red */
+}
+.forge-statusbar-mono {
+    font-family: monospace;
+    font-variant-numeric: tabular-nums;
+}
