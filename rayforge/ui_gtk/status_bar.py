@@ -140,14 +140,15 @@ class StatusBar(Gtk.Box):
 
         Pass None for either axis to show '—' (no data).
         """
+        from ..shared.util.localized import _
         if x is None:
-            self._x_label.set_text("X: —")
+            self._x_label.set_text(_("X: —"))
         else:
-            self._x_label.set_text(f"X: {x:.2f}")
+            self._x_label.set_text(_("X: %.2f") % x)
         if y is None:
-            self._y_label.set_text("Y: —")
+            self._y_label.set_text(_("Y: —"))
         else:
-            self._y_label.set_text(f"Y: {y:.2f}")
+            self._y_label.set_text(_("Y: %.2f") % y)
 
     def set_layer_info(self, current: Optional[int], total: Optional[int]) -> None:
         """Show the current layer index and total count.

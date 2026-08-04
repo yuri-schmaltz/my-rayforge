@@ -55,8 +55,9 @@ class InsightsDialog(Adw.Dialog):
 
     def __init__(self, tracker: "LocalTracker", **kwargs) -> None:
         super().__init__(**kwargs)
+        from ..shared.util.localized import _
         self._tracker = tracker
-        self.set_title("Insights")
+        self.set_title(_("Insights"))
         self.set_content_width(560)
         self.set_content_height(640)
 
