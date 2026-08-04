@@ -8,6 +8,66 @@ Pires Forge is a fork of the [Rayforge](https://github.com/barebaric/rayforge)
 project. The rebrand was completed in 1.0.0. For the upstream history
 prior to the fork, see the Rayforge repository.
 
+## [1.0.1] - 2026-08-04
+
+### Security
+
+- **SHA-1 cache key replaced with SHA-256** in
+  `rayforge/pipeline/intent_builder.py:_hash_int`. The
+  `usedforsecurity=False` argument silenced bandit/ruff
+  B324/S324 but did not satisfy CodeQL's
+  `py/weak-cryptographic-hashing-algorithm` rule, which
+  was the last open CodeQL HIGH alert on the repo. The
+  function only consumes the first 8 bytes of the digest,
+  so SHA-256 is a drop-in replacement with no change in
+  cache-key behaviour.
+- **aiohttp bumped 3.14.1 → 3.14.3** — closes
+  CVE-2026-69244 (out-of-bounds heap read in the C HTTP
+  response parser error path; a malformed chunked
+  response can crash the client) and the WebSocket
+  permessage-deflate / HTTP-smuggling advisories.
+- **GitPython bumped 3.1.55 → 3.1.57** — closes the
+  `Repo.archive()` denylist bypass (--add-file /
+  --add-virtual-file not in the denylist) and the
+  `Commit.count` rev-list `--output` argument-injection
+  primitive. CVE fixes shipped across 3.1.55 and 3.1.57.
+- **Explicit `permissions: contents: read` on every
+  GitHub Actions workflow** — closes 18 of the
+  `Workflow does not contain permissions` CodeQL alerts.
+  Defence-in-depth: a compromised step no longer has
+  implicit repo-write power. Job-level write overrides
+  preserved where needed (release upload, PyPI OIDC,
+  stale-issue labelling).
+- **Replaced GitHub's "Default" CodeQL setup** with an
+  explicit `.github/workflows/codeql.yml`. The default
+  setup was showing the "CodeQL is reporting errors"
+  banner; the new workflow runs
+  `security-extended + security-and-quality` query packs
+  with `build-mode: none` (rayforge is a flat import tree).
+
+### Fixed
+
+- **verify-snap.yml step names containing colons were
+  failing workflow validation** — `Smoke test: --help`,
+  `Smoke test: --version`, and `Smoke test: launch
+  headless` are now quoted (`"Smoke test: --help"`).
+  Closes a stray 'failure' that appeared on every PR
+  touching workflows after the explicit-permissions PR
+  landed.
+
+### Internal
+
+- 4 new unit tests in `tests/pipeline/test_intent_builder.py`:
+  - `test_hash_int_uses_sha256` — canary spy on
+    `hashlib.sha256` to guard against future revert to SHA-1.
+  - `test_hash_int_is_deterministic` — same payload → same int.
+  - `test_hash_int_is_63bit_positive` — result in `[0, 2^63)`.
+  - `test_hash_int_key_order_does_not_matter` — canonical-JSON
+    contract (keys sorted, dict order irrelevant).
+- All 25 GitHub security alerts (3 HIGH + 22 MED) closed
+  as of this release. `pip-audit` reports 0 vulnerabilities
+  on the locked dependency tree.
+
 ## [Unreleased]
 
 ### Added
