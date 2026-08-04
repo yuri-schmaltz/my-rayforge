@@ -4,7 +4,6 @@ Fetch download statistics from various sources.
 
 Sources:
 - GitHub Releases
-- Snap Store
 - Flathub
 - PyPI
 - Launchpad PPA
@@ -20,7 +19,6 @@ import argparse
 import base64
 import json
 import os
-import subprocess
 import sys
 from collections import defaultdict
 from datetime import UTC, datetime
@@ -53,89 +51,6 @@ def get_github_releases(owner, repo):
         by_version[version] = count
         total += count
     return {"total": total, "by_version": by_version}
-
-
-def get_snap_downloads(snap_name):
-    url = f"https://api.snapcraft.io/v2/snaps/info/{snap_name}"
-    headers = {"Snap-Device-Series": "16"}
-    try:
-        data = fetch_json(url, headers)
-        channel_map = data.get("channel-map", [])
-        by_channel = {}
-        first_release = None
-        for channel in channel_map:
-            channel_info = channel.get("channel", {})
-            channel_name = channel_info.get("name", "unknown")
-            version = channel.get("version", "unknown")
-            released_at = channel_info.get("released-at")
-            by_channel[channel_name] = {
-                "version": version,
-                "released_at": released_at,
-            }
-            if released_at and (
-                first_release is None or released_at < first_release
-            ):
-                first_release = released_at
-        return {
-            "total": 0,
-            "by_channel": by_channel,
-            "first_release": first_release,
-            "note": "Snap download counts require snapcraft CLI",
-        }
-    except (HTTPError, URLError):
-        return {"total": 0, "by_channel": {}, "error": "Snap not found"}
-
-
-def get_snap_downloads_cli(snap_name, start_date=None):
-    result = {"total": 0, "by_month": {}, "error": None}
-    cred = os.environ.get("SNAPCRAFT_STORE_CREDENTIALS")
-    env = os.environ.copy()
-    if cred:
-        # Check if cred is a file path that exists
-        if os.path.isfile(cred):
-            with open(cred, "r") as f:
-                cred = f.read().strip()
-            env["SNAPCRAFT_STORE_CREDENTIALS"] = cred
-        else:
-            env["SNAPCRAFT_STORE_CREDENTIALS"] = cred
-    try:
-        cmd = [
-            "snapcraft",
-            "metrics",
-            snap_name,
-            "--name",
-            "daily_device_change",
-            "--format=json",
-        ]
-        if start_date:
-            cmd.extend(["--start", start_date])
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=60, env=env
-        )
-        if proc.returncode != 0:
-            result["error"] = f"snapcraft CLI failed: {proc.stderr.strip()}"
-            return result
-        metric = json.loads(proc.stdout)
-        for series in metric.get("series", []):
-            if series.get("name") == "new":
-                values = series.get("values", [])
-                dates = metric.get("buckets", [])
-                monthly = defaultdict(int)
-                total = 0
-                for date_str, val in zip(dates, values):
-                    if val is not None:
-                        month = date_str[:7]
-                        count = int(val)
-                        monthly[month] += count
-                        total += count
-                result["total"] = total
-                result["by_month"] = dict(sorted(monthly.items()))
-                break
-    except FileNotFoundError:
-        result["error"] = "snapcraft CLI not installed"
-    except (subprocess.TimeoutExpired, json.JSONDecodeError) as e:
-        result["error"] = str(e)
-    return result
 
 
 def get_flathub_downloads(app_id):
@@ -284,9 +199,9 @@ def get_pypi_monthly(pkg_name):
         daily = data.get("data", [])
         monthly = defaultdict(int)
         for entry in daily:
-            date_str = entry.get("date", "")
-            if date_str:
-                month = date_str[:7]
+            date = entry.get("date", "")
+            if date:
+                month = date[:7]
                 monthly[month] += entry.get("downloads", 0)
         return dict(sorted(monthly.items()))
     except (HTTPError, URLError):
@@ -301,9 +216,9 @@ def get_pypi_daily(pkg_name):
         data = fetch_json(url)
         daily = {}
         for entry in data.get("data", []):
-            date_str = entry.get("date", "")
-            if date_str:
-                daily[date_str] = entry.get("downloads", 0)
+            date = entry.get("date", "")
+            if date:
+                daily[date] = entry.get("downloads", 0)
         return daily
     except (HTTPError, URLError):
         return {}
@@ -386,7 +301,6 @@ def main():
     parser = argparse.ArgumentParser(description="Fetch download stats")
     parser.add_argument("--github-owner", default="barebaric")
     parser.add_argument("--github-repo", default="rayforge")
-    parser.add_argument("--snap-name", default="rayforge")
     parser.add_argument("--flathub-id", default="org.piresforge.pires-forge")
     parser.add_argument("--pypi-package", default="rayforge")
     parser.add_argument("--ppa-owner", default="knipknap")
@@ -407,62 +321,51 @@ def main():
         print("Fetching monthly download stats...")
         flathub_monthly = get_flathub_monthly(args.flathub_id)
         pypi_monthly = get_pypi_monthly(args.pypi_package)
-        snap_data = get_snap_downloads_cli(args.snap_name, "2024-01-01")
-        snap_monthly = snap_data.get("by_month", {})
-        snap_error = snap_data.get("error")
         ppa_monthly = get_ppa_monthly(args.ppa_owner, args.ppa_name)
 
         all_months = sorted(
             set(flathub_monthly.keys())
             | set(pypi_monthly.keys())
-            | set(snap_monthly.keys())
             | set(ppa_monthly.keys())
         )
 
         print("\nMonthly Downloads by Source:")
-        print("-" * 72)
+        print("-" * 64)
         print(
             f"{'Month':<10} {'Flathub':>10} {'PyPI':>10} "
-            f"{'Snap':>10} {'PPA':>10} {'Total':>10}"
+            f"{'PPA':>10} {'Total':>10}"
         )
-        print("-" * 72)
+        print("-" * 64)
 
         for month in all_months:
             fh = flathub_monthly.get(month, 0)
             pypi = pypi_monthly.get(month, 0)
-            snap = snap_monthly.get(month, 0)
             ppa = ppa_monthly.get(month, 0)
-            total = fh + pypi + snap + ppa
+            total = fh + pypi + ppa
             print(
-                f"{month:<10} {fh:>10,} {pypi:>10,} {snap:>10,} "
+                f"{month:<10} {fh:>10,} {pypi:>10,} "
                 f"{ppa:>10,} {total:>10,}"
             )
 
-        print("-" * 72)
+        print("-" * 64)
         fh_total = sum(flathub_monthly.values())
         pypi_total = sum(pypi_monthly.values())
-        snap_total = sum(snap_monthly.values())
         ppa_total = sum(ppa_monthly.values())
         print(
             f"{'TOTAL':<10} "
             f"{fh_total:>10,} "
             f"{pypi_total:>10,} "
-            f"{snap_total:>10,} "
             f"{ppa_total:>10,} "
-            f"{fh_total + pypi_total + snap_total + ppa_total:>10,}"
+            f"{fh_total + pypi_total + ppa_total:>10,}"
         )
-        if snap_error:
-            print(f"\nNote: Snap stats unavailable - {snap_error}")
         return 0
 
     ppa_stats = get_ppa_downloads(args.ppa_owner, args.ppa_name)
-    snap_stats = get_snap_downloads_cli(args.snap_name, "2024-01-01")
     pypi_monthly = get_pypi_monthly(args.pypi_package)
     pypi_total = sum(pypi_monthly.values())
     stats = {
         "timestamp": datetime.now(UTC).isoformat(),
         "github": get_github_releases(args.github_owner, args.github_repo),
-        "snap": snap_stats,
         "flathub": get_flathub_downloads(args.flathub_id),
         "pypi": get_pypi_downloads(args.pypi_package),
         "ppa": ppa_stats,
@@ -470,7 +373,6 @@ def main():
 
     stats["total_downloads"] = (
         stats["github"]["total"]
-        + stats["snap"]["total"]
         + stats["flathub"]["total"]
         + pypi_total
         + ppa_stats["total"]
@@ -478,14 +380,11 @@ def main():
 
     if args.output == "file":
         flathub_monthly = get_flathub_monthly(args.flathub_id)
-        snap_data = get_snap_downloads_cli(args.snap_name, "2024-01-01")
-        snap_monthly = snap_data.get("by_month", {})
         ppa_monthly = get_ppa_monthly(args.ppa_owner, args.ppa_name)
 
         all_months = sorted(
             set(flathub_monthly.keys())
             | set(pypi_monthly.keys())
-            | set(snap_monthly.keys())
             | set(ppa_monthly.keys())
         )
 
@@ -493,16 +392,14 @@ def main():
         for month in all_months:
             fh = flathub_monthly.get(month, 0)
             pypi = pypi_monthly.get(month, 0)
-            snap = snap_monthly.get(month, 0)
             ppa = ppa_monthly.get(month, 0)
             monthly.append(
                 {
                     "month": month,
                     "flathub": fh,
                     "pypi": pypi,
-                    "snap": snap,
                     "ppa": ppa,
-                    "total": fh + pypi + snap + ppa,
+                    "total": fh + pypi + ppa,
                 }
             )
 
@@ -512,7 +409,6 @@ def main():
                 "github": stats["github"]["total"],
                 "flathub": stats["flathub"]["total"],
                 "pypi": stats["pypi"]["last_month"],
-                "snap": snap_data.get("total", 0),
                 "ppa": ppa_stats["total"],
             },
             "github_by_version": stats["github"]["by_version"],
@@ -636,31 +532,6 @@ def main():
                     "name": "downloads_by_version",
                     "value": count,
                     "tags": {"source": "ppa", "version": version},
-                }
-            )
-
-        snap_error = snap_stats.get("error")
-        if snap_error:
-            print(f"Warning: Snap stats unavailable - {snap_error}")
-        else:
-            snap_total = snap_stats.get("total", 0)
-            snap_months = len(snap_stats.get("by_month", {}))
-            print(f"Snap stats: {snap_total} total, {snap_months} months")
-
-        metrics.append(
-            {
-                "name": "downloads_total",
-                "value": snap_stats.get("total", 0),
-                "tags": {"source": "snap"},
-            }
-        )
-
-        for month, count in snap_stats.get("by_month", {}).items():
-            metrics.append(
-                {
-                    "name": "downloads_by_month",
-                    "value": count,
-                    "tags": {"source": "snap", "month": month},
                 }
             )
 

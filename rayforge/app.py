@@ -177,11 +177,6 @@ def main():
     gi.require_version("Adw", "1")
     from gi.repository import Adw, Gio, GLib, Gtk
 
-    if os.environ.get("SNAP"):
-        settings = Gtk.Settings.get_default()
-        if settings:
-            settings.set_property("gtk-icon-theme-name", "Adwaita")
-
     from rayforge.context import get_context
 
     class App(Adw.Application):
