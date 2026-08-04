@@ -420,23 +420,66 @@ class MainWindow(Adw.ApplicationWindow):
             self.doc_editor.history_manager
         )
 
-        # Create a vertical paned for the right pane content
-        self._right_pane = Gtk.ScrolledWindow()
-        self._right_pane.set_policy(
+        # Create a right pane with tabs (Workflow | Properties)
+        # instead of a single ScrolledWindow that stacked both
+        # sections. The user previously had to scroll up and down
+        # to switch between viewing the workflow steps and the
+        # properties of the selected item; with tabs the same height
+        # hosts two distinct contexts that the user clicks between.
+        # (Wave 9 in the UI/UX wave — Inkscape/Krita pattern.)
+        right_pane_outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        right_pane_outer.set_size_request(400, -1)
+        right_pane_outer.add_css_class("right-panel-overlay")
+        right_pane_outer.set_halign(Gtk.Align.END)
+        right_pane_outer.set_valign(Gtk.Align.START)
+
+        # ViewSwitcher bar at the top, with the two tabs.
+        right_pane_switcher = Adw.ViewSwitcher()
+        right_pane_switcher.set_policy(Adw.ViewSwitcherPolicy.WIDE)
+        right_pane_switcher.set_margin_top(4)
+        right_pane_switcher.set_margin_start(8)
+        right_pane_switcher.set_margin_end(8)
+
+        right_pane_stack = Adw.ViewStack()
+        right_pane_stack.set_vexpand(True)
+        right_pane_stack.set_hexpand(False)
+        right_pane_switcher.set_stack(right_pane_stack)
+        # Save on self so _on_selection_changed can auto-switch
+        # to the Properties tab when the user selects an item.
+        self._right_pane_stack = right_pane_stack
+
+        # The ViewStack goes inside a ScrolledWindow so each page
+        # can have its own scrollable content. We bind the switcher
+        # to the stack via set_stack above.
+        scrolled_workflow = Gtk.ScrolledWindow()
+        scrolled_workflow.set_policy(
             Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
         )
-        self._right_pane.set_vexpand(True)
-        self._right_pane.add_css_class("right-panel-overlay")
-        self._right_pane.set_halign(Gtk.Align.END)
-        self._right_pane.set_valign(Gtk.Align.START)
+        scrolled_workflow.set_vexpand(True)
+
+        scrolled_props = Gtk.ScrolledWindow()
+        scrolled_props.set_policy(
+            Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC
+        )
+        scrolled_props.set_vexpand(True)
+
+        right_pane_stack.add(
+            scrolled_workflow, "workflow", _("Workflow")
+        )
+        right_pane_stack.add(
+            scrolled_props, "properties", _("Properties")
+        )
+
+        right_pane_outer.append(right_pane_switcher)
+        right_pane_outer.append(right_pane_stack)
+
+        # The outer widget still goes into the canvas overlay (so
+        # it floats on the canvas), but the layout inside is now
+        # a tabbed stack. The legacy _right_pane attribute points
+        # to the outer box for any code that toggles its visibility.
+        self._right_pane = right_pane_outer
         self._right_pane.set_propagate_natural_height(True)
         self._canvas_overlay.add_overlay(self._right_pane)
-
-        # Create a vertical box to organize the content within the
-        # ScrolledWindow.
-        right_pane_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        right_pane_box.set_size_request(400, -1)
-        self._right_pane.set_child(right_pane_box)
 
         # The WorkflowView will be updated when a layer is activated.
         initial_workflow = self.doc_editor.doc.active_layer.workflow
@@ -447,18 +490,20 @@ class MainWindow(Adw.ApplicationWindow):
             step_factories=step_registry.get_factories(),
         )
         self.workflowview.set_margin_top(6)
+        self.workflowview.set_margin_start(12)
         self.workflowview.set_margin_end(12)
-        right_pane_box.append(self.workflowview)
+        scrolled_workflow.set_child(self.workflowview)
 
         # Register built-in property providers before creating the widget
         register_builtin_providers()
 
-        # Add the WorkpiecePropertiesWidget
+        # Add the WorkpiecePropertiesWidget to the Properties tab
         self.item_props_widget = DocItemPropertiesWidget(
             editor=self.doc_editor
         )
         item_props_container = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.item_props_widget.set_margin_top(6)
+        self.item_props_widget.set_margin_start(12)
         self.item_props_widget.set_margin_end(12)
         item_props_container.append(self.item_props_widget)
 
@@ -468,7 +513,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.item_revealer.set_transition_type(
             Gtk.RevealerTransitionType.SLIDE_UP
         )
-        right_pane_box.append(self.item_revealer)
+        scrolled_props.set_child(self.item_revealer)
 
         # Connect signals for item selection and actions
         self.surface.selection_changed.connect(self._on_selection_changed)
@@ -1572,6 +1617,20 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.item_props_widget.set_items(selected_items)
         self.item_revealer.set_reveal_child(bool(selected_items))
+        # If the user selected something, auto-switch the right
+        # pane to the Properties tab so they immediately see what
+        # changed. If they de-selected, switch back to the Workflow
+        # tab so the workflow is the default focus.
+        if hasattr(self, "_right_pane_stack") and selected_items:
+            try:
+                self._right_pane_stack.set_visible_child_name("properties")
+            except Exception:
+                pass
+        elif hasattr(self, "_right_pane_stack"):
+            try:
+                self._right_pane_stack.set_visible_child_name("workflow")
+            except Exception:
+                pass
         self.bottom_panel.update_position_menu_sensitivity()
         self._update_actions_and_ui()
         selected_uids = {item.uid for item in selected_items}
