@@ -264,13 +264,31 @@ def main():
                 self.win.present()
                 return
 
+            # Show a splash screen immediately so the user has visual
+            # feedback while the main window initializes (which can
+            # take a few hundred ms on first launch with cold caches
+            # or large addons installed). The splash is closed once
+            # the main window finishes its initial map cycle.
+            from rayforge.ui_gtk.splash import SplashScreen
+
+            splash = SplashScreen()
+            splash.present()
+
             # Import the window here to avoid module-level side-effects
             from rayforge.ui_gtk.mainwindow import MainWindow
 
             self.win = MainWindow(application=self)
+            self._splash = splash  # keep ref alive until close
 
             # Don't load files until the window is fully mapped and
             # allocated on screen. The 'map' signal guarantees this.
+            def _on_main_window_mapped(_win):
+                if self._splash is not None:
+                    self._splash.close()
+                    self._splash = None
+
+            self.win.connect("map", _on_main_window_mapped)
+
             if self.args.filenames:
                 # We connect a one-shot handler to the 'map' event.
                 self.win.connect("map", self._load_initial_files)
