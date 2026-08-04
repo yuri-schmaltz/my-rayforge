@@ -87,6 +87,25 @@ class MainMenu(Gio.Menu):
 
         self._view_addon_group = visibility_group
 
+        # Layout presets — the user picks a high-level layout
+        # (default / compact / expanded) and the right + bottom
+        # panels re-arrange accordingly. The action is stateful
+        # (radio-button style) so the current preset is always
+        # visible in the menu.
+        layout_group = Gio.Menu()
+        layout_group.append(
+            _("Default Layout"), "win.panel_layout::default"
+        )
+        layout_group.append(
+            _("Compact Layout (canvas focus)"),
+            "win.panel_layout::compact",
+        )
+        layout_group.append(
+            _("Expanded Layout (logs focus)"),
+            "win.panel_layout::expanded",
+        )
+        view_menu.append_section(_("Layout"), layout_group)
+
         view_group = Gio.Menu()
         view_group.append(_("3D View"), "win.show_3d_view")
         view_menu.append_section(None, view_group)
@@ -214,6 +233,11 @@ class MainMenu(Gio.Menu):
 
         # Help Menu
         help_menu = Gio.Menu()
+        help_menu.append(_("Show Tour"), "win.show_tour")
+        help_menu.append(
+            _("Replay Coach Marks"), "win.replay_coach_marks"
+        )
+        help_menu.append(_("Insights..."), "win.show_insights")
         help_menu.append(_("About"), "win.about")
         help_menu.append(_("Save Debug Log"), "win.save_debug_log")
         self.append_submenu(_("_Help"), help_menu)

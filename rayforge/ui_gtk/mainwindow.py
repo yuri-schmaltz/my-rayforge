@@ -292,6 +292,17 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.status_bar = StatusBar()
         vbox.append(self.status_bar)
+        # First-interaction coach mark for the status bar.
+        # A click anywhere on the bar (including the mode
+        # badge) shows the popover pointing at the bar.
+        status_click = Gtk.GestureClick()
+        status_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "status", self.status_bar
+            ),
+        )
+        self.status_bar.add_controller(status_click)
 
         # Create a stack for switching between main view and addon pages
         self.main_stack = Gtk.Stack()
@@ -393,6 +404,21 @@ class MainWindow(Adw.ApplicationWindow):
 
         # The view stack is the base child of the canvas overlay
         self._canvas_overlay.set_child(self.view_stack)
+
+        # First-interaction coach mark for the canvas. A
+        # gesture-click on the overlay fires on any click
+        # inside the canvas; the first one shows the canvas
+        # coach mark. We use the overlay (not the surface)
+        # so the popover arrow points at the canvas as a
+        # whole rather than a specific element.
+        canvas_click = Gtk.GestureClick()
+        canvas_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "canvas", self._canvas_overlay
+            ),
+        )
+        self._canvas_overlay.add_controller(canvas_click)
 
         # Wrap surface in an overlay to allow preview controls
         self.surface_overlay = Gtk.Overlay()
@@ -577,6 +603,17 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel.layout_changed.connect(
             self._on_bottom_layout_changed
         )
+        # First-interaction coach mark for the bottom panel.
+        # Gesture-click on the widget itself; the popover
+        # points at the panel and explains "console / gcode".
+        bottom_click = Gtk.GestureClick()
+        bottom_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "bottom", self.bottom_panel
+            ),
+        )
+        self.bottom_panel.add_controller(bottom_click)
 
         self.bottom_panel.click_to_zero_mode_changed.connect(
             self._on_click_to_zero_mode_changed
@@ -623,6 +660,41 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Local-only usage tracker. Records action fires +
+        # mode changes for the Insights dialog. Independent
+        # of the Umami tracker (which is opt-in cloud
+        # telemetry); this is always-on but never leaves
+        # the process.
+        from ..util.local_tracker import get_local_tracker
+
+        self._local_tracker = get_local_tracker()
+
+        # Coach-mark controller. Lazily constructs one
+        # CoachMark popover per zone and shows them in
+        # response to first-interaction triggers. Popovers
+        # are not created until the first interaction so the
+        # initial paint isn't delayed.
+        from .coach_marks import CoachMark, COACH_MARKS
+
+        self._coach_marks: dict = {}
+        self._coach_mark_pending: Optional[str] = None
+        # Suppresses the very first user click on a zone if
+        # the walkthrough is still on screen (avoids the
+        # popover fighting the walkthrough for attention).
+        self._walkthrough_active: bool = False
+
+        # Panel manager — coordinates right + bottom panel
+        # visibility across the three layout presets
+        # (default / compact / expanded) and per-panel overrides.
+        # The actual widgets are bound after they're constructed
+        # below; this just creates the manager.
+        from .panel_manager import PanelManager
+
+        self.panel_manager = PanelManager(
+            right_panel=self._right_pane,
+            bottom_panel=self.bottom_panel,
+        )
+
         # First-run walkthrough. Shown only if config.walkthrough_seen
         # is False. The dialog persists a "seen" flag to config on
         # any of: skip, done, or close, so it only runs once.
@@ -634,6 +706,7 @@ class MainWindow(Adw.ApplicationWindow):
         # open so the action map is fully populated by then.
         self._command_palette_window: Optional[Gtk.Window] = None
         self._install_palette_shortcut()
+        self._install_insights_shortcut()
 
         # Apply saved visibility state
         self._apply_saved_visibility_state()
@@ -1241,6 +1314,19 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar.toolbar_mode_changed.connect(
             self.on_toolbar_mode_changed
         )
+        # First-interaction coach mark for the toolbar. A
+        # gesture-click on the toolbar widget fires on any
+        # toolbar button press; the coach mark shows the
+        # first time only. We use the toolbar widget itself
+        # as the popover parent so the arrow points at the
+        # toolbar regardless of which button was clicked.
+        toolbar_click = Gtk.GestureClick()
+        toolbar_click.connect(
+            "pressed", lambda *_: self.trigger_coach_mark(
+                "toolbar", self.toolbar
+            )
+        )
+        self.toolbar.add_controller(toolbar_click)
         self.machine_selector.machine_selected.connect(
             self.on_machine_selected_by_selector
         )
@@ -1251,6 +1337,66 @@ class MainWindow(Adw.ApplicationWindow):
         (curated subset). Stored in config.toolbar_mode."""
         show_all = kwargs.get("show_all", False)
         get_context().config.set_toolbar_mode("all" if show_all else "essential")
+
+    def on_panel_layout_state_change(
+        self, action: Gio.SimpleAction, value: GLib.Variant
+    ):
+        """Apply a layout preset chosen from the View > Layout submenu.
+
+        The action is stateful (string variant), so the menu
+        shows a radio checkmark next to the current preset. When
+        the user picks a new preset, we:
+          1. Update config.panel_layout
+          2. Clear any per-panel overrides (since the preset is
+             now the source of truth)
+          3. Re-apply the layout (so the panels move immediately,
+             even if the user has only ever seen the menu via the
+             keyboard shortcut)
+        """
+        layout = value.get_string()
+        config = get_context().config()
+        # Clear overrides; the preset is now authoritative.
+        if config.panel_overrides:
+            config.panel_overrides = {}
+        config.set_panel_layout(layout)
+        action.set_state(value)
+        self.apply_panel_layout()
+
+    def _show_insights(self) -> None:
+        """Open the InsightsDialog (Help > Insights, Ctrl+Shift+I).
+
+        Lazy-built on first open. Re-uses the same instance
+        on subsequent opens; the dialog refreshes its stats
+        from the local tracker on every open.
+        """
+        from .insights_panel import InsightsDialog
+
+        if (
+            not hasattr(self, "_insights_dialog")
+            or self._insights_dialog is None
+        ):
+            self._insights_dialog = InsightsDialog(
+                transient_for=self, tracker=self._local_tracker
+            )
+        self._insights_dialog.present()
+
+    def _replay_coach_marks(self, *args) -> None:
+        """Reset the coach-mark seen flags so all 6 popovers
+        can re-show on the next interaction. Wired from the
+        Help > Replay Coach Marks menu item."""
+        get_context().config.reset_coach_marks()
+
+    def _show_tour(self, *args) -> None:
+        """Re-show the first-run walkthrough. Wired from the
+        Help > Show Tour menu item."""
+        # Reset the seen flag so the walkthrough logic
+        # decides to show. The dialog itself is built and
+        # presented via the same _show_walkthrough code
+        # path used on first launch.
+        get_context().config.set_walkthrough_seen(False)
+        # Drop any existing dialog so a fresh one builds.
+        self._walkthrough = None
+        GLib.idle_add(self._show_walkthrough)
 
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
@@ -1662,6 +1808,14 @@ class MainWindow(Adw.ApplicationWindow):
                 self._right_pane_stack.set_visible_child_name("properties")
             except Exception:
                 pass
+            # First time the right pane shows properties
+            # because the user clicked an object, show the
+            # coach mark for the right pane. Lazy import
+            # to avoid a circular dep at module load.
+            if hasattr(self, "trigger_coach_mark"):
+                self.trigger_coach_mark(
+                    "right_pane", self._right_pane
+                )
         elif hasattr(self, "_right_pane_stack"):
             try:
                 self._right_pane_stack.set_visible_child_name("workflow")
@@ -1703,6 +1857,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.apply_theme()
         self.apply_ui_density()
         self.apply_toolbar_mode()
+        self.apply_panel_layout()
+        self.apply_panel_layout()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1822,6 +1978,33 @@ class MainWindow(Adw.ApplicationWindow):
         if hasattr(self, "toolbar"):
             self.toolbar.apply_toolbar_mode(show_all)
 
+    def apply_panel_layout(self):
+        """Apply config.panel_layout to the right and bottom panels.
+
+        Three presets:
+          - default  : right + bottom both visible
+          - compact  : right visible, bottom hidden (canvas focus)
+          - expanded : right hidden, bottom visible (logs focus)
+
+        Per-panel overrides from config.panel_overrides are
+        layered on top of the preset, so a user who likes the
+        'default' preset but wants the right pane off doesn't
+        have to switch to 'compact' and lose the bottom panel.
+        """
+        if not hasattr(self, "panel_manager"):
+            return
+        config = get_context().config()
+        layout = (config.panel_layout or "default").lower()
+        # Apply the preset via the manager (sets both panels
+        # to the preset's visibility).
+        self.panel_manager.apply_layout(layout)
+        # Then apply any overrides on top.
+        for panel_name, visible in (config.panel_overrides or {}).items():
+            if panel_name == "right":
+                self.panel_manager.set_right_visible(visible)
+            elif panel_name == "bottom":
+                self.panel_manager.set_bottom_visible(visible)
+
     def _install_palette_shortcut(self):
         """Register Ctrl+Shift+P as the open-command-palette shortcut."""
         from .shared.keyboard import PRIMARY_ACCEL
@@ -1846,6 +2029,33 @@ class MainWindow(Adw.ApplicationWindow):
         self.add_controller(shortcut_ctrl)
         # Connect the signal: when the shortcut fires, open the palette.
         self.connect("open-palette", lambda *_: self._open_command_palette())
+
+    def _install_insights_shortcut(self):
+        """Register Ctrl+Shift+I as the open-insights shortcut.
+
+        Mirrors the pattern in _install_palette_shortcut.
+        The action is a signal 'open-insights' that this
+        method also connects to."""
+        from .shared.keyboard import PRIMARY_ACCEL
+
+        shortcut_ctrl = Gtk.ShortcutController()
+        shortcut_ctrl.set_scope(Gtk.ShortcutScope.MANAGED)
+        trigger = Gtk.ShortcutTrigger.parse_string(
+            f"{PRIMARY_ACCEL}shift+i"
+        )
+        if trigger is None:
+            return
+        action = Gtk.ShortcutAction.parse_string(
+            "signal::open-insights"
+        )
+        if action is None:
+            return
+        shortcut = Gtk.Shortcut(trigger=trigger, action=action)
+        shortcut_ctrl.add_shortcut(shortcut)
+        self.add_controller(shortcut_ctrl)
+        self.connect(
+            "open-insights", lambda *_: self._show_insights()
+        )
 
     def _open_command_palette(self):
         """Build (once) and present the command palette overlay."""
@@ -1896,6 +2106,86 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.connect("closed", _on_close)
         self._walkthrough = dialog
         dialog.present()
+        return False  # remove the idle source
+
+    def trigger_coach_mark(self, zone: str, parent: Gtk.Widget) -> None:
+        """Show a coach mark for the given zone, attached to parent.
+
+        The first time the user interacts with a given zone, this
+        method is called with the zone name and the widget to
+        attach the popover to. The popover is built lazily, shown
+        via idle_add (so any click handler completes first), and
+        dismissed either by the user clicking 'Got it' or by
+        the 8s auto-timeout. The 'dismissed' signal updates
+        config.coach_marks_seen so the popover never re-shows.
+
+        If a coach mark is already pending or visible for a
+        different zone, this call supersedes it (the most
+        recent user interaction wins). This avoids the case
+        where the user clicks the canvas, then the toolbar
+        button, and both popovers fight for the same screen
+        space.
+        """
+        from .coach_marks import CoachMark, COACH_MARKS
+
+        config = get_context().config()
+        if zone in config.coach_marks_seen:
+            return  # already shown for this zone
+        if zone not in COACH_MARKS:
+            logger.debug("Unknown coach mark zone '%s'", zone)
+            return
+        if self._walkthrough_active:
+            return  # wait until the walkthrough is dismissed
+        # Mark as pending; if a popover is already in the
+        # pipeline for a different zone, the new one replaces
+        # it. We don't want a long chain of idle callbacks.
+        self._coach_mark_pending = zone
+        GLib.idle_add(self._present_coach_mark, parent)
+
+    def _present_coach_mark(self, parent: Gtk.Widget) -> bool:
+        """Build (or reuse) and show the pending coach mark.
+
+        Runs from GLib.idle_add so the user click that triggered
+        it has finished. The popover is bound to 'parent' and
+        positioned automatically. The 'dismissed' signal
+        updates config and clears the cache.
+        """
+        zone = self._coach_mark_pending
+        self._coach_mark_pending = None
+        if zone is None or self._walkthrough_active:
+            return False
+        config = get_context().config()
+        if zone in config.coach_marks_seen:
+            return False
+        mark = self._coach_marks.get(zone)
+        if mark is None:
+            from .coach_marks import CoachMark
+
+            mark = CoachMark(zone)
+            # 'dismissed' fires once the popover has fully
+            # closed (auto-timeout, button click, or autohide).
+            # We use it to persist the seen flag and clear
+            # the cache so a re-shown zone gets a fresh popover.
+            def _on_dismiss(_popover, dismissed_zone: str):
+                get_context().config.mark_coach_mark_seen(
+                    dismissed_zone
+                )
+                self._coach_marks.pop(dismissed_zone, None)
+            mark.connect("dismissed", _on_dismiss)
+            self._coach_marks[zone] = mark
+        # Setting the parent and re-positioning is required
+        # every time because the popover may have been
+        # attached to a different widget in a previous show.
+        mark.set_parent(parent)
+        # Popover position is auto (the arrow points to
+        # parent). For the canvas, a top position is more
+        # natural; for the toolbar, a bottom. The default
+        # (BOTTOM) is fine for the rest.
+        if zone == "canvas":
+            mark.set_position(Gtk.PositionType.TOP)
+        else:
+            mark.set_position(Gtk.PositionType.BOTTOM)
+        mark.popup()
         return False  # remove the idle source
 
     def _on_unit_changed(self, unit: str) -> None:
@@ -2227,6 +2517,22 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.bottom_panel.set_visible(False)
 
+        # Record the user's per-panel override. If the toggle
+        # ends up matching the current preset, the override is
+        # cleared so the preset becomes canonical again.
+        if hasattr(self, "panel_manager"):
+            preset = self.panel_manager.resolve(
+                get_context().config.panel_layout
+            )
+            if is_visible == preset["bottom"]:
+                get_context().config.set_panel_override(
+                    "bottom", None
+                )
+            else:
+                get_context().config.set_panel_override(
+                    "bottom", is_visible
+                )
+
         self._save_bottom_panel()
 
     def on_toggle_right_panel_state_change(
@@ -2240,6 +2546,23 @@ class MainWindow(Adw.ApplicationWindow):
         # breakpoint. Guarded with hasattr because this method can
         # be called during early construction (before the toggle is
         # added to the header bar).
+        toggle = getattr(self, "_right_panel_toggle", None)
+        if toggle is not None:
+            toggle.set_active(is_visible)
+
+        # Record the user's per-panel override. If the toggle
+        # ends up matching the current preset, the override is
+        # cleared so the preset becomes canonical again.
+        if hasattr(self, "panel_manager"):
+            preset = self.panel_manager.resolve(
+                get_context().config.panel_layout
+            )
+            if is_visible == preset["right"]:
+                get_context().config.set_panel_override("right", None)
+            else:
+                get_context().config.set_panel_override(
+                    "right", is_visible
+                )
         toggle = getattr(self, "_right_panel_toggle", None)
         if toggle is not None:
             toggle.set_active(is_visible)
