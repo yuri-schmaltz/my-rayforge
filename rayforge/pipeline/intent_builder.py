@@ -1067,20 +1067,23 @@ def _hash_int(payload: Mapping[str, Any]) -> int:
     """
     Produce a 63-bit positive integer hash of *payload*.
 
-    Uses SHA-1 of a canonical JSON encoding so the value is stable
+    Uses SHA-256 of a canonical JSON encoding so the value is stable
     across Python processes (unlike :func:`hash`, which is randomised
     per process for strings).
 
-    Note: SHA-1 is used here for *content hashing* (a deterministic
-    cache key derived from internal app state), **not** for any
-    security purpose. The ``usedforsecurity=False`` argument
-    (Python 3.9+) makes this explicit and silences B324 / S324
-    in bandit / ruff.
+    Note: this is a *content hash* (a deterministic cache key derived
+    from internal app state), **not** a security primitive. SHA-256
+    is used (rather than MD5/SHA-1) so the hash is collision-resistant
+    even for the cache-key use case, and so static analysers like
+    CodeQL don't flag the call as "weak hashing on sensitive data".
+    The ``usedforsecurity=False`` argument (Python 3.9+) makes the
+    non-security intent explicit and silences B324 / S324 in
+    bandit / ruff.
     """
     blob = json.dumps(payload, sort_keys=True, default=str).encode("utf-8")
-    # ``usedforsecurity=False`` was added in Python 3.9; ``rayforge``
+    # ``usedforsecurity=False`` was added in Python 3.9; ``pires-forge``
     # requires Python >= 3.11, so the kwarg is always available.
-    digest = hashlib.sha1(blob, usedforsecurity=False).digest()
+    digest = hashlib.sha256(blob, usedforsecurity=False).digest()
     # Take the first 8 bytes, mask the sign bit.
     value = int.from_bytes(digest[:8], "big")
     return value & 0x7FFFFFFFFFFFFFFF
