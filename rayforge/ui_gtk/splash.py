@@ -82,18 +82,15 @@ class SplashScreen(Gtk.Window):
         self.set_default_size(_SPLASH_WIDTH, _SPLASH_HEIGHT)
 
         # Solid background so the SVG blends on every WM theme.
-        # (Libadwaita dark backgrounds in compositor preview modes can
-        # otherwise leak through transparent SVG corners.)
-        css_provider = Gtk.CssProvider()
-        css_provider.load_from_string(
-            "window.splash-window { background-color: #0a0a0a; }"
-        )
+        # (Libadwaita dark backgrounds in compositor preview modes
+        # can otherwise leak through transparent SVG corners.)
+        #
+        # The `window.splash-window` rule is declared in
+        # rayforge/resources/styles/forge.css and is installed
+        # globally by App.do_activate() before the splash is
+        # presented (see install_forge_css_once in mainwindow.py).
+        # No local CssProvider needed here.
         self.add_css_class("splash-window")
-        Gtk.StyleContext.add_provider_for_display(
-            Gdk.Display.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
-        )
 
         # Content: a Gtk.Picture loading the SVG, or a plain Box on
         # failure. Using keep-aspect-ratio + contain so the image

@@ -269,8 +269,20 @@ def main():
             # take a few hundred ms on first launch with cold caches
             # or large addons installed). The splash is closed once
             # the main window finishes its initial map cycle.
+            #
+            # Install the forge.css stylesheet BEFORE the splash is
+            # presented, so the splash window inherits the
+            # `window.splash-window` rule declared in forge.css.
+            # Without this, the splash would show for ~100-500ms with
+            # the compositor's default background, which leaks
+            # through the SVG's transparent corners on light WM
+            # themes. install_forge_css_once is idempotent — the
+            # MainWindow constructor also calls it as a defensive
+            # fallback, and the second call is a no-op.
+            from rayforge.ui_gtk.mainwindow import install_forge_css_once
             from rayforge.ui_gtk.splash import SplashScreen
 
+            install_forge_css_once()
             splash = SplashScreen()
             splash.present()
 
