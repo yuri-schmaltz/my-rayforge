@@ -10,6 +10,14 @@ on:
     branches:
       - "**"
 
+# Default to read-only GITHUB_TOKEN. The build-publish-wheel job
+# opts in to `id-token: write` at the job level (required for PyPI
+# Trusted Publishing via OIDC). The lint-test job is a workflow_call
+# into lint-test.yml, which has its own default of `contents: read`.
+# Closes CodeQL alert "Workflow does not contain permissions".
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true

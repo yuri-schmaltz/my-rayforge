@@ -16,6 +16,14 @@ on:
   # Allow manual runs from the Actions tab
   workflow_dispatch:
 
+# The build-and-deploy job declares `contents: read` at the job level
+# (the site is deployed via SSH to a separate repo, not via the GitHub
+# API). Workflow-level `contents: read` is the default and is enough
+# since the job opts in to no additional perms. Closes CodeQL alert
+# "Workflow does not contain permissions".
+permissions:
+  contents: read
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest

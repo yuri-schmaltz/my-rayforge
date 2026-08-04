@@ -4,6 +4,14 @@ on:
     - cron: '30 1 * * *'
   workflow_dispatch:
 
+# The `stale` job declares `issues: write` + `pull-requests: write`
+# at the job level (required by actions/stale to add/remove labels
+# and close issues). The workflow-level default is `contents: read`
+# so the only write surface is what the job explicitly requests.
+# Closes CodeQL alert "Workflow does not contain permissions".
+permissions:
+  contents: read
+
 jobs:
   stale:
     runs-on: ubuntu-latest

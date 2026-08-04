@@ -10,6 +10,15 @@ on:
       - "**"
   workflow_call:
 
+# The lint and test jobs only need to checkout the repo and upload
+# reports (via the artifact API). GITHUB_TOKEN is never used for
+# repo write, so `contents: read` is enough.
+# Closes CodeQL alert "Workflow does not contain permissions".
+# (Note: this workflow is also `workflow_call`-able, so the default
+# permissions are inherited by any caller that doesn't override.)
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint

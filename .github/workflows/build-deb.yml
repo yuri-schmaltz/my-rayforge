@@ -23,6 +23,13 @@ on:
       - "**"
   workflow_dispatch:
 
+# Default to read-only GITHUB_TOKEN. This job only needs to checkout
+# the repo and upload build artifacts (which uses the OIDC-based
+# artifact API, not the contents API), so contents: read is sufficient.
+# Closes CodeQL alert "Workflow does not contain permissions".
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
