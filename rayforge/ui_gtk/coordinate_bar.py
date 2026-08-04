@@ -86,6 +86,45 @@ class CoordinateBar(Gtk.Box):
         )
         self.append(self._unit_combo)
 
+        # ---- Accessibility ----
+        # Each coordinate label gets a distinct a11y name
+        # so the screen reader announces 'X: 12.5 mm' (or
+        # similar) instead of an undifferentiated 'label'.
+        # The unit combo gets a full role + label since it's
+        # an interactive widget.
+        from ..shared.util.a11y import set_a11y_label
+
+        set_a11y_label(
+            self._x_label, _("Cursor X"), role=Gtk.AccessibleRole.LABEL
+        )
+        set_a11y_label(
+            self._y_label, _("Cursor Y"), role=Gtk.AccessibleRole.LABEL
+        )
+        set_a11y_label(
+            self._l_label,
+            _("Selection length"),
+            role=Gtk.AccessibleRole.LABEL,
+        )
+        set_a11y_label(
+            self._w_label,
+            _("Selection width"),
+            role=Gtk.AccessibleRole.LABEL,
+        )
+        set_a11y_label(
+            self._h_label,
+            _("Selection height"),
+            role=Gtk.AccessibleRole.LABEL,
+        )
+        set_a11y_label(
+            self._unit_combo,
+            _("Display unit"),
+            description=_(
+                "Choose millimeters, inches, or pixels for "
+                "the coordinate bar"
+            ),
+            role=Gtk.AccessibleRole.COMBO_BOX,
+        )
+
     # ---- Public API ----
 
     def set_cursor_position(self, x: Optional[float], y: Optional[float]) -> None:
