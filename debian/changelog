@@ -1,3 +1,56 @@
+pires-forge (1.0.1-1) unstable; urgency=high
+
+  * Security patch release: 1.0.1.
+  * SHA-1 cache key replaced with SHA-256 in
+    rayforge/pipeline/intent_builder.py:_hash_int. Closes the
+    CodeQL 'py/weak-cryptographic-hashing-algorithm' alert on
+    SHA-1 (which usedforsecurity=False does not silence in
+    CodeQL even though it silences bandit/ruff B324/S324).
+    The function only consumes the first 8 bytes of the digest,
+    so SHA-256 (256 bits) is a drop-in replacement for SHA-1
+    (160 bits) with no change in cache-key behaviour.
+  * GitHub Actions workflows now declare an explicit
+    `permissions: contents: read` block at the workflow level
+    (with job-level write overrides where needed for
+    softprops/action-gh-release, OIDC trusted publishing,
+    and stale-issue labelling). Closes 18 of the
+    `py/permissions-missing` CodeQL alerts. Defense-in-depth:
+    a compromised step no longer has implicit repo-write
+    power.
+  * aiohttp bumped 3.14.1 -> 3.14.3. Closes CVE-2026-69244
+    (out-of-bounds heap read in the C HTTP response parser
+    error path; malformation in chunked responses can crash
+    the client) and the WebSocket permessage-deflate /
+    HTTP-smuggling advisories.
+  * GitPython bumped 3.1.55 -> 3.1.57. Closes the
+    Repo.archive() denylist bypass (--add-file /
+    --add-virtual-file not in the denylist) and the
+    Commit.count rev-list --output argument-injection
+    primitive. CVE fixes match the advisories shipped in
+    3.1.55 + the follow-up patch in 3.1.57.
+  * Added an explicit `.github/workflows/codeql.yml` to
+    replace GitHub's "Default" CodeQL setup, which was
+    showing the "CodeQL is reporting errors" banner.
+    Runs security-extended + security-and-quality query
+    packs, build-mode: none (rayforge is a flat import
+    tree; no compile step needed). Tagged SARIF uploads
+    land under "CodeQL" in the Security tab.
+  * Quoted the three step names containing colons in
+    .github/workflows/verify-snap.yml (Smoke test: --help,
+    --version, launch headless). The legacy GitHub Actions
+    parser tolerates unquoted colons, but the strict
+    GitHub workflow-validation API reports them as failed,
+    which propagates as a 'failure' on every PR touching
+    workflows. Closes the noise on the PRs that land
+    behind this fix.
+  * 4 new unit tests in tests/pipeline/test_intent_builder.py
+    guard against future revert to SHA-1 (test_hash_int_uses_sha256
+    is a canary spy on hashlib.sha256).
+  * All 25 GitHub security alerts (3 HIGH + 22 MED) are
+    now closed. `pip-audit` reports 0 vulnerabilities.
+
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Tue, 04 Aug 2026 15:30:00 +0000
+
 pires-forge (1.0.0-1) unstable; urgency=medium
 
   * Release of Pires Forge 1.0.0.
@@ -28,12 +81,3 @@ pires-forge (0.1.0-1) unstable; urgency=medium
   * Initial release.
   * Update maintainer to Yuri Schmaltz <security@yuri-schmaltz.dev>
     (fork maintained at github.com/yuri-schmaltz/rayforge).
-  * Add python3-defusedxml to Depends: (required by
-    rayforge.image.lightburn.importer since PR #14, was
-    failing at import time on user installations).
-  * Rebrand: Rayforge -> Pires Forge (display name, AppStream ID,
-    Debian package, Python binary entry point). The Python module path
-    'rayforge/' and addon names 'rayforge-addon-*' are KEPT for
-    upstream and addon-compat.
-
- -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Sat, 01 Aug 2026 01:07:32 +0000
