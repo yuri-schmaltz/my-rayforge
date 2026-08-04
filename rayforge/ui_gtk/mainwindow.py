@@ -74,98 +74,108 @@ logger = logging.getLogger(__name__)
 
 
 css = """
-@define-color blender_bg #2b2b2b;
-@define-color blender_bg_alt #313131;
-@define-color blender_bg_soft #3a3a3a;
-@define-color blender_panel #252525;
-@define-color blender_border #4a4a4a;
-@define-color blender_text #d6d6d6;
-@define-color blender_text_dim #a9a9a9;
-@define-color blender_accent #4f84c4;
+/* Forge design tokens — keep in sync with rayforge/resources/styles/.
+ * Tokens use the `forge_` prefix to match the app's "spark burst"
+ * brand identity (laser strike on material).
+ *
+ * NOTE: This CSS lives inline in mainwindow.py for now. A future PR
+ * will extract it to rayforge/resources/styles/forge.css and load it
+ * via Gtk.CssProvider.load_from_resource() so the styles can be
+ * shared by dialogs, addons, and the light theme variant. Renaming
+ * is intentionally in a separate commit so each step is reviewable.
+ */
+@define-color forge_bg #2b2b2b;
+@define-color forge_bg_alt #313131;
+@define-color forge_bg_soft #3a3a3a;
+@define-color forge_panel #252525;
+@define-color forge_border #4a4a4a;
+@define-color forge_text #d6d6d6;
+@define-color forge_text_dim #a9a9a9;
+@define-color forge_accent #4f84c4;
 
-.blender-theme,
-.blender-theme window,
-.blender-theme box,
-.blender-theme viewport,
-.blender-theme scrolledwindow,
-.blender-theme stack,
-.blender-theme paned {
-    background-color: @blender_bg;
-    color: @blender_text;
+.forge-theme,
+.forge-theme window,
+.forge-theme box,
+.forge-theme viewport,
+.forge-theme scrolledwindow,
+.forge-theme stack,
+.forge-theme paned {
+    background-color: @forge_bg;
+    color: @forge_text;
 }
 
-.blender-theme headerbar {
+.forge-theme headerbar {
     min-height: 34px;
     padding-top: 2px;
     padding-bottom: 2px;
     background: linear-gradient(to bottom, #3a3a3a, #323232);
-    border-bottom: 1px solid @blender_border;
-    color: @blender_text;
+    border-bottom: 1px solid @forge_border;
+    color: @forge_text;
 }
 
-.blender-theme .main-toolbar {
+.forge-theme .main-toolbar {
     min-height: 38px;
     margin: 0;
     padding: 4px 8px;
     background: linear-gradient(to bottom, #3b3b3b, #303030);
-    border-bottom: 1px solid @blender_border;
+    border-bottom: 1px solid @forge_border;
 }
 
-.blender-theme button,
-.blender-theme menubutton > button,
-.blender-theme splitbutton > button,
-.blender-theme togglebutton {
+.forge-theme button,
+.forge-theme menubutton > button,
+.forge-theme splitbutton > button,
+.forge-theme togglebutton {
     border-radius: 3px;
     border: 1px solid #5a5a5a;
     background: linear-gradient(to bottom, #595959, #474747);
-    color: @blender_text;
+    color: @forge_text;
     box-shadow: none;
 }
 
-.blender-theme button:hover,
-.blender-theme menubutton > button:hover,
-.blender-theme splitbutton > button:hover,
-.blender-theme togglebutton:hover {
+.forge-theme button:hover,
+.forge-theme menubutton > button:hover,
+.forge-theme splitbutton > button:hover,
+.forge-theme togglebutton:hover {
     background: linear-gradient(to bottom, #666666, #535353);
 }
 
-.blender-theme button:checked,
-.blender-theme button:active,
-.blender-theme togglebutton:checked,
-.blender-theme splitbutton > button:checked,
-.blender-theme menubutton > button:checked {
+.forge-theme button:checked,
+.forge-theme button:active,
+.forge-theme togglebutton:checked,
+.forge-theme splitbutton > button:checked,
+.forge-theme menubutton > button:checked {
     background: linear-gradient(to bottom, #4f84c4, #3f6ea7);
     border-color: #78a3d4;
     color: #f2f6fb;
 }
 
-.blender-theme separator {
-    background-color: @blender_border;
+.forge-theme separator {
+    background-color: @forge_border;
     min-width: 1px;
     min-height: 1px;
 }
 
-.blender-theme popover,
-.blender-theme menu,
-.blender-theme .menu {
+.forge-theme popover,
+.forge-theme menu,
+.forge-theme .menu {
     background-color: #2c2c2c;
-    color: @blender_text;
-    border: 1px solid @blender_border;
+    color: @forge_text;
+    border: 1px solid @forge_border;
 }
 
 .right-panel-overlay {
-    background-color: alpha(@blender_panel, 0.94);
+    background-color: alpha(@forge_panel, 0.94);
     border-radius: 4px;
-    border: 1px solid @blender_border;
+    border: 1px solid @forge_border;
     margin: 6px 12px 12px 6px;
     box-shadow: 0 2px 12px alpha(black, 0.35);
 }
 
 .status-message-overlay {
     background-color: #202020;
-    border: 1px solid @blender_border;
+    border: 1px solid @forge_border;
     border-radius: 3px;
-    color: @blender_text;
+    color: @forge_text;
     padding: 4px 10px;
     box-shadow: 0 2px 6px alpha(black, 0.25);
 }
@@ -177,7 +187,7 @@ css = """
 
 .in-header-menubar item {
     border-radius: 3px;
-    color: @blender_text;
+    color: @forge_text;
     padding: 6px 10px;
 }
 
@@ -186,7 +196,7 @@ css = """
 }
 
 .menu separator {
-    border-top: 1px solid @blender_border;
+    border-top: 1px solid @forge_border;
     margin-top: 5px;
     margin-bottom: 5px;
 }
@@ -207,7 +217,7 @@ dropdown.machine-dropdown button {
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.add_css_class("blender-theme")
+        self.add_css_class("forge-theme")
         self.set_title(const.APP_NAME)
         self._current_machine: Optional[Machine] = None  # For signal handling
         self._last_bottom_panel_height = 200
