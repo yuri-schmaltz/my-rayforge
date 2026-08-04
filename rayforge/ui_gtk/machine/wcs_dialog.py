@@ -32,17 +32,17 @@ class WcsDialog(Adw.MessageDialog):
         group.add(self._label_row)
 
         self._row_x = Adw.SpinRow.new_with_range(-10000, 10000, 0.1)
-        self._row_x.set_title("X Offset")
+        self._row_x.set_title(_("X Offset"))
         self._row_x.set_value(off_x)
         group.add(self._row_x)
 
         self._row_y = Adw.SpinRow.new_with_range(-10000, 10000, 0.1)
-        self._row_y.set_title("Y Offset")
+        self._row_y.set_title(_("Y Offset"))
         self._row_y.set_value(off_y)
         group.add(self._row_y)
 
         self._row_z = Adw.SpinRow.new_with_range(-10000, 10000, 0.1)
-        self._row_z.set_title("Z Offset")
+        self._row_z.set_title(_("Z Offset"))
         self._row_z.set_value(off_z)
         group.add(self._row_z)
 

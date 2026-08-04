@@ -33,6 +33,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, GLib, Gtk  # noqa: E402
 
+from rayforge.shared.util.localized import _  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 
@@ -66,7 +68,7 @@ class SplashScreen(Gtk.Window):
 
     def __init__(self) -> None:
         super().__init__()
-        self.set_title("Pires Forge")
+        self.set_title(_("Pires Forge"))
         self.set_resizable(False)
         self.set_decorated(False)
         # Skip taskbar / pager so the splash doesn't crowd the dock.
