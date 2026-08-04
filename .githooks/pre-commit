@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# Pre-commit hook for Pires Forge.
+#
+# Installed via: git config core.hooksPath .githooks
+#
+# Runs a few lightweight checks on staged changes to catch
+# issues before they reach CI. Skips silently if a check's
+# tool isn't available — the goal is to catch the common
+# cases, not to be exhaustive.
+
+set -eu
+
+# Resolve the repo root so this hook works from any subdir.
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+staged_files() {
+    git diff --cached --name-only --diff-filter=ACM
+}
+
+run_check() {
+    local title="$1"
+    shift
+    if "$@"; then
+        echo "  ok  $title"
+    else
+        echo "  FAIL  $title"
+        return 1
+    fi
+}
+
+echo "==> pre-commit checks"
+
+# 1. Python: import-check the staged .py files. We don't run
+#    pytest (too slow for pre-commit), but a syntax check is
+#    cheap and catches the common "forgot a colon" case.
+python_files=$(staged_files | grep -E '\.py$' || true)
+if [ -n "$python_files" ]; then
+    echo "  python files staged: $(echo "$python_files" | wc -l)"
+    run_check "python syntax (py_compile)" \
+        bash -c "python3 -m py_compile $python_files" \
+        || exit 1
+fi
+
+# 2. CSS: warn if a hex color is added without going through
+#    a @define-color token. We allow hex inside @define-color
+#    declarations themselves and inside the brand gradient
+#    defs, but flag any new color literal in a property value.
+css_files=$(staged_files | grep -E '\.css$' || true)
+if [ -n "$css_files" ]; then
+    echo "  css files staged: $(echo "$css_files" | wc -l)"
+    # Look for raw hex color values in property positions.
+    # We exclude lines inside @define-color declarations and
+    # the file's top-of-file comment block.
+    new_hex=$(grep -nE '^\s*[a-z-]+:\s*[^/]*#[0-9a-fA-F]{3,8}' \
+        $css_files 2>/dev/null \
+        | grep -v '@define-color' \
+        | grep -v 'linear-gradient' \
+        | grep -v 'stop-color' \
+        || true)
+    if [ -n "$new_hex" ]; then
+        echo ""
+        echo "  ⚠  Raw hex colors found in property values:"
+        echo "$new_hex" | sed 's/^/      /'
+        echo ""
+        echo "  Consider adding a @define-color token in"
+        echo "  rayforge/resources/styles/forge.css instead, then"
+        echo "  reference it via @your_token. See docs/DESIGN_SYSTEM.md."
+        # Soft warning, not a hard fail. Hex in property values
+        # is sometimes legitimate (e.g. stops inside a gradient).
+    fi
+fi
+
+# 3. Token consistency: if the design tokens file is staged,
+#    verify that no other staged file references a deleted token.
+tokens_file="rayforge/resources/styles/forge.css"
+if echo "$(staged_files)" | grep -qx "$tokens_file"; then
+    echo "  forge.css is staged — checking token references"
+    # Get the diff of removed tokens (lines starting with @define-color
+    # that are being deleted).
+    removed_tokens=$(git diff --cached --diff-filter=D -- "$tokens_file" \
+        | grep -E '^\-@define-color' \
+        | sed -E 's/^-@define-color[ \t]+([a-z_]+).*/\1/' \
+        || true)
+    if [ -n "$removed_tokens" ]; then
+        # Check no other staged file references a removed token.
+        for token in $removed_tokens; do
+            if grep -rnE "@$token\b" \
+                $(staged_files | grep -v "^$tokens_file$") \
+                2>/dev/null | grep -v '\.css:'; then
+                echo ""
+                echo "  ⚠  Token @$token is being removed but is still"
+                echo "     referenced by other staged files."
+                echo "     Update the references or keep the token."
+            fi
+        done
+    fi
+fi
+
+# 4. Don't commit large binaries. The .gitattributes file
+#    already handles some of this, but a safety net.
+big_files=$(staged_files \
+    | xargs -I {} sh -c 'wc -c "{}" 2>/dev/null' \
+    | awk '$1 > 524288 { print $2 }' \
+    || true)
+if [ -n "$big_files" ]; then
+    echo ""
+    echo "  ⚠  Files larger than 512 KB staged:"
+    echo "$big_files" | sed 's/^/      /'
+    echo "  Confirm these are intentional before pushing."
+fi
+
+echo "==> pre-commit checks done"
