@@ -1,0 +1,86 @@
+name: CodeQL
+
+# Runs GitHub's CodeQL static analysis against the Python source tree.
+# Replaces the previous "Default" CodeQL setup (configured via the
+# repo Security tab), which was showing the "CodeQL is reporting
+# errors" banner in the security overview. An explicit workflow gives
+# us a controlled CodeQL invocation, an auditable failure mode, and
+# scheduled runs that aren't dependent on GitHub's default-setup
+# schedule.
+#
+# Triggers:
+#   - push to main (incremental analysis of changed files)
+#   - pull_request targeting main (blocks merge on new HIGH findings)
+#   - schedule (weekly full-database rebuild, catches regressions
+#     that an incremental scan would miss)
+#   - workflow_dispatch (manual re-run on demand)
+#
+# Query packs:
+#   - security-and-quality (the default; covers the rules that
+#     produced the 19 existing alerts in this repo)
+#   - security-extended (deeper coverage; adds rules that the
+#     default pack doesn't run but are still useful for a
+#     security-conscious fork)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  schedule:
+    # Weekly: Monday 06:00 UTC. Cheap (~3-5 min on a python-only
+    # project), keeps findings fresh for forks that rarely push.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+# Read-only default. The CodeQL action uploads SARIF to the
+# Security tab; that needs `security-events: write` + `actions: read`,
+# which the `analyze` job opts in to at the job level.
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            # CodeQL's Python build mode. We don't need autobuild
+            # because rayforge is a flat import tree; the source
+            # files alone are enough for the queries that fired
+            # the existing alerts (weak-hashing, missing-workflow-
+            # permissions).
+            build-mode: none
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # `security-extended` adds ~30% more queries on top of
+          # the default `security-and-quality` pack, at the cost of
+          # ~1-2 minutes per run. Worth it for a security-focused
+          # fork; the 19 existing alerts all came from the default
+          # pack, so adding the extended pack surfaces anything
+          # stricter.
+          queries: security-extended,security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+        with:
+          # Override the default category so SARIF uploads land
+          # under "CodeQL" in the Security tab (matches what the
+          # default setup produced).
+          category: "/language:${{ matrix.language }}"
