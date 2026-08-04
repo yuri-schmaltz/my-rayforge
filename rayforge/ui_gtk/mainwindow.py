@@ -1505,10 +1505,15 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_doc_changed(self, sender, **kwargs):
         # Synchronize UI elements that depend on the document model
-        self.surface.update_from_doc()
+        from ..util.tracing import get_tracer
+
+        tracer = get_tracer()
+        with tracer.span("mainwindow.surface_update_from_doc"):
+            self.surface.update_from_doc()
         doc = self.doc_editor.doc
         if doc.active_layer and doc.active_layer.workflow:
-            self.workflowview.set_workflow(doc.active_layer.workflow)
+            with tracer.span("mainwindow.workflowview_set_workflow"):
+                self.workflowview.set_workflow(doc.active_layer.workflow)
 
         # Sync the selectability of stock items based on active layer
         self._sync_element_selectability()

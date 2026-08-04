@@ -134,9 +134,18 @@ class RayforgeContext:
         if self._addon_mgr is None:
             return
 
-        from .core.registration import (
-            call_registration_hooks,
-            get_registries,
+        # Performance tracing — wrap the addon load +
+        # registration phases so a developer can dump
+        # init timings via RAYFORGE_TRACE=1. Disabled by
+        # default; the contextmanager is essentially
+        # free when the tracer is off.
+        from .util.tracing import get_tracer
+
+        tracer = get_tracer()
+        with tracer.span("context.addon_load"):
+            from .core.registration import (
+                call_registration_hooks,
+                get_registries,
         )
         from .doceditor.layout.registry import (
             register_builtin_layout_strategies,
@@ -146,13 +155,18 @@ class RayforgeContext:
 
         registries = get_registries(headless=self._headless)
         self._addon_mgr.set_registries(registries)
-        self._addon_mgr.load_installed_addons(worker_only=self._headless)
-        call_registration_hooks(
-            self.plugin_mgr,
-            headless=self._headless,
-            registries=registries,
-        )
-        self.plugin_mgr.hook.rayforge_init(context=self)
+        with tracer.span("context.load_installed_addons"):
+            self._addon_mgr.load_installed_addons(
+                worker_only=self._headless
+            )
+        with tracer.span("context.registration_hooks"):
+            call_registration_hooks(
+                self.plugin_mgr,
+                headless=self._headless,
+                registries=registries,
+            )
+        with tracer.span("context.rayforge_init_hook"):
+            self.plugin_mgr.hook.rayforge_init(context=self)
 
         logger.info(f"Addons loaded (headless={self._headless})")
 
