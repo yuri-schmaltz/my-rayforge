@@ -79,17 +79,16 @@ def _resolve_forge_css_path():
     Dev:    <repo>/rayforge/resources/styles/forge.css
     Bundle: <sys._MEIPASS>/rayforge/resources/styles/forge.css
     Returns the Path or None if not found.
-    """
-    import sys
-    from pathlib import Path
 
-    base_dir = (
-        Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        if hasattr(sys, "_MEIPASS")
-        else Path(__file__).resolve().parent.parent
+    Thin wrapper over rayforge.shared.util.resources.resource_path
+    so the bundle-aware resolution pattern lives in exactly one
+    place (see also splash._resolve_splash_svg).
+    """
+    from ..shared.util.resources import resource_path
+
+    return resource_path(
+        "rayforge/resources/styles/forge.css", anchor_file=__file__
     )
-    candidate = base_dir / "rayforge" / "resources" / "styles" / "forge.css"
-    return candidate if candidate.is_file() else None
 
 
 # Module-level state: track whether the CssProvider for forge.css

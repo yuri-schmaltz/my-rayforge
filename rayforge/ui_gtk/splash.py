@@ -25,7 +25,6 @@ plain black window so startup never blocks on cosmetic assets.
 from __future__ import annotations
 
 import logging
-import sys
 from pathlib import Path
 from typing import Optional
 
@@ -46,16 +45,16 @@ _SPLASH_HEIGHT = 500
 def _resolve_splash_svg() -> Optional[Path]:
     """Locate splash.svg, respecting PyInstaller bundle layout.
 
-    In dev: `<repo_root>/data/splash/splash.svg`
-    In bundle: `<sys._MEIPASS>/data/splash/splash.svg`
+    Thin wrapper over rayforge.shared.util.resources.resource_path
+    so the bundle-aware resolution pattern lives in exactly one
+    place. Returns None if the SVG cannot be located (the splash
+    then falls back to a black 800x500 box).
     """
-    base_dir = (
-        Path(sys._MEIPASS)  # type: ignore[attr-defined]
-        if hasattr(sys, "_MEIPASS")
-        else Path(__file__).resolve().parent.parent.parent
+    from ..shared.util.resources import resource_path
+
+    return resource_path(
+        "data/splash/splash.svg", anchor_file=__file__
     )
-    candidate = base_dir / "data" / "splash" / "splash.svg"
-    return candidate if candidate.is_file() else None
 
 
 class SplashScreen(Gtk.Window):
