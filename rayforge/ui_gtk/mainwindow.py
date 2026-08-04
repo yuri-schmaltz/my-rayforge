@@ -92,6 +92,58 @@ def _resolve_forge_css_path():
     return candidate if candidate.is_file() else None
 
 
+# Module-level state: track whether the CssProvider for forge.css
+# has been installed for the current display. CssProvider installs
+# are display-global (they affect every widget on the GdkDisplay),
+# so a second call from MainWindow.__init__ is a no-op.
+_FORGE_CSS_INSTALLED = False
+
+
+def install_forge_css_once():
+    """Install the forge.css stylesheet for the current display.
+
+    Idempotent: subsequent calls are a no-op. Safe to call from
+    anywhere — App.do_activate calls it BEFORE showing the splash
+    so the splash window inherits the .splash-window rule
+    declared in forge.css, and MainWindow.__init__ calls it again
+    as a defensive measure (which becomes a no-op on the second
+    call).
+
+    Without this, the splash shows for ~100-500ms with the
+    compositor's default background, which on a light WM theme
+    leaks white through the SVG's transparent corners.
+    """
+    global _FORGE_CSS_INSTALLED
+    if _FORGE_CSS_INSTALLED:
+        return
+    display = Gdk.Display.get_default()
+    if display is None:
+        # No display (e.g. running headless under a test harness).
+        # Nothing to install; the widgets will use Gtk defaults.
+        return
+    css_path = _resolve_forge_css_path()
+    provider = Gtk.CssProvider()
+    if css_path is not None:
+        try:
+            provider.load_from_path(str(css_path))
+        except GLib.Error as exc:
+            logger.warning(
+                "Failed to load forge.css from %s: %s; "
+                "falling back to no stylesheet",
+                css_path,
+                exc,
+            )
+    else:
+        logger.warning(
+            "forge.css not found at expected path; "
+            "the main window will render with GTK defaults."
+        )
+    Gtk.StyleContext.add_provider_for_display(
+        display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+    )
+    _FORGE_CSS_INSTALLED = True
+
+
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -242,32 +294,13 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Apply styles — load the forge.css stylesheet from disk so
         # the source of truth lives next to other resources instead
-        # of being stringified in a Python file. load_from_path is
-        # used (not load_from_resource) to avoid the GResource build
-        # step; the same path resolution that the splash screen
-        # uses handles dev vs PyInstaller-bundle layouts.
-        display = Gdk.Display.get_default()
-        if display:
-            css_path = _resolve_forge_css_path()
-            provider = Gtk.CssProvider()
-            if css_path is not None:
-                try:
-                    provider.load_from_path(str(css_path))
-                except GLib.Error as exc:
-                    logger.warning(
-                        "Failed to load forge.css from %s: %s; "
-                        "falling back to no stylesheet",
-                        css_path,
-                        exc,
-                    )
-            else:
-                logger.warning(
-                    "forge.css not found at expected path; "
-                    "the main window will render with GTK defaults."
-                )
-            Gtk.StyleContext.add_provider_for_display(
-                display, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-            )
+        # of being stringified in a Python file. install_forge_css_once
+        # is idempotent: App.do_activate already called it before
+        # showing the splash, so this is a no-op the second time
+        # around. Kept here as a defensive fallback for any code
+        # path that constructs a MainWindow without going through
+        # App.do_activate (tests, addons).
+        install_forge_css_once()
 
         # Determine initial machine dimensions for canvases.
         context = get_context()
