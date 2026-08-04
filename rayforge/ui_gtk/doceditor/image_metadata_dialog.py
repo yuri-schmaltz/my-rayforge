@@ -112,7 +112,7 @@ class ImageMetadataDialog(PatchedDialogWindow):
 
         # Add Source File row
         row = Adw.ActionRow()
-        row.set_title("Source File")
+        row.set_title(_("Source File"))
         value_label = Gtk.Label(label=str(import_source.source_file))
         row.add_suffix(value_label)
         group.add(row)
@@ -136,8 +136,8 @@ class ImageMetadataDialog(PatchedDialogWindow):
         # Add Vector Config row if applicable
         if import_source.vector_config:
             row = Adw.ActionRow()
-            row.set_title("Vector Config")
-            value_label = Gtk.Label(label="Configured")
+            row.set_title(_("Vector Config"))
+            value_label = Gtk.Label(label=_("Configured"))
             row.add_suffix(value_label)
             group.add(row)
 
@@ -223,7 +223,7 @@ class ImageMetadataDialog(PatchedDialogWindow):
             metadata_info.append((key, value))
 
         # Add sections to text
-        text_parts.append("Basic Information")
+        text_parts.append(_("Basic Information"))
         text_parts.append("=" * 20)
         text_parts.append(
             f"Source File: {str(self.import_source.source_file)}"
@@ -233,7 +233,7 @@ class ImageMetadataDialog(PatchedDialogWindow):
             f"Renderer: {self.import_source.renderer.__class__.__name__}"
         )
         if self.import_source.vector_config:
-            text_parts.append("Vector Config: Configured")
+            text_parts.append(_("Vector Config: Configured"))
         text_parts.append("")
 
         if metadata_info:

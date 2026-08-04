@@ -3,6 +3,7 @@ from typing import Protocol, runtime_checkable
 from blinker import Signal
 from gi.repository import Gdk, Gtk
 
+from ...shared.util.localized import _
 from ..icons import get_icon
 from .gtk import apply_css
 
@@ -240,7 +241,7 @@ if __name__ == "__main__":
     class DragListWindow(Gtk.ApplicationWindow):
         def __init__(self, **kwargs):
             super().__init__(**kwargs)
-            self.set_title("Reorderable List Example")
+            self.set_title(_("Reorderable List Example"))
             self.set_default_size(300, 400)
             listview = DragListBox()
             self.set_child(listview)

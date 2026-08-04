@@ -396,11 +396,11 @@ class PrintAndCutWizard(PatchedDialogWindow):
         box.append(transform_group)
 
         self._translation_row = Adw.ActionRow(title=_("Translation"))
-        self._translation_row.set_subtitle("---")
+        self._translation_row.set_subtitle(_("Not set"))
         transform_group.add(self._translation_row)
 
         self._rotation_row = Adw.ActionRow(title=_("Rotation"))
-        self._rotation_row.set_subtitle("---")
+        self._rotation_row.set_subtitle(_("Not set"))
         transform_group.add(self._rotation_row)
 
         self._scale_check = Adw.SwitchRow(title=_("Allow scaling"))
@@ -409,7 +409,7 @@ class PrintAndCutWizard(PatchedDialogWindow):
         transform_group.add(self._scale_check)
 
         self._scale_row = Adw.ActionRow(title=_("Scale"))
-        self._scale_row.set_subtitle("---")
+        self._scale_row.set_subtitle(_("Not set"))
         transform_group.add(self._scale_row)
 
         self._warning_label = Gtk.Label(label="")
@@ -720,7 +720,7 @@ class PrintAndCutWizard(PatchedDialogWindow):
                 self._physical_point2[0] - self._physical_point1[0],
                 self._physical_point2[1] - self._physical_point1[1],
             )
-            self._scale_row.set_subtitle("1.0 (locked)")
+            self._scale_row.set_subtitle(_("1.0 (locked)"))
             if abs(dist_d - dist_p) > 0.1:
                 self._warning_label.set_text(
                     _(

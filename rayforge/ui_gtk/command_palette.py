@@ -110,6 +110,20 @@ class CommandPalette(Gtk.Box):
         self._search.set_hexpand(True)
         self._search.connect("search-changed", self._on_search_changed)
         self._search.connect("stop-search", lambda *_: self._on_close())
+        # Accessibility: the search entry is the primary
+        # input. Give it a clear a11y label so the screen
+        # reader announces it before the user types.
+        from .shared.util.a11y import set_a11y_label
+
+        set_a11y_label(
+            self._search,
+            _("Command search"),
+            description=_(
+                "Type a command name, action, or setting to "
+                "find it. Arrow keys navigate, Enter activates."
+            ),
+            role=Gtk.AccessibleRole.SEARCH_BOX,
+        )
         self.append(self._search)
 
         # ListView of matching entries
@@ -117,6 +131,15 @@ class CommandPalette(Gtk.Box):
         scrolled.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
         scrolled.set_min_content_height(280)
         scrolled.set_max_content_height(420)
+        set_a11y_label(
+            scrolled,
+            _("Search results"),
+            description=_(
+                "List of commands matching the search. The "
+                "first result is auto-selected."
+            ),
+            role=Gtk.AccessibleRole.LIST,
+        )
         scrolled.set_propagate_natural_height(True)
 
         self._model = Gio.ListStore.new(_PaletteEntry)

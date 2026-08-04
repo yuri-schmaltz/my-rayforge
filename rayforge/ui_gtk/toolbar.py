@@ -37,29 +37,52 @@ class MainToolbar(Gtk.Box):
         self.set_margin_start(12)
         self.set_margin_end(12)
 
+        # Accessibility: the toolbar itself is a region so the
+        # screen reader can navigate by landmark (Ctrl+Alt+Arrow
+        # in orca). Each button below uses set_tooltip_text
+        # (which GTK also exposes as the AT-SPI description).
+        from .shared.util.a11y import set_a11y_label
+
+        def _a11y_button(btn, label, role=None):
+            """Bundle tooltip + AT-SPI label in one call.
+
+            The tooltip is what sighted users see on hover;
+            the AT-SPI label is what the screen reader
+            announces. They're usually the same string."""
+            btn.set_tooltip_text(label)
+            set_a11y_label(
+                btn, label, role=role or Gtk.AccessibleRole.BUTTON
+            )
+
+        set_a11y_label(
+            self,
+            _("Main toolbar"),
+            role=Gtk.AccessibleRole.TOOLBAR,
+        )
+
         # File related buttons (open, save, import, export)
         self.open_button = Gtk.Button(child=get_icon("open-symbolic"))
-        self.open_button.set_tooltip_text(_("Open Project"))
+        _a11y_button(self.open_button, _("Open Project"))
         self.open_button.set_action_name("win.open")
         self.append(self.open_button)
 
         self.save_button = Gtk.Button(child=get_icon("save-symbolic"))
-        self.save_button.set_tooltip_text(_("Save"))
+        _a11y_button(self.save_button, _("Save"))
         self.save_button.set_action_name("win.save")
         self.append(self.save_button)
 
         self.save_as_button = Gtk.Button(child=get_icon("save-as-symbolic"))
-        self.save_as_button.set_tooltip_text(_("Save As..."))
+        _a11y_button(self.save_as_button, _("Save As..."))
         self.save_as_button.set_action_name("win.save-as")
         self.append(self.save_as_button)
 
         open_button = Gtk.Button(child=get_icon("download-symbolic"))
-        open_button.set_tooltip_text(_("Import image"))
+        _a11y_button(open_button, _("Import image"))
         open_button.set_action_name("win.import")
         self.append(open_button)
 
         self.export_button = Gtk.Button(child=get_icon("export-symbolic"))
-        self.export_button.set_tooltip_text(_("Generate G-code"))
+        _a11y_button(self.export_button, _("Generate G-code"))
         self.export_button.set_action_name("win.export")
         self.append(self.export_button)
 
@@ -68,12 +91,12 @@ class MainToolbar(Gtk.Box):
         self.append(sep)
 
         self.undo_button = UndoButton()
-        self.undo_button.set_tooltip_text(_("Undo"))
+        _a11y_button(self.undo_button, _("Undo"))
         self.undo_button.set_action_name("win.undo")
         self.append(self.undo_button)
 
         self.redo_button = RedoButton()
-        self.redo_button.set_tooltip_text(_("Redo"))
+        _a11y_button(self.redo_button, _("Redo"))
         self.redo_button.set_action_name("win.redo")
         self.append(self.redo_button)
 
@@ -82,18 +105,25 @@ class MainToolbar(Gtk.Box):
         view_3d_button.set_action_name("win.show_3d_view")
         view_3d_button.set_sensitive(canvas3d_initialized)
         if not canvas3d_initialized:
-            view_3d_button.set_tooltip_text(
-                _("3D view disabled (missing dependencies like PyOpenGL)")
+            _a11y_button(
+                view_3d_button,
+                _("3D view disabled (missing dependencies like PyOpenGL)"),
+                role=Gtk.AccessibleRole.TOGGLE_BUTTON,
             )
         else:
-            view_3d_button.set_tooltip_text(_("Show 3D Preview"))
+            _a11y_button(
+                view_3d_button,
+                _("Show 3D Preview"),
+                role=Gtk.AccessibleRole.TOGGLE_BUTTON,
+            )
         self.append(view_3d_button)
 
         self.recalculate_button = Gtk.Button(
             child=get_icon("refresh-symbolic"),
         )
-        self.recalculate_button.set_tooltip_text(
-            _("Recalculate (Shift+Click to force)")
+        _a11y_button(
+            self.recalculate_button,
+            _("Recalculate (Shift+Click to force)"),
         )
         self.recalculate_button.connect(
             "clicked", self._on_recalculate_clicked
@@ -109,7 +139,11 @@ class MainToolbar(Gtk.Box):
         self.bottom_panel_button = Gtk.ToggleButton()
         self.bottom_panel_button.set_child(get_icon("jog-symbolic"))
         self.bottom_panel_button.set_active(False)
-        self.bottom_panel_button.set_tooltip_text(_("Toggle bottom panel"))
+        _a11y_button(
+            self.bottom_panel_button,
+            _("Toggle bottom panel"),
+            role=Gtk.AccessibleRole.TOGGLE_BUTTON,
+        )
         self.bottom_panel_button.set_action_name("win.toggle_bottom_panel")
         self.append(self.bottom_panel_button)
 
@@ -121,7 +155,9 @@ class MainToolbar(Gtk.Box):
         self.arrange_menu_button = SplitMenuButton(
             actions=self.arrange_actions
         )
-        self.arrange_menu_button.set_tooltip_text(_("Arrange selection"))
+        _a11y_button(
+            self.arrange_menu_button, _("Arrange selection")
+        )
         self.append(self.arrange_menu_button)
 
         # Tabbing buttons (Split Dropdown)

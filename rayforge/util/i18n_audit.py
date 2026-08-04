@@ -56,7 +56,8 @@ USER_FACING_METHODS = frozenset({
 })
 
 # Strings we never want to flag: XML/SVG fragments, CSS
-# class names, URLs, paths.
+# class names, URLs, paths, and machine protocol commands
+# (Ruida / GRBL / G-code) which are not user-facing.
 SKIP_PATTERNS = (
     "</",      # closing tag
     "<",       # opening tag (markup, not for translation)
@@ -66,6 +67,18 @@ SKIP_PATTERNS = (
     "https://",
     "file://",
     "Pango",
+    "AIR_ASSIST",   # Ruida protocol command (not translated)
+    "Job End",      # Ruida protocol marker
+    "End Layer",    # Ruida protocol marker
+    "End Workpiece",  # Ruida protocol marker
+)
+
+# Files where every candidate should be skipped (machine
+# protocol encoders, G-code emitters, etc.). The audit
+# never flags these files.
+SKIP_FILES = (
+    "rayforge/machine/driver/ruida/ruida_encoder.py",
+    "rayforge/machine/driver/grbl/",  # future G-code emitters
 )
 
 
@@ -145,6 +158,14 @@ def audit_tree(root: Path) -> List[dict]:
     results: List[dict] = []
     for py in sorted(root.rglob("*.py")):
         if "/tests/" in str(py) or "/test_" in str(py):
+            continue
+        # Skip files whose entire purpose is machine protocol
+        # encoding. The audit will never flag candidates in
+        # these files; if a future commit adds a user-facing
+        # string here, the developer should move that code
+        # out of the encoder first.
+        path_str = str(py)
+        if any(path_str.startswith(s) for s in SKIP_FILES):
             continue
         for line, method, lit in audit_file(py):
             results.append({

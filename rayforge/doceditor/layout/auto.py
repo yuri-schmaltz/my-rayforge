@@ -109,7 +109,7 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
         logger.info("Starting pixel-perfect layout...")
 
         if context:
-            context.set_message("Preparing workpiece variants...")
+            context.set_message(_("Preparing workpiece variants..."))
 
         prepared_items, total_area = self._prepare_variants()
         if not prepared_items:
@@ -139,7 +139,7 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
         if stock_item:
             logger.info("Stock item found, using it as layout boundary.")
             if context:
-                context.set_message("Using stock as boundary...")
+                context.set_message(_("Using stock as boundary..."))
 
             stock_bbox = self._get_item_world_bbox(stock_item)
             if stock_bbox:
@@ -167,7 +167,7 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
             # Use whole surface (machine work area) as boundary
             logger.info("Using whole surface as layout boundary.")
             if context:
-                context.set_message("Using whole surface as boundary...")
+                context.set_message(_("Using whole surface as boundary..."))
 
             # Get machine work area
             wa_w, wa_h = 200.0, 200.0  # Fallback
@@ -207,7 +207,7 @@ class PixelPerfectLayoutStrategy(LayoutStrategy):
 
         if context:
             context.set_progress(0.9)
-            context.set_message("Calculating final positions...")
+            context.set_message(_("Calculating final positions..."))
 
         # 5. Compute the final transformation deltas for successfully
         # placed items.

@@ -186,6 +186,17 @@ def main() -> int:
         default=None,
         help="Compare against a previous JSON file (from --output).",
     )
+    ap.add_argument(
+        "--fail-on-regression",
+        type=float,
+        default=None,
+        metavar="PCT",
+        help=(
+            "Exit with code 2 if any benchmark regressed by "
+            "more than PCT%% vs the --compare baseline. "
+            "Default: just print the comparison."
+        ),
+    )
     args = ap.parse_args()
 
     print("Running benchmarks...")
@@ -211,6 +222,7 @@ def main() -> int:
         with open(args.compare) as f:
             prev = {r["name"]: r for r in json.load(f)}
         print(f"\nComparison vs {args.compare}:")
+        regressions: List[str] = []
         for r in results:
             old = prev.get(r["name"])
             if not old:
@@ -224,6 +236,21 @@ def main() -> int:
                 f"{r['stats']['mean']:>8.2f} ms  "
                 f"({sign}{pct:.1f}%)"
             )
+            if (
+                args.fail_on_regression is not None
+                and pct > args.fail_on_regression
+            ):
+                regressions.append(
+                    f"{r['name']}: {pct:.1f}% (limit {args.fail_on_regression}%)"
+                )
+        if regressions:
+            print(
+                f"\nFAIL: {len(regressions)} benchmark(s) regressed by more "
+                f"than {args.fail_on_regression}%:"
+            )
+            for r in regressions:
+                print(f"  - {r}")
+            return 2
 
     return 0
 
