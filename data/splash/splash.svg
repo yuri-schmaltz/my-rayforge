@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+  Pires Forge — Splash screen placeholder (vector).
+
+  This is a *placeholder* splash screen. The real splash screen
+  is rendered by the application at runtime (typically a Gtk.Window
+  or GdkPixbuf.Pixbuf loaded from a generated PNG); this SVG is
+  the source-of-truth vector that the build pipeline converts to
+  multiple resolutions.
+
+  Layout (800x500 viewBox, 16:10 standard splash aspect):
+  - Background: deep black gradient (top: #0a0a0a, bottom: #1a1a1a)
+  - Center-top: the app icon (spark burst) at 256x256
+  - Center-bottom: app name "Pires Forge" (large, light gray)
+  - Subtitle: tagline (smaller, dimmer)
+  - Bottom: tiny version + status line
+
+  This file lives in data/splash/ so the build pipeline can find
+  it. To wire it up at runtime, see:
+    docs/RELEASE.md
+  and add the splash-loading call to rayforge/app.py:startup().
+-->
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 800 500"
+     width="800" height="500"
+     role="img" aria-label="Pires Forge splash screen placeholder">
+
+  <title>Pires Forge — Splash</title>
+
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%"  stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="#1a1a1a"/>
+    </linearGradient>
+
+    <radialGradient id="sparkCoreSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="25%"  stop-color="#fff4a3" stop-opacity="0.95"/>
+      <stop offset="55%"  stop-color="#ffb000" stop-opacity="0.65"/>
+      <stop offset="100%" stop-color="#ff3d00" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="500" fill="url(#bgGrad)"/>
+
+  <!-- App icon (centered horizontally, top portion).
+       Reuses the spark-burst motif from
+       resources/icons/org.piresforge.pires-forge.svg,
+       scaled to 256x256 and placed at (272, 60). -->
+  <g transform="translate(272 60) scale(0.5)">
+    <!-- 512x512 viewBox assumed (matches the icon file).
+         Rounded-square mask would be redundant at this scale;
+         we keep the background transparent so the splash
+         background gradient shows through the corners. -->
+
+    <!-- Spark rays -->
+    <g transform="translate(256 256)" fill="#ff9800">
+      <polygon points="0,-10 0,10 240,2 240,-2" transform="rotate(0)"/>
+      <polygon points="0,-6 0,6 150,1.5 150,-1.5" transform="rotate(30)" opacity="0.75"/>
+      <polygon points="0,-8 0,8 220,2 220,-2" transform="rotate(60)"/>
+      <polygon points="0,-5 0,5 130,1.5 130,-1.5" transform="rotate(90)" opacity="0.7"/>
+      <polygon points="0,-8 0,8 220,2 220,-2" transform="rotate(120)"/>
+      <polygon points="0,-6 0,6 150,1.5 150,-1.5" transform="rotate(150)" opacity="0.75"/>
+      <polygon points="0,-10 0,10 240,2 240,-2" transform="rotate(180)"/>
+      <polygon points="0,-6 0,6 150,1.5 150,-1.5" transform="rotate(210)" opacity="0.75"/>
+      <polygon points="0,-8 0,8 220,2 220,-2" transform="rotate(240)"/>
+      <polygon points="0,-5 0,5 130,1.5 130,-1.5" transform="rotate(270)" opacity="0.7"/>
+      <polygon points="0,-8 0,8 220,2 220,-2" transform="rotate(300)"/>
+      <polygon points="0,-6 0,6 150,1.5 150,-1.5" transform="rotate(330)" opacity="0.75"/>
+    </g>
+
+    <!-- Diagonal laser beam -->
+    <g transform="translate(256 256) rotate(30)">
+      <rect x="-260" y="-7" width="520" height="14" fill="#d32f2f" opacity="0.55"/>
+      <rect x="-260" y="-4" width="520" height="8" fill="#ff9800" opacity="0.8"/>
+      <rect x="-260" y="-1.5" width="520" height="3" fill="#fff4a3"/>
+      <rect x="-260" y="-0.6" width="520" height="1.2" fill="#ffffff"/>
+    </g>
+
+    <!-- Central spark -->
+    <circle cx="256" cy="256" r="48" fill="#ffb000" opacity="0.55"/>
+    <circle cx="256" cy="256" r="28" fill="#fff4a3"/>
+    <circle cx="256" cy="256" r="16" fill="#ffffff"/>
+  </g>
+
+  <!-- App name (large) -->
+  <text x="400" y="370"
+        font-family="Cantarell, Inter, sans-serif"
+        font-size="56"
+        font-weight="700"
+        fill="#f0f0f0"
+        text-anchor="middle">Pires Forge</text>
+
+  <!-- Tagline / subtitle -->
+  <text x="400" y="405"
+        font-family="Cantarell, Inter, sans-serif"
+        font-size="16"
+        font-weight="400"
+        fill="#888888"
+        text-anchor="middle">2D CAD, G-code sender, and laser control</text>
+
+  <!-- Bottom: version + status placeholder -->
+  <text x="400" y="465"
+        font-family="Cantarell, Inter, sans-serif"
+        font-size="11"
+        font-weight="400"
+        fill="#555555"
+        text-anchor="middle">v1.0.0  ·  loading…</text>
+</svg>

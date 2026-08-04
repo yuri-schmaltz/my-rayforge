@@ -65,6 +65,7 @@
     <display_length compare="ge">768</display_length>
   </recommends>
 
+  <icon type="remote">https://raw.githubusercontent.com/yuri-schmaltz/pires-forge/main/rayforge/resources/icons/org.piresforge.pires-forge.png</icon>
   <icon type="remote">https://raw.githubusercontent.com/yuri-schmaltz/pires-forge/main/rayforge/resources/icons/org.piresforge.pires-forge.svg</icon>
 
   <branding>

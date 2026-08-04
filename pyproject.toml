@@ -64,6 +64,13 @@ mypy_path = "stubs"
 "share/metainfo" = ["data/org.piresforge.pires-forge.metainfo.xml"]
 "share/mime/packages" = ["data/org.piresforge.pires-forge.xml"]
 "share/icons/hicolor/scalable/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.svg"]
+"share/icons/hicolor/512x512/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/icons/hicolor/256x256/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/icons/hicolor/128x128/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/icons/hicolor/64x64/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/icons/hicolor/48x48/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/icons/hicolor/32x32/apps" = ["rayforge/resources/icons/org.piresforge.pires-forge.png"]
+"share/pires-forge/splash" = ["data/splash/splash.svg", "data/splash/README.md"]
 
 [project.optional-dependencies]
 test = [
