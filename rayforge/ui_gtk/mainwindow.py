@@ -1596,6 +1596,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._update_actions_and_ui()
         self.apply_theme()
+        self.apply_ui_density()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1680,6 +1681,24 @@ class MainWindow(Adw.ApplicationWindow):
         # Anything that isn't explicitly "light" or "dark" — including
         # "system" and unknown values — uses DEFAULT (follows OS).
         style_manager.set_color_scheme(scheme_map.get(theme, Adw.ColorScheme.DEFAULT))
+
+    def apply_ui_density(self):
+        """Toggle the .forge-density-compact style class based on
+        config.ui_density.
+
+        The class is consumed by forge.css:
+            .forge-theme.forge-density-compact .row { ... }
+        so the right CSS rules activate without any per-widget
+        Python changes. Unknown density values fall back to the
+        'comfortable' class (which is a no-op since the default
+        rule already assumes comfortable).
+        """
+        config = get_context().config()
+        density = (config.ui_density or "comfortable").lower()
+        if density == "compact":
+            self.add_css_class("forge-density-compact")
+        else:
+            self.remove_css_class("forge-density-compact")
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
