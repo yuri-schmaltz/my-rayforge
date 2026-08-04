@@ -69,6 +69,16 @@ class Config:
         # 5-card intro dialog appears; True after the user
         # dismisses it (Skip / Done / close button).
         self.walkthrough_seen: bool = False
+        # Panel layout preset. One of "default", "compact",
+        # "expanded". The PanelManager applies the preset to
+        # the right + bottom panel visibility on every change.
+        self.panel_layout: str = "default"
+        # Per-panel overrides layered on top of the preset.
+        # e.g. {"right": False} means "use the preset's bottom
+        # panel state, but force the right panel off". The
+        # override is updated whenever the user explicitly
+        # toggles a panel via the header buttons.
+        self.panel_overrides: dict = {}
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -155,6 +165,33 @@ class Config:
         if self.walkthrough_seen == seen:
             return
         self.walkthrough_seen = seen
+        self.changed.send(self)
+
+    def set_panel_layout(self, layout: str) -> None:
+        """Sets the panel layout preset.
+
+        Recognized values: 'default', 'compact', 'expanded'.
+        Anything else is treated as 'default' by the
+        PanelManager. Triggers a config.changed signal so the
+        MainWindow can re-apply visibility.
+        """
+        if self.panel_layout == layout:
+            return
+        self.panel_layout = layout
+        self.changed.send(self)
+
+    def set_panel_override(self, panel: str, visible: Optional[bool]) -> None:
+        """Set or clear a per-panel visibility override.
+
+        Args:
+            panel: 'right' or 'bottom'.
+            visible: True/False to set the override, or None to
+                clear it (so the preset's default applies again).
+        """
+        if visible is None:
+            self.panel_overrides.pop(panel, None)
+        else:
+            self.panel_overrides[panel] = bool(visible)
         self.changed.send(self)
 
     def set_unit_preference(self, quantity: str, unit_name: str):
@@ -273,6 +310,8 @@ class Config:
             "ui_density": self.ui_density,
             "toolbar_mode": self.toolbar_mode,
             "walkthrough_seen": self.walkthrough_seen,
+            "panel_layout": self.panel_layout,
+            "panel_overrides": self.panel_overrides,
             "unit_preferences": self.unit_preferences,
             "startup_behavior": self.startup_behavior,
             "startup_project_path": (
@@ -303,6 +342,8 @@ class Config:
         config.ui_density = data.get("ui_density", "comfortable")
         config.toolbar_mode = data.get("toolbar_mode", "essential")
         config.walkthrough_seen = data.get("walkthrough_seen", False)
+        config.panel_layout = data.get("panel_layout", "default")
+        config.panel_overrides = data.get("panel_overrides", {})
 
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {

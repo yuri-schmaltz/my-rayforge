@@ -306,6 +306,15 @@ class ActionManager:
             self.win.on_toggle_right_panel_state_change,
             GLib.Variant.new_boolean(config.right_panel_visible),
         )
+        # Layout preset action. Stateful (string variant) so the
+        # current preset appears as the active radio item in the
+        # View > Layout submenu. The handler delegates to
+        # MainWindow.set_panel_layout which persists the choice.
+        self._add_stateful_action(
+            "panel_layout",
+            self.win.on_panel_layout_state_change,
+            GLib.Variant.new_string(config.panel_layout or "default"),
+        )
 
         # 3D View Control Actions
         self._add_action("view_top", self.win.on_view_top)

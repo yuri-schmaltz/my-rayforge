@@ -623,6 +623,18 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Panel manager — coordinates right + bottom panel
+        # visibility across the three layout presets
+        # (default / compact / expanded) and per-panel overrides.
+        # The actual widgets are bound after they're constructed
+        # below; this just creates the manager.
+        from .panel_manager import PanelManager
+
+        self.panel_manager = PanelManager(
+            right_panel=self._right_pane,
+            bottom_panel=self.bottom_panel,
+        )
+
         # First-run walkthrough. Shown only if config.walkthrough_seen
         # is False. The dialog persists a "seen" flag to config on
         # any of: skip, done, or close, so it only runs once.
@@ -1252,6 +1264,30 @@ class MainWindow(Adw.ApplicationWindow):
         show_all = kwargs.get("show_all", False)
         get_context().config.set_toolbar_mode("all" if show_all else "essential")
 
+    def on_panel_layout_state_change(
+        self, action: Gio.SimpleAction, value: GLib.Variant
+    ):
+        """Apply a layout preset chosen from the View > Layout submenu.
+
+        The action is stateful (string variant), so the menu
+        shows a radio checkmark next to the current preset. When
+        the user picks a new preset, we:
+          1. Update config.panel_layout
+          2. Clear any per-panel overrides (since the preset is
+             now the source of truth)
+          3. Re-apply the layout (so the panels move immediately,
+             even if the user has only ever seen the menu via the
+             keyboard shortcut)
+        """
+        layout = value.get_string()
+        config = get_context().config()
+        # Clear overrides; the preset is now authoritative.
+        if config.panel_overrides:
+            config.panel_overrides = {}
+        config.set_panel_layout(layout)
+        action.set_state(value)
+        self.apply_panel_layout()
+
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
         config = get_context().config
@@ -1703,6 +1739,8 @@ class MainWindow(Adw.ApplicationWindow):
         self.apply_theme()
         self.apply_ui_density()
         self.apply_toolbar_mode()
+        self.apply_panel_layout()
+        self.apply_panel_layout()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1821,6 +1859,33 @@ class MainWindow(Adw.ApplicationWindow):
         show_all = mode == "all"
         if hasattr(self, "toolbar"):
             self.toolbar.apply_toolbar_mode(show_all)
+
+    def apply_panel_layout(self):
+        """Apply config.panel_layout to the right and bottom panels.
+
+        Three presets:
+          - default  : right + bottom both visible
+          - compact  : right visible, bottom hidden (canvas focus)
+          - expanded : right hidden, bottom visible (logs focus)
+
+        Per-panel overrides from config.panel_overrides are
+        layered on top of the preset, so a user who likes the
+        'default' preset but wants the right pane off doesn't
+        have to switch to 'compact' and lose the bottom panel.
+        """
+        if not hasattr(self, "panel_manager"):
+            return
+        config = get_context().config()
+        layout = (config.panel_layout or "default").lower()
+        # Apply the preset via the manager (sets both panels
+        # to the preset's visibility).
+        self.panel_manager.apply_layout(layout)
+        # Then apply any overrides on top.
+        for panel_name, visible in (config.panel_overrides or {}).items():
+            if panel_name == "right":
+                self.panel_manager.set_right_visible(visible)
+            elif panel_name == "bottom":
+                self.panel_manager.set_bottom_visible(visible)
 
     def _install_palette_shortcut(self):
         """Register Ctrl+Shift+P as the open-command-palette shortcut."""
@@ -2227,6 +2292,22 @@ class MainWindow(Adw.ApplicationWindow):
         else:
             self.bottom_panel.set_visible(False)
 
+        # Record the user's per-panel override. If the toggle
+        # ends up matching the current preset, the override is
+        # cleared so the preset becomes canonical again.
+        if hasattr(self, "panel_manager"):
+            preset = self.panel_manager.resolve(
+                get_context().config.panel_layout
+            )
+            if is_visible == preset["bottom"]:
+                get_context().config.set_panel_override(
+                    "bottom", None
+                )
+            else:
+                get_context().config.set_panel_override(
+                    "bottom", is_visible
+                )
+
         self._save_bottom_panel()
 
     def on_toggle_right_panel_state_change(
@@ -2240,6 +2321,23 @@ class MainWindow(Adw.ApplicationWindow):
         # breakpoint. Guarded with hasattr because this method can
         # be called during early construction (before the toggle is
         # added to the header bar).
+        toggle = getattr(self, "_right_panel_toggle", None)
+        if toggle is not None:
+            toggle.set_active(is_visible)
+
+        # Record the user's per-panel override. If the toggle
+        # ends up matching the current preset, the override is
+        # cleared so the preset becomes canonical again.
+        if hasattr(self, "panel_manager"):
+            preset = self.panel_manager.resolve(
+                get_context().config.panel_layout
+            )
+            if is_visible == preset["right"]:
+                get_context().config.set_panel_override("right", None)
+            else:
+                get_context().config.set_panel_override(
+                    "right", is_visible
+                )
         toggle = getattr(self, "_right_panel_toggle", None)
         if toggle is not None:
             toggle.set_active(is_visible)
