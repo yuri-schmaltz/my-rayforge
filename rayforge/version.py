@@ -11,7 +11,7 @@ def get_version_from_git() -> Optional[str]:
     # Resolve ``git`` to an absolute path so that the subprocess call
     # uses a fully-qualified executable (avoids partial-path warnings
     # from S607 and is more robust on systems with restricted PATH,
-    # e.g. snap-confined environments).
+    # e.g. minimal container images).
     git = shutil.which("git")
     if git is None:
         return None

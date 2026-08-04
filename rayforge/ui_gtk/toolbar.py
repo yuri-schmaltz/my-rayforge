@@ -318,9 +318,6 @@ class MainToolbar(Gtk.Box):
         # 3D preview, import (file dialog), export, bottom panel toggle,
         # arrange/tabs split menus, home, hold, cancel, clear-alarm,
         # focus, machine-warning.
-        advanced = (
-            "open_button_import",  # local var, see below
-        )
         # We don't have stable names for all the local-var widgets
         # (e.g. `view_3d_button`, `bottom_panel_button`,
         # `arrange_menu_button`, `tab_menu_button`, `hold_button`,

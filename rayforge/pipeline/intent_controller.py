@@ -25,11 +25,17 @@ On each debounced rebuild:
    task manager.
 
 The controller is constructed by application bootstrapping (see
-``app.py``) and lives alongside the legacy multiprocessing path.  The
-legacy path remains authoritative while ``dispatch`` is ``False``; in
-that mode the controller only maintains the cache-invalidation diff.
-Setting ``dispatch`` to ``True`` also drives raygeo :func:`run_intent`
-so the new pipeline runs end-to-end.
+``app.py``) and is the production entry point for executing the
+raygeo-backed pipeline. When :attr:`dispatch` is ``False`` (the
+default), the controller only maintains the cache-invalidation diff
+on each rebuild; the new intent is built and diffed, but
+:func:`run_intent` is never called, so nothing is actually
+executed. This mode is intended for unit tests that exercise the
+rebuild-diff path without paying the cost of (or depending on)
+raygeo's execution path. Production use always sets
+``dispatch=True`` via :class:`~rayforge.pipeline.pipeline.Pipeline`,
+which causes the new intent to be executed end-to-end via raygeo's
+:func:`run_intent`.
 """
 
 from __future__ import annotations
@@ -129,6 +135,20 @@ class IntentController:
             raygeo_pipeline or RaygeoPipeline()
         )
         self._dispatch: bool = dispatch
+        if not dispatch:
+            # Surface this loudly. Production code goes through
+            # Pipeline which always passes dispatch=True; if we see
+            # the warning in production logs, something constructed
+            # an IntentController without going through Pipeline.
+            # Unit tests that need a no-execution controller should
+            # use caplog to silence this.
+            logger.warning(
+                "IntentController instantiated with dispatch=False; "
+                "the controller will build and diff intents but never "
+                "execute them via raygeo. This is the default for "
+                "tests; production code goes through Pipeline which "
+                "always sets dispatch=True."
+            )
         self._intent: Optional[Intent] = None
         self._generation_id: int = 0
         self._rebuild_timer: Optional[Any] = None
@@ -452,9 +472,6 @@ class IntentController:
         callback can reattach outputs onto the originating WorkPiece or
         Step without needing to re-walk the Doc.
         """
-        from ..core.step import Step
-        from ..core.workpiece import WorkPiece
-
         self._key_to_item = {}
         if self._doc is None:
             return

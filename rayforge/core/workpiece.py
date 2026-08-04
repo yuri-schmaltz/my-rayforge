@@ -1037,14 +1037,6 @@ class WorkPiece(DocItem):
                 return w / h
         return None
 
-    def set_pos(self, x_mm: float, y_mm: float):
-        """Legacy method, use property `pos` instead."""
-        self.pos = (x_mm, y_mm)
-
-    def set_angle(self, angle: float):
-        """Legacy method, use property `angle` instead."""
-        self.angle = angle
-
     def get_default_size(
         self, bounds_width: float, bounds_height: float
     ) -> Tuple[float, float]:
