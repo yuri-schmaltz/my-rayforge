@@ -1212,9 +1212,19 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar.machine_warning_clicked.connect(
             self.on_machine_warning_clicked
         )
+        self.toolbar.toolbar_mode_changed.connect(
+            self.on_toolbar_mode_changed
+        )
         self.machine_selector.machine_selected.connect(
             self.on_machine_selected_by_selector
         )
+
+    def on_toolbar_mode_changed(self, sender, **kwargs):
+        """Persist the toolbar mode when the user toggles the '...'
+        button. Mode is 'all' (every button visible) or 'essential'
+        (curated subset). Stored in config.toolbar_mode."""
+        show_all = kwargs.get("show_all", False)
+        get_context().config.set_toolbar_mode("all" if show_all else "essential")
 
     def on_zero_here_clicked(self, action, param):
         """Handler for 'zero-here' action."""
@@ -1666,6 +1676,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._update_actions_and_ui()
         self.apply_theme()
         self.apply_ui_density()
+        self.apply_toolbar_mode()
 
     def _on_machine_signals_changed(self, config):
         # Disconnect from the previously active machine, if any
@@ -1768,6 +1779,22 @@ class MainWindow(Adw.ApplicationWindow):
             self.add_css_class("forge-density-compact")
         else:
             self.remove_css_class("forge-density-compact")
+
+    def apply_toolbar_mode(self):
+        """Apply config.toolbar_mode to the MainToolbar.
+
+        The toolbar exposes a Mode toggle (the "..." button) that
+        switches between "essential" (a curated subset of buttons,
+        default — designed for first-time users and quick
+        navigation) and "all" (every button visible, for power
+        users). The choice is persisted to config and applied
+        here whenever config changes.
+        """
+        config = get_context().config()
+        mode = (config.toolbar_mode or "essential").lower()
+        show_all = mode == "all"
+        if hasattr(self, "toolbar"):
+            self.toolbar.apply_toolbar_mode(show_all)
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()

@@ -27,6 +27,10 @@ class MainToolbar(Gtk.Box):
         self.add_css_class("main-toolbar")
         # Signals for View-State controls (not app actions)
         self.machine_warning_clicked = Signal()
+        # Emitted when the user toggles the toolbar mode (essential
+        # vs all). The MainWindow connects this to persist the
+        # choice to config.
+        self.toolbar_mode_changed = Signal()
 
         self.set_margin_bottom(2)
         self.set_margin_top(2)
@@ -208,6 +212,30 @@ class MainToolbar(Gtk.Box):
         self.machine_warning_box.add_controller(warning_click)
         self.append(self.machine_warning_box)
 
+        # Toolbar mode toggle: "Essential" hides advanced buttons to
+        # reduce cognitive load on first-time users. "All" reveals
+        # the full set for power users. The state is persisted to
+        # config (added in wave 8, see config.toolbar_mode).
+        # Default is "essential" — the user clicks the "..." button
+        # to see more. This is the Blender-style progressive
+        # disclosure, but kept lightweight (no workspace tabs).
+        toolbar_sep = Gtk.Separator(orientation=Gtk.Orientation.VERTICAL)
+        self.append(toolbar_sep)
+
+        self._essential_buttons = []
+        self._advanced_buttons = []
+        self._classify_buttons()
+
+        self.toolbar_mode_button = Gtk.ToggleButton()
+        self.toolbar_mode_button.set_child(get_icon("view-more-symbolic"))
+        self.toolbar_mode_button.set_tooltip_text(
+            _("Show all toolbar buttons (advanced)")
+        )
+        self.toolbar_mode_button.connect(
+            "toggled", self._on_toolbar_mode_toggled
+        )
+        self.append(self.toolbar_mode_button)
+
         # Connect to action registry changes for dynamic toolbar updates
         action_registry.changed.connect(self._on_action_registry_changed)
 
@@ -219,6 +247,110 @@ class MainToolbar(Gtk.Box):
         # the accessible label. No-op for widgets that have no
         # tooltip set.
         self._apply_accessible_labels_recursive(self)
+
+    def _classify_buttons(self):
+        """Tag each visible toolbar widget as essential or advanced.
+
+        The essential set covers the everyday "open file, change
+        something, send to machine" flow. The advanced set is the
+        everything-else (3D preview, arrange sub-tools, home
+        individually, focus laser, machine alarm handling).
+
+        The classification is keyed on the `widget_name` attribute
+        we set in __init__ — keeping the names as a constant list
+        here makes the policy readable in one place.
+        """
+        # Essential: file ops + undo/redo + recalculate + frame + send.
+        # Reasoning: a user who just wants "open, edit, cut" needs
+        # exactly these. Anything else is power-user territory.
+        essential = (
+            "open_button",
+            "save_button",
+            "save_as_button",
+            "undo_button",
+            "redo_button",
+            "recalculate_button",
+            "frame_button",
+            "send_button",
+        )
+        for name in essential:
+            widget = getattr(self, name, None)
+            if widget is not None:
+                self._essential_buttons.append(widget)
+
+        # Advanced: the rest of the visible buttons + dropdowns.
+        # 3D preview, import (file dialog), export, bottom panel toggle,
+        # arrange/tabs split menus, home, hold, cancel, clear-alarm,
+        # focus, machine-warning.
+        advanced = (
+            "open_button_import",  # local var, see below
+        )
+        # We don't have stable names for all the local-var widgets
+        # (e.g. `view_3d_button`, `bottom_panel_button`,
+        # `arrange_menu_button`, `tab_menu_button`, `hold_button`,
+        # `cancel_button`, `clear_alarm_button`, `focus_button`),
+        # so we just collect *all* Gtk.Button/ToggleButton/SplitMenuButton
+        # children that aren't in the essential list.
+        for child in self._iter_buttons():
+            if child not in self._essential_buttons and isinstance(
+                child,
+                (
+                    Gtk.Button,
+                    Gtk.ToggleButton,
+                ),
+            ):
+                # Skip the toolbar_mode_button itself and the
+                # machine_warning_box (special-purpose, not a tool).
+                if child is getattr(self, "toolbar_mode_button", None):
+                    continue
+                if child.get_parent() is getattr(
+                    self, "machine_warning_box", None
+                ):
+                    continue
+                self._advanced_buttons.append(child)
+
+    def _iter_buttons(self):
+        """Yield every direct child widget of the toolbar Box."""
+        child = self.get_first_child()
+        while child is not None:
+            yield child
+            child = child.get_next_sibling()
+
+    def _on_toolbar_mode_toggled(self, toggle_button):
+        """Show or hide the advanced buttons based on the toggle state.
+
+        When the user activates the toggle, every widget in
+        _advanced_buttons becomes visible. When they deactivate it,
+        those widgets hide and the toolbar is reduced to the
+        essential set + the toggle itself.
+        """
+        show_all = toggle_button.get_active()
+        for widget in self._advanced_buttons:
+            widget.set_visible(show_all)
+        toggle_button.set_tooltip_text(
+            _("Hide advanced toolbar buttons")
+            if show_all
+            else _("Show all toolbar buttons (advanced)")
+        )
+        # Persist the choice. The MainWindow owns config and is
+        # the one that knows when to write it; we just emit a
+        # signal that the caller can connect to.
+        self.toolbar_mode_changed.send(self, show_all=show_all)
+
+    def apply_toolbar_mode(self, show_all: bool):
+        """Public API: set the toolbar to 'essential' or 'all' mode.
+
+        Called by the MainWindow when config.toolbar_mode changes
+        (initial load or after a settings change). Keeps the
+        toggle's state in sync so the UI is consistent.
+        """
+        if getattr(self, "toolbar_mode_button", None) is None:
+            return
+        # set_active will trigger _on_toolbar_mode_toggled, so we
+        # need to suppress recursion on the initial call.
+        if self.toolbar_mode_button.get_active() == show_all:
+            return
+        self.toolbar_mode_button.set_active(show_all)
 
     def _apply_accessible_labels_recursive(self, widget):
         """Set accessible label from tooltip for every descendant."""
