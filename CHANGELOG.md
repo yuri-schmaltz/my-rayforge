@@ -8,6 +8,75 @@ Pires Forge is a fork of the [Rayforge](https://github.com/barebaric/rayforge)
 project. The rebrand was completed in 1.0.0. For the upstream history
 prior to the fork, see the Rayforge repository.
 
+## [Unreleased]
+
+### Added
+
+- **Light and dark themes** — `Preferences → General → Appearance →
+  Theme` now offers a real picker for system / light / dark, with
+  the selection persisted to `config.yaml`. Previously the UI
+  always rendered dark regardless of the (unread) setting.
+- **Splash screen** — `data/splash/splash.svg` (the brand spark
+  burst) is now loaded on app launch and shown until the main
+  window is mapped. Falls back to a black box if the SVG can't
+  be loaded.
+- **Responsive layout** — the floating right panel (workflow +
+  item properties) auto-hides on windows narrower than 900px.
+  A toggle button in the header bar and a one-time toast guide
+  the user to re-enable it.
+- **Accessibility** — icon-only buttons in the toolbar now
+  announce their tooltips as accessible labels, so screen
+  readers (Orca etc.) say "Save" instead of "button". The
+  system "reduce motion" setting is respected: stack and
+  revealer transitions collapse to 0-duration crossfade.
+- **Design system documentation** — `docs/DESIGN_SYSTEM.md`
+  captures the token list, spacing/radius scales, component
+  rules, and the "adding a new component" checklist.
+- **Pre-commit hook** — `.githooks/pre-commit` for opt-in
+  lightweight local checks (Python syntax, raw-hex warnings,
+  token-reference consistency). Install with
+  `git config core.hooksPath .githooks`.
+
+### Changed
+
+- **Design tokens** — CSS variables renamed from `blender_*` to
+  `forge_*` to match the "spark burst" brand identity. The
+  `forge_accent` (`#4f84c4`) is now used consistently for
+  selection / focus / brand states. Backward compatibility: no
+  user-facing change, only internal naming.
+- **Button style** — flat fill replaces the dated
+  `linear-gradient(to bottom, #595959, #474747)` pattern. Same
+  visual weight, modern Adwaita-style chrome. Headerbar and
+  toolbar keep their subtle 1-stop gradient (deliberate brand
+  signature).
+- **Border-radius scale** — buttons and overlays now use a
+  consistent 6px / 8px scale. Was 3-4px, which read as
+  2008-era on HiDPI displays.
+- **Stylesheet location** — the main window CSS moved from an
+  inline Python string in `mainwindow.py` to a real
+  `rayforge/resources/styles/forge.css` file. The file
+  supports editor syntax highlighting, lint, and is shared
+  with the splash and any future addons.
+- **Theme change feedback** — a 2-second toast on the main
+  window confirms every theme change so the user knows the
+  swap was applied (the dialog itself is closed at that point).
+
+### Internal
+
+- New module `rayforge/ui_gtk/splash.py` — borderless splash
+  window with bundle-aware path resolution for the SVG.
+- New module `rayforge/ui_gtk/shared/a11y.py` — accessibility
+  helpers (tooltip-to-label propagation, motion preference
+  walker, install listener).
+- New file `rayforge/resources/styles/forge.css` — source of
+  truth for the main window stylesheet, including the
+  `@media (prefers-color-scheme: light)` block.
+- New tests: `tests/ui_gtk/test_splash_path.py`,
+  `tests/ui_gtk/test_a11y.py`,
+  `tests/core/test_theme_flow.py`.
+
+## [1.0.0] - 2026-08-02
+
 ## [1.0.0] - 2026-08-02
 
 ### Added
