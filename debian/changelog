@@ -1,3 +1,45 @@
+pires-forge (1.1.0-1) unstable; urgency=medium
+
+  * Feature release: 1.1.0.
+  * UI/UX modernisation: light/dark theme picker, splash screen,
+    status bar with live mode badge, right-pane tabs (Layers /
+    Steps / Setup), coordinate bar, command palette (Ctrl+K),
+    walkthrough (5-step coach-mark tour), per-zone coach marks,
+    panel layout presets, local insights panel.
+  * Performance: in-process tracer (RAYFORGE_TRACE=1), cold-import
+    benchmark + per-module import-time gate in CI.
+  * i18n wrap-up: all 22 user-facing strings flagged by the
+    i18n audit (rayforge/util/i18n_audit.py) are now wrapped
+    with _(); the "---" placeholder pattern was replaced
+    with _("Not set").
+  * Accessibility: every interactive widget has an explicit
+    AT-SPI label via rayforge/shared/util/a11y.py helpers;
+    status bar mode badge has role=STATUS + mark_live_region;
+    coordinate bar / command palette / toolbar buttons have
+    distinct labels and roles.
+  * Documentation: docs/USER_MANUAL.md (~360 lines, 8 chapters)
+    and docs/DEVELOPER_GUIDE.md (~540 lines, 10 chapters)
+    covering the new tracer, i18n audit, and accessibility
+    primitives.
+  * Tests: tests/gui/__init__.py (6 GUI smoke tests walking
+    the widget tree), plus 4 SHA-256 canary tests in
+    tests/pipeline/test_intent_builder.py. 1237 backend
+    tests passing.
+  * Build: Build macOS Universal workflow removed (too
+    expensive to maintain; macOS is now per-platform opt-in).
+  * Dependabot now opens PRs daily (was weekly).
+  * Pip-audit is now part of the Performance benchmarks
+    workflow; fails the build on any vulnerability with a
+    known fix.
+  * github/codeql-action/init@v4 now uses the
+    security-extended query pack (catches ~30% more rules).
+  * Includes 1.0.1 security fixes (SHA-1 -> SHA-256 cache key,
+    aiohttp 3.14.3 + GitPython 3.1.57, explicit workflow
+    permissions: contents: read on every GitHub Actions
+    workflow, explicit .github/workflows/codeql.yml).
+
+ -- Yuri Schmaltz <security@yuri-schmaltz.dev>  Tue, 04 Aug 2026 20:00:00 +0000
+
 pires-forge (1.0.1-1) unstable; urgency=high
 
   * Security patch release: 1.0.1.

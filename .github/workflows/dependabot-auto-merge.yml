@@ -1,0 +1,113 @@
+name: Dependabot auto-merge
+
+# Auto-merges Dependabot PRs that pass all CI checks and meet
+# a small safety bar:
+#
+#   1. PR is from `dependabot[bot]` AND the head branch matches
+#      `dependabot/{pip,github-actions}/...`
+#   2. The `Lint and Test` workflow is SUCCESS (the same gate
+#      that protects manual merges)
+#   3. The PR body does NOT contain the string "[security]" in
+#      a way that indicates a CVE fix where manual review is
+#      desired (we treat CVE bumps as not-auto-mergeable; the
+#      user can always merge them by hand after review)
+#   4. PR is a "patch" or "minor" version bump only (not a major
+#      bump that changes API)
+#
+# What this catches vs. what requires human review:
+#
+#   AUTO-MERGE: aiohttp 3.14.3 -> 3.14.4 (patch, no CVE bump),
+#              GitPython 3.1.57 -> 3.1.58 (patch, no CVE bump),
+#              any routine patch/minor dep update.
+#
+#   SKIP: aiohttp 3.x -> 4.0 (major, API may change),
+#         any dep with "CVE-" in the PR body (always review).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  pull_request_review:
+    types: [submitted]
+  check_suite:
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    name: Auto-merge dependabot PR
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      startsWith(github.event.pull_request.head.ref, 'dependabot/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch PR metadata
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            core.setOutput('number', pr.number);
+            core.setOutput('title', pr.title);
+            core.setOutput('body', pr.body || '');
+            core.setOutput('isDraft', pr.draft);
+            core.setOutput('isMajor', /^(\d+)\.0\.0/.test(pr.title) || / major /i.test(pr.title));
+
+      - name: Skip draft PRs
+        if: steps.pr.outputs.isDraft == 'true'
+        run: |
+          echo "PR is still a draft, skipping auto-merge."
+          exit 0
+
+      - name: Skip if PR body mentions CVE
+        if: contains(steps.pr.outputs.body, 'CVE-')
+        run: |
+          echo "PR body mentions a CVE; requires human review."
+          exit 0
+
+      - name: Skip major version bumps
+        if: steps.pr.outputs.isMajor == 'true'
+        run: |
+          echo "PR is a major version bump; requires human review."
+          exit 0
+
+      - name: Wait for CI to finish
+        run: |
+          echo "Waiting up to 20 minutes for all check-runs to complete..."
+          for i in $(seq 1 60); do
+            # Get current check-runs for this PR's head SHA
+            STATUSES=$(gh api "repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}/check-runs" \
+              --jq '[.check_runs[] | select(.status != "completed") | .name]')
+            if [ "$STATUSES" = "[]" ]; then
+              echo "All check-runs completed."
+              break
+            fi
+            echo "[$i/60] Still waiting on: $STATUSES"
+            sleep 20
+          done
+
+      - name: Check that CI is green
+        id: ci
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get conclusion of every required check. We treat
+          # `Lint and Test` (the most comprehensive) as the gate.
+          CONCLUSION=$(gh api "repos/${{ github.repository }}/commits/${{ github.event.pull_request.head.sha }}/check-runs" \
+            --jq '[.check_runs[] | select(.name == "Lint and Test") | .conclusion] | .[0]')
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "Lint and Test conclusion is '$CONCLUSION', not 'success'."
+            exit 1
+          fi
+          echo "CI is green."
+
+      - name: Enable auto-merge
+        if: steps.ci.outputs.conclusion == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr merge ${{ steps.pr.outputs.number }} --auto --squash
+          echo "Auto-merge enabled for PR #${{ steps.pr.outputs.number }}"

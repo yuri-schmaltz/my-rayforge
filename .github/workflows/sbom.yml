@@ -1,0 +1,83 @@
+name: SBOM
+
+# Generates a Software Bill of Materials (CycloneDX + SPDX) from
+# the locked dependency tree and uploads it as a workflow
+# artifact. Triggered on:
+#   - push to main: keep the SBOM fresh for any audit tooling
+#     that wants the latest; the artifact is overwritten on
+#     each run
+#   - tags matching v*: generate a per-release SBOM (so
+#     compliance can pin a specific SPDX/CycloneDX to a
+#     specific release)
+#
+# The release workflow (build-exe.yml) does NOT auto-attach the
+# SBOM to the GitHub Release; instead, the SBOM is published as
+# a separate workflow artifact. Maintainers can manually attach
+# the SBOM to the release if they want — see the comment in
+# scripts/generate_sbom.py for the rationale.
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      format:
+        description: "SBOM format to generate"
+        required: true
+        type: choice
+        options:
+          - both
+          - cyclonedx
+          - spdx
+        default: both
+
+permissions:
+  contents: read
+
+jobs:
+  sbom:
+    name: Generate SBOM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install CycloneDX generator deps (none; uses stdlib)
+        run: echo "scripts/generate_sbom.py uses only stdlib + urllib"
+
+      - name: Generate SBOM
+        # When triggered by a tag, override the project version so
+        # the SBOM matches the release. The version is taken from
+        # the tag name (stripping the leading 'v').
+        run: |
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION=""
+          fi
+          python3 scripts/generate_sbom.py \
+            --format ${{ github.event.inputs.format || 'both' }} \
+            ${{ github.ref_type == 'tag' && format('--version {0}', env.VERSION) || '' }}
+        env:
+          # No PYPI_FETCH_TIMEOUT — script has its own 10s timeout
+          PYTHONUNBUFFERED: 1
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.ref_name }}
+          path: dist/sbom/
+          if-no-files-found: error
+          retention-days: 90
+          compression-level: 9
