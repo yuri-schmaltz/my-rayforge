@@ -79,6 +79,14 @@ class Config:
         # override is updated whenever the user explicitly
         # toggles a panel via the header buttons.
         self.panel_overrides: dict = {}
+        # Per-zone coach-mark seen flags. Each entry is a zone
+        # name (see coach_marks.COACH_MARKS for the canonical
+        # list). The first time the user interacts with a zone,
+        # a popover shows; the flag is added to this set so
+        # the popover never re-shows (the user can re-enable
+        # all coach marks by clearing the list from the Help
+        # menu).
+        self.coach_marks_seen: list = []
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -192,6 +200,32 @@ class Config:
             self.panel_overrides.pop(panel, None)
         else:
             self.panel_overrides[panel] = bool(visible)
+        self.changed.send(self)
+
+    def mark_coach_mark_seen(self, zone: str) -> None:
+        """Add a zone to the seen set.
+
+        Idempotent: re-marking an already-seen zone is a no-op
+        (no signal, no list change). This is important because
+        the same zone can fire its trigger multiple times in
+        a single session (e.g. the user clicks the toolbar
+        many times after the first popover was shown).
+        """
+        if zone in self.coach_marks_seen:
+            return
+        self.coach_marks_seen.append(zone)
+        self.changed.send(self)
+
+    def reset_coach_marks(self) -> None:
+        """Clear all coach-mark seen flags.
+
+        Called from the Help > 'Replay Coach Marks' menu item
+        (or equivalent). The next time the user interacts with
+        any zone, the corresponding popover re-shows.
+        """
+        if not self.coach_marks_seen:
+            return
+        self.coach_marks_seen = []
         self.changed.send(self)
 
     def set_unit_preference(self, quantity: str, unit_name: str):
@@ -312,6 +346,7 @@ class Config:
             "walkthrough_seen": self.walkthrough_seen,
             "panel_layout": self.panel_layout,
             "panel_overrides": self.panel_overrides,
+            "coach_marks_seen": self.coach_marks_seen,
             "unit_preferences": self.unit_preferences,
             "startup_behavior": self.startup_behavior,
             "startup_project_path": (
@@ -344,6 +379,7 @@ class Config:
         config.walkthrough_seen = data.get("walkthrough_seen", False)
         config.panel_layout = data.get("panel_layout", "default")
         config.panel_overrides = data.get("panel_overrides", {})
+        config.coach_marks_seen = data.get("coach_marks_seen", [])
 
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {

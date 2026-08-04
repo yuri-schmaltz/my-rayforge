@@ -292,6 +292,17 @@ class MainWindow(Adw.ApplicationWindow):
 
         self.status_bar = StatusBar()
         vbox.append(self.status_bar)
+        # First-interaction coach mark for the status bar.
+        # A click anywhere on the bar (including the mode
+        # badge) shows the popover pointing at the bar.
+        status_click = Gtk.GestureClick()
+        status_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "status", self.status_bar
+            ),
+        )
+        self.status_bar.add_controller(status_click)
 
         # Create a stack for switching between main view and addon pages
         self.main_stack = Gtk.Stack()
@@ -393,6 +404,21 @@ class MainWindow(Adw.ApplicationWindow):
 
         # The view stack is the base child of the canvas overlay
         self._canvas_overlay.set_child(self.view_stack)
+
+        # First-interaction coach mark for the canvas. A
+        # gesture-click on the overlay fires on any click
+        # inside the canvas; the first one shows the canvas
+        # coach mark. We use the overlay (not the surface)
+        # so the popover arrow points at the canvas as a
+        # whole rather than a specific element.
+        canvas_click = Gtk.GestureClick()
+        canvas_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "canvas", self._canvas_overlay
+            ),
+        )
+        self._canvas_overlay.add_controller(canvas_click)
 
         # Wrap surface in an overlay to allow preview controls
         self.surface_overlay = Gtk.Overlay()
@@ -577,6 +603,17 @@ class MainWindow(Adw.ApplicationWindow):
         self.bottom_panel.layout_changed.connect(
             self._on_bottom_layout_changed
         )
+        # First-interaction coach mark for the bottom panel.
+        # Gesture-click on the widget itself; the popover
+        # points at the panel and explains "console / gcode".
+        bottom_click = Gtk.GestureClick()
+        bottom_click.connect(
+            "pressed",
+            lambda *_: self.trigger_coach_mark(
+                "bottom", self.bottom_panel
+            ),
+        )
+        self.bottom_panel.add_controller(bottom_click)
 
         self.bottom_panel.click_to_zero_mode_changed.connect(
             self._on_click_to_zero_mode_changed
@@ -622,6 +659,20 @@ class MainWindow(Adw.ApplicationWindow):
 
         # Set initial state
         self.on_config_changed(None)
+
+        # Coach-mark controller. Lazily constructs one
+        # CoachMark popover per zone and shows them in
+        # response to first-interaction triggers. Popovers
+        # are not created until the first interaction so the
+        # initial paint isn't delayed.
+        from .coach_marks import CoachMark, COACH_MARKS
+
+        self._coach_marks: dict = {}
+        self._coach_mark_pending: Optional[str] = None
+        # Suppresses the very first user click on a zone if
+        # the walkthrough is still on screen (avoids the
+        # popover fighting the walkthrough for attention).
+        self._walkthrough_active: bool = False
 
         # Panel manager — coordinates right + bottom panel
         # visibility across the three layout presets
@@ -1253,6 +1304,19 @@ class MainWindow(Adw.ApplicationWindow):
         self.toolbar.toolbar_mode_changed.connect(
             self.on_toolbar_mode_changed
         )
+        # First-interaction coach mark for the toolbar. A
+        # gesture-click on the toolbar widget fires on any
+        # toolbar button press; the coach mark shows the
+        # first time only. We use the toolbar widget itself
+        # as the popover parent so the arrow points at the
+        # toolbar regardless of which button was clicked.
+        toolbar_click = Gtk.GestureClick()
+        toolbar_click.connect(
+            "pressed", lambda *_: self.trigger_coach_mark(
+                "toolbar", self.toolbar
+            )
+        )
+        self.toolbar.add_controller(toolbar_click)
         self.machine_selector.machine_selected.connect(
             self.on_machine_selected_by_selector
         )
@@ -1698,6 +1762,14 @@ class MainWindow(Adw.ApplicationWindow):
                 self._right_pane_stack.set_visible_child_name("properties")
             except Exception:
                 pass
+            # First time the right pane shows properties
+            # because the user clicked an object, show the
+            # coach mark for the right pane. Lazy import
+            # to avoid a circular dep at module load.
+            if hasattr(self, "trigger_coach_mark"):
+                self.trigger_coach_mark(
+                    "right_pane", self._right_pane
+                )
         elif hasattr(self, "_right_pane_stack"):
             try:
                 self._right_pane_stack.set_visible_child_name("workflow")
@@ -1961,6 +2033,86 @@ class MainWindow(Adw.ApplicationWindow):
         dialog.connect("closed", _on_close)
         self._walkthrough = dialog
         dialog.present()
+        return False  # remove the idle source
+
+    def trigger_coach_mark(self, zone: str, parent: Gtk.Widget) -> None:
+        """Show a coach mark for the given zone, attached to parent.
+
+        The first time the user interacts with a given zone, this
+        method is called with the zone name and the widget to
+        attach the popover to. The popover is built lazily, shown
+        via idle_add (so any click handler completes first), and
+        dismissed either by the user clicking 'Got it' or by
+        the 8s auto-timeout. The 'dismissed' signal updates
+        config.coach_marks_seen so the popover never re-shows.
+
+        If a coach mark is already pending or visible for a
+        different zone, this call supersedes it (the most
+        recent user interaction wins). This avoids the case
+        where the user clicks the canvas, then the toolbar
+        button, and both popovers fight for the same screen
+        space.
+        """
+        from .coach_marks import CoachMark, COACH_MARKS
+
+        config = get_context().config()
+        if zone in config.coach_marks_seen:
+            return  # already shown for this zone
+        if zone not in COACH_MARKS:
+            logger.debug("Unknown coach mark zone '%s'", zone)
+            return
+        if self._walkthrough_active:
+            return  # wait until the walkthrough is dismissed
+        # Mark as pending; if a popover is already in the
+        # pipeline for a different zone, the new one replaces
+        # it. We don't want a long chain of idle callbacks.
+        self._coach_mark_pending = zone
+        GLib.idle_add(self._present_coach_mark, parent)
+
+    def _present_coach_mark(self, parent: Gtk.Widget) -> bool:
+        """Build (or reuse) and show the pending coach mark.
+
+        Runs from GLib.idle_add so the user click that triggered
+        it has finished. The popover is bound to 'parent' and
+        positioned automatically. The 'dismissed' signal
+        updates config and clears the cache.
+        """
+        zone = self._coach_mark_pending
+        self._coach_mark_pending = None
+        if zone is None or self._walkthrough_active:
+            return False
+        config = get_context().config()
+        if zone in config.coach_marks_seen:
+            return False
+        mark = self._coach_marks.get(zone)
+        if mark is None:
+            from .coach_marks import CoachMark
+
+            mark = CoachMark(zone)
+            # 'dismissed' fires once the popover has fully
+            # closed (auto-timeout, button click, or autohide).
+            # We use it to persist the seen flag and clear
+            # the cache so a re-shown zone gets a fresh popover.
+            def _on_dismiss(_popover, dismissed_zone: str):
+                get_context().config.mark_coach_mark_seen(
+                    dismissed_zone
+                )
+                self._coach_marks.pop(dismissed_zone, None)
+            mark.connect("dismissed", _on_dismiss)
+            self._coach_marks[zone] = mark
+        # Setting the parent and re-positioning is required
+        # every time because the popover may have been
+        # attached to a different widget in a previous show.
+        mark.set_parent(parent)
+        # Popover position is auto (the arrow points to
+        # parent). For the canvas, a top position is more
+        # natural; for the toolbar, a bottom. The default
+        # (BOTTOM) is fine for the rest.
+        if zone == "canvas":
+            mark.set_position(Gtk.PositionType.TOP)
+        else:
+            mark.set_position(Gtk.PositionType.BOTTOM)
+        mark.popup()
         return False  # remove the idle source
 
     def _on_unit_changed(self, unit: str) -> None:
