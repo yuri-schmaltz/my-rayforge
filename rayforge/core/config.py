@@ -87,6 +87,12 @@ class Config:
         # all coach marks by clearing the list from the Help
         # menu).
         self.coach_marks_seen: list = []
+        # Lazy-load addon frontend modules on first attribute
+        # access instead of at startup. Default False to keep
+        # the existing behavior; enable via
+        # RAYFORGE_LAZY_ADDONS=1 to opt in. The trade-off
+        # is documented in rayforge/addon_mgr/lazy.py.
+        self.addon_lazy_load: bool = False
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -347,6 +353,7 @@ class Config:
             "panel_layout": self.panel_layout,
             "panel_overrides": self.panel_overrides,
             "coach_marks_seen": self.coach_marks_seen,
+            "addon_lazy_load": self.addon_lazy_load,
             "unit_preferences": self.unit_preferences,
             "startup_behavior": self.startup_behavior,
             "startup_project_path": (
@@ -380,6 +387,7 @@ class Config:
         config.panel_layout = data.get("panel_layout", "default")
         config.panel_overrides = data.get("panel_overrides", {})
         config.coach_marks_seen = data.get("coach_marks_seen", [])
+        config.addon_lazy_load = data.get("addon_lazy_load", False)
 
         # Load unit preferences, falling back to defaults for safety
         default_prefs = {
