@@ -154,15 +154,17 @@ jobs:
       - name: Verify both artifacts downloaded
         id: verify
         run: |
+          set -e
           echo "--- dist/ contents ---"
-          ls -la dist/ || true
+          ls -la dist/
           DEB_COUNT=$(find dist/ -name "*.deb" 2>/dev/null | wc -l)
           EXE_COUNT=$(find dist/ -name "*.zip" -o -name "*.exe" 2>/dev/null | wc -l)
           echo "deb_count=${DEB_COUNT} exe_count=${EXE_COUNT}"
           if [ "${DEB_COUNT}" -ge 1 ] && [ "${EXE_COUNT}" -ge 1 ]; then
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "ready=true" | tee -a "$GITHUB_OUTPUT"
           else
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "ready=false" | tee -a "$GITHUB_OUTPUT"
+            exit 1
           fi
 
       - name: Upload combined artifacts
