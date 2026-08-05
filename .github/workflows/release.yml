@@ -4,106 +4,148 @@ name: Release (multi-platform)
 # Release containing BOTH the .deb (Linux/Ubuntu)
 # and .exe (Windows) artifacts.
 #
-# Uses the `workflow_run` event (native to GitHub
-# Actions) to wait for the build-deb and build-exe
-# workflows to complete. This is more robust than
-# the previous `actions/upload-artifact/wait-for`
-# approach (which had a beta `Set up job` failure).
+# Strategy: trigger on push of a tag matching v*,
+# then poll the build-deb and build-exe workflow
+# runs for the same SHA until both artifacts are
+# available. This is more reliable than
+# workflow_run (which doesn't carry the ref that
+# triggered the original workflow, and the
+# artifacts from the triggering run are not
+# available via the workflow_run event payload
+# in a way that download-artifact can consume).
 #
 # Trigger:
-#   - workflow_run event when a build-* workflow
-#     completes on the same tag push
+#   - push of a tag matching v*
 #
 # Output:
 #   - GitHub Release with .deb and .exe attached
 
 on:
-  workflow_run:
-    workflows:
-      - "Build .deb package"
-      - "Build Windows Executable"
-    types:
-      - completed
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v1.3.0)"
+        required: true
 
 # Default to read-only GITHUB_TOKEN. The
-# download-artifacts job only needs to download
-# artifacts (OIDC, not contents API). The 'release'
-# job opts in to write access at the job level.
+# wait-for-artifacts job only needs to read
+# workflows and download artifacts (OIDC, not
+# contents API). The 'release' job opts in to
+# write access at the job level for the
+# softprops step.
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  download-artifacts:
-    name: Download build artifacts
-    # Only run on push events that were a tag push.
-    # The workflow_run event doesn't directly tell
-    # us if the original push was a tag push, so we
-    # check by:
-    # 1. event == 'push' (vs pull_request)
-    # 2. conclusion == 'success'
-    # 3. The head_sha has a tag pointing to it
-    #    (we look this up via git API in a step
-    #    below, not in the if condition, because
-    #    if conditions can only use github.* vars)
-    if: >
-      github.event.workflow_run.event == 'push'
-      && github.event.workflow_run.conclusion == 'success'
+  wait-for-artifacts:
+    name: Wait for build artifacts
     runs-on: ubuntu-24.04
+    # The build-deb and build-exe workflows also
+    # trigger on this same push (their on:push.tags
+    # config). They run in parallel; we poll the
+    # workflow runs for the same SHA until both
+    # build jobs have uploaded their artifacts.
+    #
+    # We use 'gh run list' + 'gh run download'
+    # to find and download the artifacts. This
+    # is more robust than actions/download-artifact
+    # with a specific run-id (we don't always know
+    # the run-id of the parallel build workflows).
     steps:
-      - name: Check if head_sha has a tag (release)
-        id: check_tag
+      - name: Determine the tag and SHA
+        id: meta
         run: |
-          SHA="${{ github.event.workflow_run.head_sha }}"
-          echo "Checking tags for SHA: ${SHA}"
-          TAGS=$(gh api \
-            "repos/${{ github.repository }}/git/refs/tags" \
-            --jq ".[] | select(.object.sha == \"${SHA}\") | .ref" \
-            2>/dev/null || echo "")
-          if [ -z "${TAGS}" ]; then
-            echo "No tag found for ${SHA}; skipping release"
-            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" == "push" ]; then
+            TAG="${{ github.ref_name }}"
           else
-            TAG=$(echo "${TAGS}" | head -1 | sed 's|refs/tags/||')
-            echo "Found tag: ${TAG}"
-            echo "is_release=true" >> "$GITHUB_OUTPUT"
-            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-            VERSION="${TAG#v}"
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            TAG="${{ inputs.tag }}"
+          fi
+          SHA="$(git rev-parse ${TAG}^{commit})"
+          VERSION="${TAG#v}"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG} sha=${SHA} version=${VERSION}"
+
+      - name: Wait for build workflows
+        # Poll the workflow runs for this SHA until
+        # both build-deb and build-exe are completed.
+        # 30 retries × 30s = 15 min total wait.
+        run: |
+          SHA="${{ steps.meta.outputs.sha }}"
+          echo "Waiting for build-deb + build-exe to complete for SHA ${SHA}..."
+          for i in $(seq 1 30); do
+            echo "--- attempt ${i}/30 ---"
+            DEB_STATUS=$(gh run list \
+              --workflow="Build .deb package" \
+              --json status,conclusion,headSha \
+              --jq ".[] | select(.headSha == \"${SHA}\") | .status + \"|\" + .conclusion" \
+              | head -1)
+            EXE_STATUS=$(gh run list \
+              --workflow="Build Windows Executable" \
+              --json status,conclusion,headSha \
+              --jq ".[] | select(.headSha == \"${SHA}\") | .status + \"|\" + .conclusion" \
+              | head -1)
+            echo "deb_status=${DEB_STATUS} exe_status=${EXE_STATUS}"
+            if [[ "${DEB_STATUS}" == "completed|success" ]] && [[ "${EXE_STATUS}" == "completed|success" ]]; then
+              echo "Both builds completed successfully"
+              break
+            fi
+            if [[ "${DEB_STATUS}" == "completed|failure" ]] || [[ "${EXE_STATUS}" == "completed|failure" ]]; then
+              echo "::error::A build failed; aborting release"
+              exit 1
+            fi
+            sleep 30
+          done
+          # Final check after the loop
+          if [[ "${DEB_STATUS}" != "completed|success" ]] || [[ "${EXE_STATUS}" != "completed|success" ]]; then
+            echo "::error::Builds did not complete in 15 min; aborting"
+            exit 1
           fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Skip if not a release tag
-        if: steps.check_tag.outputs.is_release != 'true'
-        run: |
-          echo "Not a release tag; skipping download"
-
       - name: Download .deb artifact
-        if: steps.check_tag.outputs.is_release == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-          name: rayforge-${{ steps.check_tag.outputs.tag }}-ubuntu24.04.deb
-          path: dist/
-        continue-on-error: true
+        run: |
+          SHA="${{ steps.meta.outputs.sha }}"
+          mkdir -p dist
+          RUN_ID=$(gh run list \
+            --workflow="Build .deb package" \
+            --json databaseId,headSha \
+            --jq ".[] | select(.headSha == \"${SHA}\") | .databaseId" \
+            | head -1)
+          echo "Downloading .deb from run ${RUN_ID}..."
+          gh run download "${RUN_ID}" \
+            --name "rayforge-${{ steps.meta.outputs.tag }}-ubuntu24.04.deb" \
+            --dir dist/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Windows installer
-        if: steps.check_tag.outputs.is_release == 'true'
-        uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-          name: pires-forge-v*-installer.zip
-          path: dist/
-        continue-on-error: true
+        run: |
+          SHA="${{ steps.meta.outputs.sha }}"
+          RUN_ID=$(gh run list \
+            --workflow="Build Windows Executable" \
+            --json databaseId,headSha \
+            --jq ".[] | select(.headSha == \"${SHA}\") | .databaseId" \
+            | head -1)
+          echo "Downloading .exe from run ${RUN_ID}..."
+          gh run download "${RUN_ID}" \
+            --name "pires-forge-v${{ steps.meta.outputs.version }}-installer.zip" \
+            --dir dist/ 2>&1 || gh run download "${RUN_ID}" \
+            --name "pires-forge-v*-installer.zip" \
+            --dir dist/
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify both artifacts downloaded
-        if: steps.check_tag.outputs.is_release == 'true'
         id: verify
         run: |
           echo "--- dist/ contents ---"
@@ -118,16 +160,16 @@ jobs:
           fi
 
       - name: Upload combined artifacts
-        if: steps.check_tag.outputs.is_release == 'true' && steps.verify.outputs.ready == 'true'
+        if: steps.verify.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundle-${{ steps.check_tag.outputs.tag }}
+          name: release-bundle-${{ steps.meta.outputs.tag }}
           path: dist/
 
   release:
     name: Create GitHub Release
-    needs: download-artifacts
-    if: needs.download-artifacts.outputs.ready == 'true'
+    needs: wait-for-artifacts
+    if: needs.wait-for-artifacts.outputs.verify == 'true'
     # softprops/action-gh-release needs write
     # access to create a Release and attach files.
     permissions:
@@ -137,14 +179,14 @@ jobs:
       - name: Download combined artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-bundle-${{ needs.download-artifacts.outputs.tag }}
+          name: release-bundle-${{ needs.wait-for-artifacts.outputs.tag }}
           path: dist/
 
       - name: Determine release type
         id: release_info
         shell: bash
         run: |
-          TAG="${{ needs.download-artifacts.outputs.tag }}"
+          TAG="${{ needs.wait-for-artifacts.outputs.tag }}"
           if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -156,10 +198,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.download-artifacts.outputs.tag }}
-          name: "${{ needs.download-artifacts.outputs.tag }}"
+          tag_name: ${{ needs.wait-for-artifacts.outputs.tag }}
+          name: "${{ needs.wait-for-artifacts.outputs.tag }}"
           body: |
-            ## What's new in ${{ needs.download-artifacts.outputs.tag }}
+            ## What's new in ${{ needs.wait-for-artifacts.outputs.tag }}
 
             See the commit log since the previous tag for the full list of changes.
 
