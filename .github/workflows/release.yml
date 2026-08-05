@@ -83,11 +83,11 @@ jobs:
       - name: Wait for build workflows
         # Poll the workflow runs for this SHA until
         # both build-deb and build-exe are completed.
-        # 30 retries × 30s = 15 min total wait.
+        # 90 retries × 30s = 45 min total wait.
         run: |
           SHA="${{ steps.meta.outputs.sha }}"
           echo "Waiting for build-deb + build-exe to complete for SHA ${SHA}..."
-          for i in $(seq 1 30); do
+          for i in $(seq 1 90); do
             echo "--- attempt ${i}/30 ---"
             DEB_STATUS=$(gh run list \
               --workflow="Build .deb package" \
