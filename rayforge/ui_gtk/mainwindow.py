@@ -660,6 +660,18 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Wire the dockable panels UI. This is a
+        # best-effort setup: if any of the optional
+        # dependencies (workspace actions, submenu
+        # insertion) fail, the drag-and-drop itself
+        # still works for the surfaces that exist.
+        try:
+            from .dockable_integration import setup_dockable
+
+            setup_dockable(self)
+        except Exception as e:  # pragma: no cover
+            logger.debug("Dockable UI setup failed: %s", e)
+
         # Try to load the saved workspace. If the
         # 'default' workspace doesn't exist, create it.
         # This is a PoC: only the default workspace is
