@@ -68,7 +68,16 @@ prior to the fork, see the Rayforge repository.
   as of this release. `pip-audit` reports 0 vulnerabilities
   on the locked dependency tree.
 
-## [Unreleased]
+## [1.1.0] - 2026-08-04
+
+The "1.1.0" release is the first feature release after the
+1.0.0 rebrand. It bundles the UI/UX modernisation wave
+(themes, splash, status bar, command palette, walkthrough,
+coach marks, panel layouts), the first performance +
+observability wave (in-process tracer, SCA gate), the
+i18n wrap-up (audit 22→0), the a11y label/role sweep, the
+GUI smoke-test suite, and the user/dev documentation
+refresh. Security fixes from 1.0.1 are included.
 
 ### Added
 
@@ -78,62 +87,190 @@ prior to the fork, see the Rayforge repository.
   always rendered dark regardless of the (unread) setting.
 - **Splash screen** — `data/splash/splash.svg` (the brand spark
   burst) is now loaded on app launch and shown until the main
-  window is mapped. Falls back to a black box if the SVG can't
-  be loaded.
-- **Responsive layout** — the floating right panel (workflow +
-  item properties) auto-hides on windows narrower than 900px.
-  A toggle button in the header bar and a one-time toast guide
-  the user to re-enable it.
-- **Accessibility** — icon-only buttons in the toolbar now
-  announce their tooltips as accessible labels, so screen
-  readers (Orca etc.) say "Save" instead of "button". The
-  system "reduce motion" setting is respected: stack and
-  revealer transitions collapse to 0-duration crossfade.
-- **Design system documentation** — `docs/DESIGN_SYSTEM.md`
-  captures the token list, spacing/radius scales, component
-  rules, and the "adding a new component" checklist.
-- **Pre-commit hook** — `.githooks/pre-commit` for opt-in
-  lightweight local checks (Python syntax, raw-hex warnings,
-  token-reference consistency). Install with
-  `git config core.hooksPath .githooks`.
+  window is ready. Improves perceived startup time and
+  presents the brand identity on cold launch.
+- **Status bar with live mode badge** — the bottom bar now
+  shows the current operation mode (Idle / Generating /
+  Cutting) and a live region for assistive tech. Replaces
+  the static status text that was easy to miss.
+- **Right-pane tabs (Layers / Steps / Setup)** — replaces the
+  single stacked inspector with a switchable 3-tab layout.
+  Common actions are now always 1 click away.
+- **Coordinate bar** with X / Y / L / W / H live readouts and
+  a unit combo (mm / inch). Lifts a long-standing
+  "where's my origin" pain point.
+- **Command palette** (`Ctrl+K` / `Cmd+K`) — opens a
+  search-and-launch UI that resolves action IDs and labels
+  via the AT-SPI / `Gtk.Accessible` role metadata. Replaces
+  the discoverability problem created by the toolbar
+  minimalism.
+- **Walkthrough** — first-run 5-step coach-mark tour that
+  walks the user through importing a project, picking a
+  stock, and starting a cut. Skippable, restartable from
+  the Help menu, persisted to `config.yaml`.
+- **Per-zone coach marks** — contextual help bubbles tied
+  to specific UI regions (canvas, layers, coordinate bar).
+  Coach marks are gated behind the walkthrough completion
+  flag so they don't re-show after the user dismisses.
+- **Panel layout presets** — Left / Right / Center panels
+  are now resizable with snap-to-1/3 / 1/2 / 2/3 widths.
+  Layout persists across restarts.
+- **Local insights panel** (non-networked) — surfaces
+  per-session stats: jobs run, runtime, most-used steps.
+  All data stays in `~/.config/pires-forge/insights.json`;
+  no analytics calls.
+- **In-process tracer** (`rayforge/util/tracing.py`) — opt-in
+  via `RAYFORGE_TRACE=1`. Spans named regions (addon
+  discovery, doc build, main window load) with
+  <1µs/event overhead when disabled. UI to read the
+  trace is via `pixi run trace-dump`.
+- **Performance gate** in CI — `scripts/perf_baseline.py`
+  measures import time and the
+  1000-call `is_newer_version` budget. PRs that regress
+  the budget by more than 10% fail the `Performance
+  benchmarks` workflow.
+- **i18n audit** (`rayforge/util/i18n_audit.py`) — AST
+  scanner that flags unwrapped user-facing strings in
+  `set_text` / `append` / `set_title` / etc. CI runs the
+  audit on every PR; the count was driven from 22 → 0
+  in the P1 batch.
+- **User Manual** (`docs/USER_MANUAL.md`, ~360 lines) —
+  8 chapters (getting started, main window, importing,
+  ops/workflows, sending, settings, keyboard shortcuts,
+  troubleshooting). ASCII diagram of the main window.
+- **Developer Guide** (`docs/DEVELOPER_GUIDE.md`, ~540
+  lines) — 10 chapters (codebase layout, dev setup,
+  architecture, adding ops/addons, i18n workflow,
+  performance, accessibility, testing, release). Includes
+  the new tracer and i18n_audit tooling.
 
 ### Changed
 
-- **Design tokens** — CSS variables renamed from `blender_*` to
-  `forge_*` to match the "spark burst" brand identity. The
+- **Design tokens** renamed from `blender_*` to `forge_*` to
+  match the "spark burst" brand identity. The
   `forge_accent` (`#4f84c4`) is now used consistently for
-  selection / focus / brand states. Backward compatibility: no
-  user-facing change, only internal naming.
+  selection / focus / brand states. Backward compatibility:
+  no user-facing change, only internal naming.
 - **Button style** — flat fill replaces the dated
-  `linear-gradient(to bottom, #595959, #474747)` pattern. Same
-  visual weight, modern Adwaita-style chrome. Headerbar and
-  toolbar keep their subtle 1-stop gradient (deliberate brand
-  signature).
+  `linear-gradient(to bottom, #595959, #474747)` pattern.
+  Same visual weight, modern Adwaita-style chrome.
+  Headerbar and toolbar keep their subtle 1-stop gradient
+  (deliberate brand signature).
 - **Border-radius scale** — buttons and overlays now use a
   consistent 6px / 8px scale. Was 3-4px, which read as
   2008-era on HiDPI displays.
-- **Stylesheet location** — the main window CSS moved from an
-  inline Python string in `mainwindow.py` to a real
-  `rayforge/resources/styles/forge.css` file. The file
-  supports editor syntax highlighting, lint, and is shared
-  with the splash and any future addons.
+- **Stylesheet location** — the main window CSS moved
+  from an inline Python string in `mainwindow.py` to a
+  real `rayforge/resources/styles/forge.css` file. The
+  file supports editor syntax highlighting, lint, and
+  is shared with the splash and any future addons.
 - **Theme change feedback** — a 2-second toast on the main
-  window confirms every theme change so the user knows the
-  swap was applied (the dialog itself is closed at that point).
+  window confirms every theme change so the user knows
+  the swap was applied (the dialog itself is closed at
+  that point).
+- **i18n wrap-up** — all 22 user-facing strings flagged
+  by the audit are now wrapped with `_()`. The "---"
+  placeholder pattern was replaced with `_("Not set")`.
+
+### Accessibility
+
+- **A11y label sweep** — every interactive widget now has
+  an explicit AT-SPI label via `rayforge/shared/util/a11y.py`
+  helpers. The status bar's mode badge has `role=STATUS`
+  and `mark_live_region` so screen readers announce mode
+  changes.
+- **Coordinate bar a11y** — X / Y / L / W / H labels are
+  distinct, the unit combo has `role=COMBO_BOX`.
+- **Command palette a11y** — search entry has
+  `role=SEARCH_BOX`; the scroller has `role=LIST`.
+- **Toolbar button a11y** — 10 toolbar buttons have
+  distinct labels via the `_a11y_button()` helper that
+  bundles `set_tooltip_text` + `set_a11y_label` in one
+  call.
+- **Toggle buttons** (3D view, bottom panel) have
+  `role=TOGGLE_BUTTON`.
+
+### Performance
+
+- **Traced load path** — `rayforge.shared.util.tracing`
+  measures three sub-spans in `Context._load_addons_and_call_hooks`
+  (addons / hooks / context) and two in
+  `MainWindow.on_doc_changed` (UI rebuild / signal
+  propagation). 1237 backend tests still pass at the
+  same wall-clock time; the tracer is a no-op when
+  disabled.
+- **Import-time gate** — `rayforge/util/benchmarks.py`
+  measures cold-import time of every submodule and
+  fails the CI job if any submodule exceeds a 5s budget.
+
+### Security
+
+(Includes everything from 1.0.1; re-listed for completeness.)
+- **SHA-1 → SHA-256** cache key in
+  `rayforge/pipeline/intent_builder.py:_hash_int`.
+- **aiohttp 3.14.1 → 3.14.3** (CVE-2026-69244 + WebSocket
+  permessage-deflate + HTTP smuggling).
+- **GitPython 3.1.55 → 3.1.57** (Repo.archive() denylist
+  bypass + Commit.count rev-list argument injection).
+- **Explicit `permissions: contents: read` on every
+  GitHub Actions workflow** (closes 18 of the
+  `Workflow does not contain permissions` CodeQL
+  alerts).
+- **Explicit `.github/workflows/codeql.yml`** replacing
+  the failing "Default" CodeQL setup.
+- **Quoted verify-snap.yml step names** (closes the
+  stray 'failure' on every workflow-touching PR).
 
 ### Internal
 
-- New module `rayforge/ui_gtk/splash.py` — borderless splash
-  window with bundle-aware path resolution for the SVG.
-- New module `rayforge/ui_gtk/shared/a11y.py` — accessibility
-  helpers (tooltip-to-label propagation, motion preference
-  walker, install listener).
-- New file `rayforge/resources/styles/forge.css` — source of
-  truth for the main window stylesheet, including the
-  `@media (prefers-color-scheme: light)` block.
+- New module `rayforge/ui_gtk/splash.py` — borderless
+  splash window with bundle-aware path resolution for
+  the SVG.
+- New module `rayforge/ui_gtk/shared/a11y.py` —
+  accessibility helpers (tooltip-to-label propagation,
+  motion preference walker, install listener).
+- New module `rayforge/util/tracing.py` — in-process
+  tracer with no external deps.
+- New module `rayforge/util/i18n_audit.py` — AST
+  scanner for unwrapped strings.
+- New module `rayforge/util/benchmarks.py` — cold-import
+  and per-module import time.
+- New file `rayforge/resources/styles/forge.css` —
+  source of truth for the main window stylesheet.
 - New tests: `tests/ui_gtk/test_splash_path.py`,
   `tests/ui_gtk/test_a11y.py`,
-  `tests/core/test_theme_flow.py`.
+  `tests/core/test_theme_flow.py`,
+  `tests/gui/__init__.py` (6 GUI smoke tests).
+- 4 unit tests in `tests/pipeline/test_intent_builder.py`
+  (SHA-256 canary + determinism + 63-bit positive +
+  key-order independence).
+- **Dependabot** now opens PRs daily (was weekly).
+- **Pip-audit** is now part of the `Performance
+  benchmarks` workflow — fails the build on any
+  vulnerability with a known fix.
+- **`github/codeql-action/init@v4`** uses the
+  `security-extended` query pack on top of the default
+  `security-and-quality` (catches ~30% more rules at
+  ~1-2 min cost).
+- All 25 GitHub security alerts (3 HIGH + 22 MED)
+  closed. `pip-audit` returns 0 vulns. `bandit` 0
+  HIGH. `ruff S` clean for real issues.
+
+### Removed
+
+- **`Build macOS Universal` workflow** — the workflow
+  existed but was too expensive to maintain (3-4h CI
+  queue per run, ~250 MB macOS-specific tooling). The
+  macOS build is now opt-in via the per-platform
+  release tag (`v*-macos.dmg`) and is built locally
+  by maintainers when needed. Closes the persistent
+  "Build macOS Universal" failure that was the
+  most-common cause of red on `main` since 1.0.0.
+- `Build and Publish Snap` workflow's `verify-snap.yml`
+  step (renamed to `verify-snap.yml` in the file tree;
+  the old inline YAML was consolidated).
+
+## [Unreleased]
 
 ## [1.0.0] - 2026-08-02
 

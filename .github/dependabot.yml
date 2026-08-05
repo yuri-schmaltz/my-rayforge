@@ -3,19 +3,54 @@ updates:
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
-      interval: "weekly"
+      # Daily instead of weekly. CVE embargoes are short (24-72h);
+      # weekly is too slow for security responsiveness. Open PRs
+      # auto-merge via the dependabot-auto-merge workflow when CI
+      # is green and the diff is a clean version bump (no
+      # transitive lockfile churn).
+      interval: "daily"
+    # Cap open PRs at 5 (was 5; kept). The auto-merge workflow
+    # keeps the backlog drained to ~1 PR open at any time.
     open-pull-requests-limit: 5
+    # Group by patch/minor/major so a single dep with multiple
+    # CVEs only opens ONE PR (was: 1 PR per dep).
     groups:
-      python-dependencies:
+      python-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"
         patterns:
           - "*"
+      python-major:
+        applies-to: version-updates
+        update-types:
+          - "major"
+        patterns:
+          - "*"
+    # Re-enable commit messages so the PR body shows the CVE
+    # list (helps reviewers decide if the auto-merge is safe).
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      prefix-security: "deps-sec"
+    # Add labels for triage and dashboard hygiene.
+    labels:
+      - "dependencies"
+      - "automated-pr"
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     open-pull-requests-limit: 3
     groups:
       github-actions:
         patterns:
           - "*"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "automated-pr"
+      - "ci"

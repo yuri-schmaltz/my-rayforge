@@ -24,3 +24,8 @@
 /pixi.toml              @yuri-schmaltz
 /MANIFEST.in            @yuri-schmaltz
 /scripts/               @yuri-schmaltz
+/docs/                  @yuri-schmaltz
+/rayforge/shared/util/a11y.py @yuri-schmaltz
+/rayforge/util/tracing.py    @yuri-schmaltz
+/rayforge/util/i18n_audit.py @yuri-schmaltz
+/rayforge/util/benchmarks.py @yuri-schmaltz
