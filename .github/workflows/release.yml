@@ -59,6 +59,12 @@ jobs:
     # with a specific run-id (we don't always know
     # the run-id of the parallel build workflows).
     steps:
+      - name: Checkout the tag's commit
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
       - name: Determine the tag and SHA
         id: meta
         run: |
