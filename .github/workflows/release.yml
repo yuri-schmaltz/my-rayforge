@@ -39,26 +39,61 @@ concurrency:
 jobs:
   download-artifacts:
     name: Download build artifacts
-    # Only run on tag pushes (not on PRs or main
-    # branch builds). The workflow_run event fires
-    # for any completed run of the listed workflows;
-    # we filter to tag pushes here.
+    # Only run on push events that were a tag push.
+    # The workflow_run event doesn't directly tell
+    # us if the original push was a tag push, so we
+    # check by:
+    # 1. event == 'push' (vs pull_request)
+    # 2. conclusion == 'success'
+    # 3. The head_sha has a tag pointing to it
+    #    (we look this up via git API in a step
+    #    below, not in the if condition, because
+    #    if conditions can only use github.* vars)
     if: >
-      startsWith(github.event.workflow_run.head_branch, 'refs/tags/')
+      github.event.workflow_run.event == 'push'
       && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
+      - name: Check if head_sha has a tag (release)
+        id: check_tag
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          echo "Checking tags for SHA: ${SHA}"
+          TAGS=$(gh api \
+            "repos/${{ github.repository }}/git/refs/tags" \
+            --jq ".[] | select(.object.sha == \"${SHA}\") | .ref" \
+            2>/dev/null || echo "")
+          if [ -z "${TAGS}" ]; then
+            echo "No tag found for ${SHA}; skipping release"
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+          else
+            TAG=$(echo "${TAGS}" | head -1 | sed 's|refs/tags/||')
+            echo "Found tag: ${TAG}"
+            echo "is_release=true" >> "$GITHUB_OUTPUT"
+            echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+            VERSION="${TAG#v}"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Skip if not a release tag
+        if: steps.check_tag.outputs.is_release != 'true'
+        run: |
+          echo "Not a release tag; skipping download"
+
       - name: Download .deb artifact
+        if: steps.check_tag.outputs.is_release == 'true'
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
-          name: rayforge-${{ github.event.workflow_run.head_ref }}-ubuntu24.04.deb
+          name: rayforge-${{ steps.check_tag.outputs.tag }}-ubuntu24.04.deb
           path: dist/
-        # Some artifact names vary; skip if not found
         continue-on-error: true
 
       - name: Download Windows installer
+        if: steps.check_tag.outputs.is_release == 'true'
         uses: actions/download-artifact@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -68,12 +103,13 @@ jobs:
         continue-on-error: true
 
       - name: Verify both artifacts downloaded
+        if: steps.check_tag.outputs.is_release == 'true'
         id: verify
         run: |
           echo "--- dist/ contents ---"
           ls -la dist/ || true
-          DEB_COUNT=$(find dist/ -name "*.deb" | wc -l)
-          EXE_COUNT=$(find dist/ -name "*.zip" -o -name "*.exe" | wc -l)
+          DEB_COUNT=$(find dist/ -name "*.deb" 2>/dev/null | wc -l)
+          EXE_COUNT=$(find dist/ -name "*.zip" -o -name "*.exe" 2>/dev/null | wc -l)
           echo "deb_count=${DEB_COUNT} exe_count=${EXE_COUNT}"
           if [ "${DEB_COUNT}" -ge 1 ] && [ "${EXE_COUNT}" -ge 1 ]; then
             echo "ready=true" >> "$GITHUB_OUTPUT"
@@ -82,16 +118,16 @@ jobs:
           fi
 
       - name: Upload combined artifacts
-        if: steps.verify.outputs.ready == 'true'
+        if: steps.check_tag.outputs.is_release == 'true' && steps.verify.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundle-${{ github.event.workflow_run.head_ref }}
+          name: release-bundle-${{ steps.check_tag.outputs.tag }}
           path: dist/
 
   release:
     name: Create GitHub Release
     needs: download-artifacts
-    if: needs.download-artifacts.outputs.verify == 'true'
+    if: needs.download-artifacts.outputs.ready == 'true'
     # softprops/action-gh-release needs write
     # access to create a Release and attach files.
     permissions:
@@ -101,15 +137,14 @@ jobs:
       - name: Download combined artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-bundle-${{ github.event.workflow_run.head_ref }}
+          name: release-bundle-${{ needs.download-artifacts.outputs.tag }}
           path: dist/
 
       - name: Determine release type
         id: release_info
         shell: bash
         run: |
-          REF="${{ github.event.workflow_run.head_ref }}"
-          TAG="${REF#refs/tags/}"
+          TAG="${{ needs.download-artifacts.outputs.tag }}"
           if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
@@ -117,15 +152,14 @@ jobs:
           fi
           VERSION="${TAG#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.release_info.outputs.tag }}
-          name: "${{ steps.release_info.outputs.tag }}"
+          tag_name: ${{ needs.download-artifacts.outputs.tag }}
+          name: "${{ needs.download-artifacts.outputs.tag }}"
           body: |
-            ## What's new in ${{ steps.release_info.outputs.tag }}
+            ## What's new in ${{ needs.download-artifacts.outputs.tag }}
 
             See the commit log since the previous tag for the full list of changes.
 
