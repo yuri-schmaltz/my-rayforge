@@ -129,7 +129,7 @@ jobs:
             | head -1)
           echo "Downloading .deb from run ${RUN_ID}..."
           gh run download "${RUN_ID}" \
-            --name "rayforge-${{ steps.meta.outputs.tag }}-ubuntu24.04.deb" \
+            --name "pires-forge-${{ steps.meta.outputs.version }}-ubuntu24.04.deb" \
             --dir dist/
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
