@@ -197,6 +197,22 @@ def main():
             self.set_accels_for_action(
                 "app.preferences", [f"{PRIMARY_ACCEL}comma"]
             )
+            # Workspace action keyboard accelerators
+            # (Ctrl+Shift+R reset, Ctrl+Shift+S save,
+            # Ctrl+Shift+D delete). These follow the
+            # convention used by other GTK 4 apps.
+            self.set_accels_for_action(
+                "workspace.reset",
+                [f"{PRIMARY_ACCEL}<Shift>r"],
+            )
+            self.set_accels_for_action(
+                "workspace.save",
+                [f"{PRIMARY_ACCEL}<Shift>s"],
+            )
+            self.set_accels_for_action(
+                "workspace.delete",
+                [f"{PRIMARY_ACCEL}<Shift>d"],
+            )
 
         def _register_app_actions(self):
             action_specs = (
