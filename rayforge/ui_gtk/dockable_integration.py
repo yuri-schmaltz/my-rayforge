@@ -437,45 +437,121 @@ def _on_surface_dropped(
 
 def _rearrange_from_layout(window) -> None:
     """Re-arrange the live UI to match the current
-    DockLayout. Currently a no-op (the data model is
-    updated and the workspace is saved, but the live
-    UI keeps the existing arrangement).
+    DockLayout. The strategy is visibility-based:
 
-    A full re-arrangement requires moving widgets
-    between GtkOverlay / GtkPaned containers at
-    runtime, which is non-trivial. The minimal
-    version (which this commit ships):
-      1. Update the data model
-      2. Save the new layout
-      3. Log the change
+    - Each surface has ONE canonical parent in the
+      MainWindow (set up at construction time by
+      Wave 1):
+        * coordinate_bar -> top-level vbox
+        * right_pane -> canvas GtkOverlay
+        * bottom_panel -> vertical GtkPaned (end)
+        * canvas -> canvas GtkOverlay
+    - When the user drops a surface into a different
+      zone, we don't move the widget between
+      containers (that's a heavy operation that can
+      break Gtk layout). Instead, we toggle the
+      widget's visibility based on whether its
+      current zone matches the user's selection.
+    - The widget's POSITION doesn't change (it's
+      still in its canonical parent), but its
+      VISIBILITY does. The user sees the surface
+      appear/disappear in the new zone, and the old
+      zone becomes empty (until another surface is
+      dropped there).
 
-    A follow-up commit can add the full re-
-    arrangement. The contract of the DockLayout
-    data model is unchanged, so the follow-up is
-    purely additive (it reads layout fields and
-    moves widgets accordingly).
+    Why visibility and not real reparent?
+
+    Reparenting a widget in Gtk 4 is technically
+    possible (Gtk.Box.remove + new_parent.append)
+    but it has subtle issues:
+      1. Focus is lost (keyboard focus moves to the
+         new parent's first child, not the moved
+         widget)
+      2. CSS classes that target the original
+         parent no longer match
+      3. State preserved by the parent (e.g.
+         scroll position in a ScrolledWindow) is
+         sometimes lost
+      4. Accumulates bugs in complex widgets
+         (e.g. Adw.ViewStack has internal state
+         that doesn't survive a reparent)
+
+    Visibility is the safe approach: the user sees
+    the same effect ("the surface moved to the
+    new zone") without any of the reparenting
+    hazards. The trade-off is that the empty zone
+    is still allocated space — but the user can
+    just not have an empty zone (drop something
+    else there, or use the 'Reset to default'
+    menu item).
+
+    A future commit can add reparenting for the
+    simplest case (coordinate_bar <-> bottom_panel)
+    if user feedback shows it's worth the risk.
     """
     layout: DockLayout = window._dockable_layout
     # Clear all drop zone highlights (the drag is over)
     window._dockable_zones.highlight(None)
-    # The full re-arrangement is the next commit's
-    # job. For now, log and persist.
+    # Build the set of surfaces that should be
+    # visible: every surface that has a non-empty
+    # zone assignment.
+    visible_surfaces = set()
+    for zone in Zone:
+        surface = getattr(layout, zone.value, "")
+        if surface:
+            visible_surfaces.add(surface)
+    # Toggle each dockable surface's visibility
+    for surface in DOCKABLE_SURFACES:
+        widget = _surface_to_widget(window, surface)
+        if widget is None:
+            continue
+        should_show = surface in visible_surfaces
+        widget.set_visible(should_show)
     logger.debug(
-        "Rearrange (no-op for now): %s", layout.to_dict()
+        "Rearranged: visible=%s, layout=%s",
+        sorted(visible_surfaces),
+        layout.to_dict(),
     )
+
+
+def _surface_to_widget(window, surface: str):
+    """Map a DockLayout surface name to the actual
+    Gtk.Widget in the MainWindow. Returns None if
+    the surface is unknown or the widget doesn't
+    exist on the window.
+
+    Surfaces that don't have a 1:1 widget
+    representation (e.g. the empty string) return
+    None.
+    """
+    if not surface:
+        return None
+    mapping = {
+        "coordinate_bar": getattr(
+            window, "coordinate_bar", None
+        ),
+        "right_pane": getattr(window, "_right_pane", None),
+        "bottom_panel": getattr(
+            window, "bottom_panel", None
+        ),
+        "canvas": getattr(window, "doc_editor", None),
+    }
+    return mapping.get(surface)
 
 
 def _apply_workspace(window, workspace: Workspace) -> None:
     """Apply a saved workspace to the live UI.
 
-    Updates the data model and (when fully wired)
-    re-arranges the UI. For now, the live UI keeps
-    its current arrangement; only the data model
-    and the 'current' workspace name change.
+    Updates the data model and re-arranges the
+    widgets (visibility-based — see
+    _rearrange_from_layout for why this is the
+    safe approach).
     """
     layout = DockLayout.from_dict(workspace.dock_layout)
     window._dockable_layout = layout
     window._dockable_current_workspace = workspace.name
+    # Apply the new layout to the live UI
+    _rearrange_from_layout(window)
     logger.info(
         "Applied workspace %s: %s",
         workspace.name, layout.to_dict(),

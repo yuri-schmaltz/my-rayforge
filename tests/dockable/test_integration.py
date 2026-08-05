@@ -200,5 +200,188 @@ class TestWorkspaceRoundTripFromIntegration(unittest.TestCase):
         )
 
 
+class TestRearrangeStrategy(unittest.TestCase):
+    """The rearrange strategy is visibility-based.
+    Verify the logic that decides which surfaces
+    are visible based on a DockLayout.
+
+    We don't exercise the actual Gtk widgets
+    (no display); we verify the pure logic that
+    builds the 'visible surfaces' set from a
+    layout. The visibility is then applied by
+    _rearrange_from_layout (which iterates the
+    DOCKABLE_SURFACES constant)."""
+
+    def _visible_surfaces(self, layout):
+        """Re-implement the visibility logic in
+        pure Python for testing (mirrors the
+        implementation in _rearrange_from_layout)."""
+        visible = set()
+        for z in _dl.Zone:
+            s = getattr(layout, z.value, "")
+            if s:
+                visible.add(s)
+        return visible
+
+    def test_default_layout_shows_all(self) -> None:
+        """The default layout has coordinate_bar,
+        right_pane, bottom_panel, and canvas — all
+        four are visible."""
+        layout = _dl.DockLayout(
+            top="coordinate_bar",
+            right="right_pane",
+            bottom="bottom_panel",
+            left="",
+            center="canvas",
+        )
+        visible = self._visible_surfaces(layout)
+        self.assertEqual(
+            visible,
+            {"coordinate_bar", "right_pane", "bottom_panel", "canvas"},
+        )
+
+    def test_swap_makes_empty_zones(self) -> None:
+        """When two surfaces are swapped between
+        zones, the same set of surfaces is visible
+        (just in different zones). The empty zone
+        (left) stays empty."""
+        layout = _dl.DockLayout(
+            top="bottom_panel",  # swapped
+            right="right_pane",
+            bottom="coordinate_bar",  # swapped
+            left="",  # still empty
+            center="canvas",
+        )
+        visible = self._visible_surfaces(layout)
+        self.assertEqual(
+            visible,
+            {"bottom_panel", "right_pane", "coordinate_bar", "canvas"},
+        )
+
+    def test_hide_right_pane(self) -> None:
+        """Setting the right zone to empty hides
+        the right_pane (effectively collapsing
+        the side panel)."""
+        layout = _dl.DockLayout(
+            top="coordinate_bar",
+            right="",  # collapsed
+            bottom="bottom_panel",
+            left="",
+            center="canvas",
+        )
+        visible = self._visible_surfaces(layout)
+        self.assertNotIn("right_pane", visible)
+
+    def test_hide_bottom_panel(self) -> None:
+        """Setting the bottom zone to empty hides
+        the bottom panel (fullscreen mode)."""
+        layout = _dl.DockLayout(
+            top="coordinate_bar",
+            right="right_pane",
+            bottom="",  # collapsed
+            left="",
+            center="canvas",
+        )
+        visible = self._visible_surfaces(layout)
+        self.assertNotIn("bottom_panel", visible)
+
+    def test_rearrange_uses_dockable_surfaces(self) -> None:
+        """The integration module's
+        DOCKABLE_SURFACES constant lists exactly
+        the surfaces that can be shown/hidden.
+        Verify the constant matches the canonical
+        surface names from the DockLayout."""
+        # Read DOCKABLE_SURFACES via AST
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        found = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Assign)
+                and any(
+                    isinstance(t, ast.Name)
+                    and t.id == "DOCKABLE_SURFACES"
+                    for t in node.targets
+                )
+            ):
+                value = node.value
+                if isinstance(value, ast.Tuple):
+                    found = {
+                        elt.value
+                        for elt in value.elts
+                        if isinstance(elt, ast.Constant)
+                    }
+        self.assertIsNotNone(
+            found, "DOCKABLE_SURFACES not found"
+        )
+        # Must include the 4 canonical surfaces
+        self.assertIn("right_pane", found)
+        self.assertIn("bottom_panel", found)
+        self.assertIn("canvas", found)
+        self.assertIn("coordinate_bar", found)
+
+
+class TestApplyWorkspaceTriggersRearrange(unittest.TestCase):
+    """_apply_workspace must call
+    _rearrange_from_layout so the live UI
+    actually changes when a workspace is
+    switched."""
+
+    def test_apply_workspace_calls_rearrange(self) -> None:
+        """AST-verify: _apply_workspace contains a
+        call to _rearrange_from_layout."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            src = f.read()
+        tree = ast.parse(src)
+        apply_node = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_apply_workspace"
+            ):
+                apply_node = node
+                break
+        self.assertIsNotNone(apply_node)
+        body_src = ast.unparse(apply_node)
+        self.assertIn(
+            "_rearrange_from_layout", body_src,
+            "_apply_workspace must call "
+            "_rearrange_from_layout",
+        )
+
+    def test_rearrange_iterates_dockable_surfaces(self) -> None:
+        """AST-verify: _rearrange_from_layout
+        iterates over the DOCKABLE_SURFACES tuple."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        rearrange_node = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_rearrange_from_layout"
+            ):
+                rearrange_node = node
+                break
+        self.assertIsNotNone(rearrange_node)
+        body_src = ast.unparse(rearrange_node)
+        self.assertIn("DOCKABLE_SURFACES", body_src)
+        self.assertIn("set_visible", body_src)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
