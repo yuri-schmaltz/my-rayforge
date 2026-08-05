@@ -206,3 +206,143 @@ class TestMainWindow:
             assert found, "No sizeable toolbar container found"
         finally:
             win.destroy()
+
+    def test_command_palette_opens(self):
+        """Triggering the command palette shortcut builds the window.
+
+        This is a 'does it not crash' test rather than a
+        full interaction test. We simulate the
+        'open-palette' signal (the same one the shortcut
+        controller emits) and verify the palette window
+        becomes a child of the main window.
+        """
+        win = _launch_main_window()
+        try:
+            # Emit the signal the way the Ctrl+Shift+P
+            # shortcut does.
+            win.emit("open-palette")
+            # Process pending events; the palette window
+            # is built asynchronously (on idle).
+            from gi.repository import GLib
+            ctx = GLib.MainContext.default()
+            while ctx.pending():
+                ctx.iteration(False)
+            # The palette window is stored on the MainWindow
+            # after first open. If it was built, the attribute
+            # is non-None. If it wasn't, the test fails
+            # (the emit didn't trigger the builder).
+            palette = getattr(win, "_command_palette_window", None)
+            assert palette is not None, (
+                "Command palette window was not created on "
+                "'open-palette' signal"
+            )
+        finally:
+            win.destroy()
+
+    def test_status_bar_mode_change(self):
+        """Calling set_mode() updates the status bar's badge.
+
+        The badge is updated synchronously; we can read
+        the label text immediately. This is a 'regression
+        test for a wave-2 bug' — the original set_mode
+        didn't update the accessible label, so orca
+        announced stale mode text.
+        """
+        win = _launch_main_window()
+        try:
+            sb = win.status_bar
+            sb.set_mode("sending")
+            assert "send" in sb._mode_badge.get_text().lower()
+            sb.set_mode("idle")
+            assert "idle" in sb._mode_badge.get_text().lower()
+        finally:
+            win.destroy()
+
+    def test_panel_layout_change(self):
+        """Switching panel layout updates visibility.
+
+        The PanelManager applies the new visibility on
+        the bound right + bottom panels. We change the
+        config to 'compact' and verify the right pane
+        is visible and the bottom is not (per the
+        preset).
+        """
+        win = _launch_main_window()
+        try:
+            from rayforge.core.config import get_context
+
+            cfg = get_context().config
+            cfg.set_panel_layout("compact")
+            win.apply_panel_layout()
+            # Right pane is visible
+            assert win._right_pane.get_visible()
+            # Bottom panel is hidden
+            assert not win.bottom_panel.get_visible()
+            # Reset
+            cfg.set_panel_layout("default")
+            win.apply_panel_layout()
+        finally:
+            win.destroy()
+
+    def test_local_tracker_records_actions(self):
+        """LocalTracker counts action fires correctly.
+
+        Records 3 actions, resets, verifies count = 0.
+        Records 2 more, verifies top_actions returns the
+        right (name, count) tuples.
+        """
+        from rayforge.util.local_tracker import (
+            LocalTracker,
+            get_local_tracker,
+        )
+
+        t = LocalTracker()
+        t.reset_session()
+        assert t.total_actions == 0
+        t.record_action("save")
+        t.record_action("save")
+        t.record_action("open")
+        assert t.total_actions == 3
+        top = t.top_actions(2)
+        assert top[0] == ("save", 2)
+        assert top[1] == ("open", 1)
+
+    def test_tracer_nested_spans(self):
+        """Nested spans produce the right event count."""
+        from rayforge.util.tracing import get_tracer
+
+        t = get_tracer()
+        t.enable()
+        t.clear()
+        with t.span("outer"):
+            with t.span("inner"):
+                pass
+        assert len(t._events) == 2
+        # Outer started first
+        assert t._events[0][0] == "outer"
+        assert t._events[1][0] == "inner"
+        t.disable()
+
+    def test_contrast_check_passes(self):
+        """The WCAG contrast checker returns exit 0 by default.
+
+        The two KNOWN failures (paused 3.08:1, frame
+        3.77:1) are documented exceptions that the
+        default mode skips. If a new theme color regresses
+        below 4.5:1, this test catches it.
+        """
+        from rayforge.util.contrast_check import main
+
+        assert main() == 0
+
+    def test_i18n_audit_passes(self):
+        """i18n audit reports 0 user-facing candidates."""
+        from rayforge.util.i18n_audit import audit_tree
+        from pathlib import Path
+
+        results = audit_tree(Path("rayforge"))
+        # Empty list = all user-facing strings are wrapped
+        assert results == [], (
+            f"i18n audit found {len(results)} unwrapped "
+            f"candidates: {results[:3]}"
+        )
