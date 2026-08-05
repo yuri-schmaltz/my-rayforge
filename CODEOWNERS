@@ -1,0 +1,33 @@
+# CODEOWNERS — auto-assigns reviewers for new PRs
+#
+# The maintainer (yuri-schmaltz) reviews all changes. The
+# per-area rules below are documentation only — this
+# repo has a single maintainer, so they review
+# everything. If the project grows additional
+# maintainers, add them here and GitHub will
+# auto-assign reviews based on the file path.
+#
+# Format: <pattern>   <owner1> <owner2> ...
+# Order: last matching rule wins.
+
+# Default: the maintainer
+*    @yuri-schmaltz
+
+# A11y code (the wave-3 + wave-4 a11y work)
+rayforge/shared/util/a11y.py       @yuri-schmaltz
+rayforge/ui_gtk/*a11y*             @yuri-schmaltz
+
+# i18n code
+rayforge/shared/util/localized.py @yuri-schmaltz
+rayforge/locale/                  @yuri-schmaltz
+rayforge/util/i18n_*.py            @yuri-schmaltz
+
+# Performance work
+rayforge/util/tracing.py          @yuri-schmaltz
+rayforge/util/benchmarks.py       @yuri-schmaltz
+rayforge/util/local_tracker.py    @yuri-schmaltz
+
+# Build / CI
+.github/                          @yuri-schmaltz
+pixi.toml                         @yuri-schmaltz
+pyproject.toml                    @yuri-schmaltz
