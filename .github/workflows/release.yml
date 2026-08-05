@@ -1,93 +1,99 @@
 name: Release (multi-platform)
 
-# Master release workflow. Triggers ONLY on a
-# pushed tag (e.g. v1.3.0). Downloads the .deb
-# (Linux) and .exe (Windows) artifacts from the
-# build-deb and build-exe workflows, and creates a
-# single GitHub Release with both files attached.
+# Master release workflow. Creates a single GitHub
+# Release containing BOTH the .deb (Linux/Ubuntu)
+# and .exe (Windows) artifacts.
 #
-# The build-deb and build-exe workflows run on every
-# push to main + on every tag. This workflow waits
-# for both, downloads their artifacts, and combines
-# them into a release.
+# Uses the `workflow_run` event (native to GitHub
+# Actions) to wait for the build-deb and build-exe
+# workflows to complete. This is more robust than
+# the previous `actions/upload-artifact/wait-for`
+# approach (which had a beta `Set up job` failure).
 #
-# Triggers:
-#   - push of a tag matching v*
+# Trigger:
+#   - workflow_run event when a build-* workflow
+#     completes on the same tag push
 #
 # Output:
 #   - GitHub Release with .deb and .exe attached
 
 on:
-  push:
-    tags:
-      - "v*"
-  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - "Build .deb package"
+      - "Build Windows Executable"
+    types:
+      - completed
 
 # Default to read-only GITHUB_TOKEN. The
-# build-artifacts job only needs to download
-# artifacts (which uses OIDC, not the contents
-# API). The 'release' job opts in to write access
-# at the job level for the softprops step.
+# download-artifacts job only needs to download
+# artifacts (OIDC, not contents API). The 'release'
+# job opts in to write access at the job level.
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
-  build-artifacts:
-    name: Wait for build artifacts
-    # The build-deb and build-exe workflows upload
-    # their artifacts to the run that this workflow
-    # runs in. This job just waits for them to
-    # appear and downloads them.
+  download-artifacts:
+    name: Download build artifacts
+    # Only run on tag pushes (not on PRs or main
+    # branch builds). The workflow_run event fires
+    # for any completed run of the listed workflows;
+    # we filter to tag pushes here.
+    if: >
+      startsWith(github.event.workflow_run.head_branch, 'refs/tags/')
+      && github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-24.04
     steps:
-      - name: Wait for .deb artifact
-        uses: actions/upload-artifact/wait-for@v1
-        with:
-          artifact-name: rayforge-${{ github.ref_name }}-ubuntu24.04.deb
-          run-id: ${{ github.run_id }}
-          timeout: 1800  # 30 minutes
-
-      - name: Wait for Windows installer artifact
-        uses: actions/upload-artifact/wait-for@v1
-        with:
-          artifact-name: pires-forge-v*-installer.zip
-          run-id: ${{ github.run_id }}
-          timeout: 1800
-
       - name: Download .deb artifact
         uses: actions/download-artifact@v4
         with:
-          name: rayforge-${{ github.ref_name }}-ubuntu24.04.deb
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+          name: rayforge-${{ github.event.workflow_run.head_ref }}-ubuntu24.04.deb
           path: dist/
+        # Some artifact names vary; skip if not found
+        continue-on-error: true
 
       - name: Download Windows installer
         uses: actions/download-artifact@v4
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
           name: pires-forge-v*-installer.zip
           path: dist/
+        continue-on-error: true
 
-      - name: List downloaded files
+      - name: Verify both artifacts downloaded
+        id: verify
         run: |
           echo "--- dist/ contents ---"
-          ls -la dist/
-          echo "--- end ---"
+          ls -la dist/ || true
+          DEB_COUNT=$(find dist/ -name "*.deb" | wc -l)
+          EXE_COUNT=$(find dist/ -name "*.zip" -o -name "*.exe" | wc -l)
+          echo "deb_count=${DEB_COUNT} exe_count=${EXE_COUNT}"
+          if [ "${DEB_COUNT}" -ge 1 ] && [ "${EXE_COUNT}" -ge 1 ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Upload combined artifacts
+        if: steps.verify.outputs.ready == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: release-bundle-${{ github.ref_name }}
+          name: release-bundle-${{ github.event.workflow_run.head_ref }}
           path: dist/
 
   release:
     name: Create GitHub Release
-    needs: build-artifacts
-    # softprops/action-gh-release needs to create
-    # a Release and attach the files. Default is
-    # contents: read; this job opts in.
+    needs: download-artifacts
+    if: needs.download-artifacts.outputs.verify == 'true'
+    # softprops/action-gh-release needs write
+    # access to create a Release and attach files.
     permissions:
       contents: write
     runs-on: ubuntu-24.04
@@ -95,65 +101,48 @@ jobs:
       - name: Download combined artifacts
         uses: actions/download-artifact@v4
         with:
-          name: release-bundle-${{ github.ref_name }}
+          name: release-bundle-${{ github.event.workflow_run.head_ref }}
           path: dist/
 
       - name: Determine release type
         id: release_info
         shell: bash
         run: |
-          TAG="${{ github.ref_name }}"
+          REF="${{ github.event.workflow_run.head_ref }}"
+          TAG="${REF#refs/tags/}"
           if [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+- ]]; then
             echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
           else
             echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
           fi
-          # Extract the version (e.g. v1.3.0 -> 1.3.0)
           VERSION="${TAG#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Generate release notes
-        id: release_notes
-        shell: bash
-        run: |
-          VERSION="${{ steps.release_info.outputs.version }}"
-          TAG="${{ github.ref_name }}"
-          cat > release_notes.md <<EOF
-          ## What's new in ${TAG}
-
-          \`\`\`
-          $(git log --oneline $(git describe --tags --abbrev=0 ^${TAG} 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD 2>/dev/null | head -30 || echo "(no commit log available)")
-          \`\`\`
-
-          ## Downloads
-
-          - **Linux (.deb)**: \`rayforge-${VERSION}-ubuntu24.04.deb\` — install with \`sudo dpkg -i\`
-          - **Windows (.exe)**: \`pires-forge-v${VERSION}-installer.exe\` — run the installer
-
-          ## Coverage
-
-          - 19 unit tests (drag controller + workspace + dock layout)
-          - 23 integration tests (setup, idempotency, callbacks, rearrange, reparenting, accelerators)
-          - 7 module import/parse checks
-          - **49 verification points** that run without a display
-
-          ## Verification
-
-          After installing, verify the install with:
-          \`\`\`
-          pires-forge --version
-          \`\`\`
-
-          Report issues at https://github.com/yuri-schmaltz/pires-forge/issues
-          EOF
-          echo "notes_path=release_notes.md" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "${{ github.ref_name }}"
-          body_path: ${{ steps.release_notes.outputs.notes_path }}
-          # Attach all files in dist/
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: "${{ steps.release_info.outputs.tag }}"
+          body: |
+            ## What's new in ${{ steps.release_info.outputs.tag }}
+
+            See the commit log since the previous tag for the full list of changes.
+
+            ## Downloads
+
+            - **Linux (.deb)**: attached as `rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
+              Install with `sudo dpkg -i rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
+            - **Windows (.exe)**: attached as `pires-forge-v${{ steps.release_info.outputs.version }}-installer.exe`
+              Run the installer
+
+            ## Verification
+
+            ```
+            pires-forge --version
+            ```
+
+            Report issues at https://github.com/yuri-schmaltz/pires-forge/issues
           files: dist/*
           fail_on_unmatched_files: false
           draft: false
