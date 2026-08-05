@@ -175,7 +175,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs: wait-for-artifacts
-    if: needs.wait-for-artifacts.outputs.verify == 'true'
+    if: needs.wait-for-artifacts.outputs.ready == 'true'
     # softprops/action-gh-release needs write
     # access to create a Release and attach files.
     permissions:
