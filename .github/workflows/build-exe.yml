@@ -204,13 +204,16 @@ jobs:
             "pires-forge-v${{ needs.build.outputs.version }}.exe"
 
   release:
-    name: Create GitHub Release
+    name: Create GitHub Release (DISABLED — see release.yml)
     needs: [build, test-exe]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/') && github.repository == 'yuri-schmaltz/pires-forge'
-    # softprops/action-gh-release needs to create a Release and attach
-    # the installer binary. The workflow-level default is `contents:
-    # read`; this job opts in to write access for that one step.
+    # DISABLED: the master release.yml workflow
+    # (workflow_run event) creates the release
+    # with both .deb and .exe attached. This
+    # job was kept here for reference but is
+    # disabled to avoid creating duplicate
+    # releases.
+    if: false
     permissions:
       contents: write
     outputs:
