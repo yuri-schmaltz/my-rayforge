@@ -361,7 +361,9 @@ class TestApplyWorkspaceTriggersRearrange(unittest.TestCase):
 
     def test_rearrange_iterates_dockable_surfaces(self) -> None:
         """AST-verify: _rearrange_from_layout
-        iterates over the DOCKABLE_SURFACES tuple."""
+        delegates to the reparenting + visibility
+        functions (the actual iteration is in
+        _visibility_only)."""
         with open(
             os.path.join(
                 _REPO_ROOT,
@@ -379,8 +381,23 @@ class TestApplyWorkspaceTriggersRearrange(unittest.TestCase):
                 break
         self.assertIsNotNone(rearrange_node)
         body_src = ast.unparse(rearrange_node)
-        self.assertIn("DOCKABLE_SURFACES", body_src)
-        self.assertIn("set_visible", body_src)
+        # Delegates to reparenting + visibility
+        self.assertIn("_reparent_coordinate_bar", body_src)
+        self.assertIn("_reparent_bottom_panel", body_src)
+        self.assertIn("_visibility_only", body_src)
+        # The _visibility_only function is the one
+        # that iterates DOCKABLE_SURFACES + uses
+        # set_visible
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_visibility_only"
+            ):
+                vbody = ast.unparse(node)
+                self.assertIn("DOCKABLE_SURFACES", vbody)
+                self.assertIn("set_visible", vbody)
+                return
+        self.fail("_visibility_only not found")
 
 
 class TestWorkspaceAccelerators(unittest.TestCase):
@@ -496,6 +513,123 @@ class TestWorkspaceAccelerators(unittest.TestCase):
         # Body calls set_accels_for_action
         body = ast.unparse(func_node)
         self.assertIn("set_accels_for_action", body)
+
+
+class TestReparentingFunctions(unittest.TestCase):
+    """The reparenting functions exist and have the
+    expected signatures. Real reparenting is too
+    complex to test without a display; the AST
+    tests verify the API surface."""
+
+    def test_reparent_coordinate_bar_exists(self) -> None:
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_reparent_coordinate_bar"
+            ):
+                self.assertEqual(
+                    len(node.args.args), 2,
+                    "_reparent_coordinate_bar takes "
+                    "(window, layout)",
+                )
+                return
+        self.fail("_reparent_coordinate_bar not found")
+
+    def test_reparent_bottom_panel_exists(self) -> None:
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_reparent_bottom_panel"
+            ):
+                self.assertEqual(
+                    len(node.args.args), 2,
+                    "_reparent_bottom_panel takes "
+                    "(window, layout)",
+                )
+                return
+        self.fail("_reparent_bottom_panel not found")
+
+    def test_reparent_uses_canonical_parents(self) -> None:
+        """Both reparenting functions look up the
+        canonical parent attributes
+        (_dockable_top_vbox, _dockable_vertical_paned)
+        on the window."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name
+                in (
+                    "_reparent_coordinate_bar",
+                    "_reparent_bottom_panel",
+                )
+            ):
+                body = ast.unparse(node)
+                # Must reference at least one of the
+                # canonical parent attributes
+                self.assertTrue(
+                    "_dockable_top_vbox" in body
+                    or "_dockable_vertical_paned" in body,
+                    f"{node.name} doesn't use canonical "
+                    f"parent attributes",
+                )
+
+    def test_rearrange_calls_reparent(self) -> None:
+        """_rearrange_from_layout must call both
+        reparenting functions."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/dockable_integration.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        rearrange_node = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "_rearrange_from_layout"
+            ):
+                rearrange_node = node
+                break
+        self.assertIsNotNone(rearrange_node)
+        body = ast.unparse(rearrange_node)
+        self.assertIn("_reparent_coordinate_bar", body)
+        self.assertIn("_reparent_bottom_panel", body)
+
+    def test_mainwindow_exposes_canonical_parents(self) -> None:
+        """The MainWindow exposes _dockable_top_vbox
+        and _dockable_vertical_paned as instance
+        attributes (so the reparenting functions can
+        find them)."""
+        with open(
+            os.path.join(
+                _REPO_ROOT, "rayforge/ui_gtk/mainwindow.py"
+            )
+        ) as f:
+            src = f.read()
+        self.assertIn("_dockable_top_vbox", src)
+        self.assertIn("_dockable_vertical_paned", src)
 
 
 if __name__ == "__main__":

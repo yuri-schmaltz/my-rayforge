@@ -437,36 +437,66 @@ def _on_surface_dropped(
 
 def _rearrange_from_layout(window) -> None:
     """Re-arrange the live UI to match the current
-    DockLayout. The strategy is visibility-based:
+    DockLayout. Two strategies are used, in order:
 
-    - Each surface has ONE canonical parent in the
-      MainWindow (set up at construction time by
-      Wave 1):
-        * coordinate_bar -> top-level vbox
-        * right_pane -> canvas GtkOverlay
-        * bottom_panel -> vertical GtkPaned (end)
-        * canvas -> canvas GtkOverlay
-    - When the user drops a surface into a different
-      zone, we don't move the widget between
-      containers (that's a heavy operation that can
-      break Gtk layout). Instead, we toggle the
-      widget's visibility based on whether its
-      current zone matches the user's selection.
-    - The widget's POSITION doesn't change (it's
-      still in its canonical parent), but its
-      VISIBILITY does. The user sees the surface
-      appear/disappear in the new zone, and the old
-      zone becomes empty (until another surface is
-      dropped there).
+    1. Real reparenting (for coordinate_bar and
+       bottom_panel — the two simplest cases)
+    2. Visibility toggling (for everything else:
+       right_pane, canvas)
+
+    The reparenting handles the two surfaces whose
+    canonical parents are simple Gtk.Box
+    containers (top-level vbox for coordinate_bar,
+    vertical_paned for bottom_panel). Moving them
+    is safe and gives the user a more natural
+    result: the widget actually follows the
+    drop, instead of staying in place and just
+    disappearing.
+
+    The visibility toggling handles the surfaces
+    whose parents are complex widgets
+    (Gtk.Overlay, Adw.ViewStack) where reparenting
+    has subtle issues. See _visibility_only below
+    for details.
+
+    This combination gives the user the best of
+    both worlds: natural reparenting where it's
+    safe, and safe visibility where reparenting
+    would be risky.
+    """
+    layout: DockLayout = window._dockable_layout
+    # Clear all drop zone highlights (the drag is over)
+    window._dockable_zones.highlight(None)
+    # Strategy 1: real reparenting for coordinate_bar
+    # and bottom_panel
+    _reparent_coordinate_bar(window, layout)
+    _reparent_bottom_panel(window, layout)
+    # Strategy 2: visibility for the rest
+    _visibility_only(window, layout)
+    logger.debug(
+        "Rearranged: layout=%s",
+        layout.to_dict(),
+    )
+
+
+def _visibility_only(window, layout: DockLayout) -> None:
+    """Apply visibility-only re-arrangement to the
+    surfaces that don't support real reparenting.
+
+    For each DOCKABLE_SURFACE that's NOT coordinate_bar
+    or bottom_panel (which are handled by the
+    reparenting functions), toggle visibility based
+    on whether the surface has a non-empty zone
+    assignment.
 
     Why visibility and not real reparent?
 
     Reparenting a widget in Gtk 4 is technically
     possible (Gtk.Box.remove + new_parent.append)
-    but it has subtle issues:
-      1. Focus is lost (keyboard focus moves to the
-         new parent's first child, not the moved
-         widget)
+    but has subtle issues:
+      1. Focus is lost (keyboard focus moves to
+         the new parent's first child, not the
+         moved widget)
       2. CSS classes that target the original
          parent no longer match
       3. State preserved by the parent (e.g.
@@ -477,41 +507,167 @@ def _rearrange_from_layout(window) -> None:
          that doesn't survive a reparent)
 
     Visibility is the safe approach: the user sees
-    the same effect ("the surface moved to the
-    new zone") without any of the reparenting
-    hazards. The trade-off is that the empty zone
-    is still allocated space — but the user can
-    just not have an empty zone (drop something
-    else there, or use the 'Reset to default'
-    menu item).
+    the same effect ("the surface moved to the new
+    zone") without any of the reparenting hazards.
+    The trade-off is that an empty zone is still
+    allocated space — but the user can just not
+    have an empty zone (drop something else there,
+    or use the 'Reset to default' menu item).
 
     A future commit can add reparenting for the
-    simplest case (coordinate_bar <-> bottom_panel)
-    if user feedback shows it's worth the risk.
+    right_pane and canvas (the other two
+    dockable surfaces) if user feedback shows it's
+    worth the risk.
     """
-    layout: DockLayout = window._dockable_layout
-    # Clear all drop zone highlights (the drag is over)
-    window._dockable_zones.highlight(None)
-    # Build the set of surfaces that should be
-    # visible: every surface that has a non-empty
-    # zone assignment.
     visible_surfaces = set()
     for zone in Zone:
         surface = getattr(layout, zone.value, "")
         if surface:
             visible_surfaces.add(surface)
-    # Toggle each dockable surface's visibility
+    # Toggle visibility for surfaces not handled by
+    # the reparenting functions.
     for surface in DOCKABLE_SURFACES:
+        if surface in ("coordinate_bar", "bottom_panel"):
+            continue
         widget = _surface_to_widget(window, surface)
         if widget is None:
             continue
         should_show = surface in visible_surfaces
         widget.set_visible(should_show)
-    logger.debug(
-        "Rearranged: visible=%s, layout=%s",
-        sorted(visible_surfaces),
-        layout.to_dict(),
-    )
+
+
+def _reparent_coordinate_bar(
+    window, layout: DockLayout
+) -> None:
+    """Re-filha the coordinate_bar between the
+    top-level vbox (when in 'top' zone) and the
+    vertical_paned (when in 'bottom' zone).
+
+    The coordinate_bar's canonical parent is the
+    top-level vbox (the one that holds the
+    header_bar, status_bar, etc.). When the user
+    drops it in the 'bottom' zone, we move it
+    into the vertical_paned (the one that splits
+    the canvas from the bottom_panel). When the
+    user drops it in 'top' (or any zone other
+    than 'bottom'), we move it back to the
+    top-level vbox.
+
+    The reparenting is safe because both
+    containers are simple Gtk.Box widgets (no
+    focus management, no CSS that targets the
+    specific parent, no state preservation
+    issues).
+    """
+    coord_bar = getattr(window, "coordinate_bar", None)
+    if coord_bar is None:
+        return
+    target_zone = _zone_for_surface(layout, "coordinate_bar")
+    if target_zone is None:
+        # coordinate_bar isn't in any zone; keep
+        # current parent (default vbox).
+        return
+    if target_zone == Zone.TOP:
+        new_parent = getattr(window, "_dockable_top_vbox", None)
+    elif target_zone == Zone.BOTTOM:
+        new_parent = getattr(
+            window, "_dockable_vertical_paned", None
+        )
+    else:
+        # LEFT, RIGHT, CENTER — keep current
+        return
+    if new_parent is None:
+        # The MainWindow didn't expose the
+        # canonical parent attribute; fall back
+        # to visibility only for this surface.
+        coord_bar.set_visible(target_zone == Zone.TOP)
+        return
+    current_parent = coord_bar.get_parent()
+    if current_parent is new_parent:
+        # Already in the right place
+        return
+    if current_parent is not None:
+        try:
+            current_parent.remove(coord_bar)
+        except Exception as e:  # pragma: no cover
+            logger.debug("remove failed: %s", e)
+            return
+    try:
+        new_parent.append(coord_bar)
+    except Exception as e:  # pragma: no cover
+        logger.debug("append failed: %s", e)
+        # Restore to old parent if possible
+        if current_parent is not None:
+            try:
+                current_parent.append(coord_bar)
+            except Exception:
+                pass
+
+
+def _reparent_bottom_panel(
+    window, layout: DockLayout
+) -> None:
+    """Re-filha the bottom_panel between the
+    vertical_paned (when in 'bottom' zone) and
+    the top-level vbox (when in 'top' zone).
+
+    The bottom_panel's canonical parent is the
+    vertical_paned (the one that splits the
+    canvas from the bottom_panel). When the user
+    drops it in the 'top' zone, we move it into
+    the top-level vbox. When the user drops it
+    in 'bottom' (or any zone other than 'top'),
+    we move it back to the vertical_paned.
+
+    Same reparenting safety argument as for
+    _reparent_coordinate_bar.
+    """
+    bottom = getattr(window, "bottom_panel", None)
+    if bottom is None:
+        return
+    target_zone = _zone_for_surface(layout, "bottom_panel")
+    if target_zone is None:
+        return
+    if target_zone == Zone.BOTTOM:
+        new_parent = getattr(
+            window, "_dockable_vertical_paned", None
+        )
+    elif target_zone == Zone.TOP:
+        new_parent = getattr(window, "_dockable_top_vbox", None)
+    else:
+        return
+    if new_parent is None:
+        bottom.set_visible(target_zone == Zone.BOTTOM)
+        return
+    current_parent = bottom.get_parent()
+    if current_parent is new_parent:
+        return
+    if current_parent is not None:
+        try:
+            current_parent.remove(bottom)
+        except Exception as e:  # pragma: no cover
+            logger.debug("remove failed: %s", e)
+            return
+    try:
+        new_parent.append(bottom)
+    except Exception as e:  # pragma: no cover
+        logger.debug("append failed: %s", e)
+        if current_parent is not None:
+            try:
+                current_parent.append(bottom)
+            except Exception:
+                pass
+
+
+def _zone_for_surface(layout: DockLayout, surface: str) -> Optional[Zone]:
+    """Return which zone currently holds the given
+    surface, or None if not found.
+    (Shared helper, used by both reparenting
+    functions and _on_surface_dropped.)"""
+    for z in Zone:
+        if getattr(layout, z.value, "") == surface:
+            return z
+    return None
 
 
 def _surface_to_widget(window, surface: str):

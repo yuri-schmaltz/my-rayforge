@@ -165,6 +165,11 @@ class MainWindow(Adw.ApplicationWindow):
         # The main content box is now the child of the ToastOverlay
         vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.toast_overlay.set_child(vbox)
+        # Expose as a public attribute so the
+        # dockable_integration module can reparent
+        # the coordinate_bar / bottom_panel widgets
+        # when the user drops them in a new zone.
+        self._dockable_top_vbox = vbox
 
         # Create the central document editor. This now owns the Doc and
         # Pipeline.
@@ -253,6 +258,10 @@ class MainWindow(Adw.ApplicationWindow):
         self.vertical_paned.set_resize_end_child(False)
         self.vertical_paned.set_shrink_start_child(False)
         self.vertical_paned.set_shrink_end_child(False)
+        # Alias for the dockable_integration module
+        # (the reparenting functions look up
+        # _dockable_vertical_paned by name)
+        self._dockable_vertical_paned = self.vertical_paned
 
         self._status_overlay = Gtk.Overlay()
         self._status_overlay.set_child(self.vertical_paned)
