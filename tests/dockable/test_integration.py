@@ -383,5 +383,120 @@ class TestApplyWorkspaceTriggersRearrange(unittest.TestCase):
         self.assertIn("set_visible", body_src)
 
 
+class TestWorkspaceAccelerators(unittest.TestCase):
+    """Keyboard accelerators for the workspace
+    actions (Ctrl+Shift+R reset, Ctrl+Shift+S save,
+    Ctrl+Shift+D delete)."""
+
+    def test_default_accelerators_defined(self) -> None:
+        """workspace_menu.DEFAULT_ACCELERATORS maps
+        each action to a list of accelerator strings."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/workspace_menu.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        found = None
+        for node in ast.walk(tree):
+            # DEFAULT_ACCELERATORS is declared with an
+            # annotated assignment (Dict[str, List[str]]
+            # = {...}), so it's an ast.AnnAssign, not
+            # ast.Assign.
+            target_id = None
+            if isinstance(node, ast.AnnAssign):
+                target_id = (
+                    node.target.id
+                    if isinstance(node.target, ast.Name)
+                    else None
+                )
+            elif isinstance(node, ast.Assign):
+                for t in node.targets:
+                    if isinstance(t, ast.Name):
+                        target_id = t.id
+                        break
+            if target_id == "DEFAULT_ACCELERATORS":
+                found = node.value
+                break
+        self.assertIsNotNone(
+            found, "DEFAULT_ACCELERATORS not defined"
+        )
+        # Verify the three actions are present
+        keys = set()
+        for k in found.keys:
+            if isinstance(k, ast.Constant):
+                keys.add(k.value)
+        self.assertIn("workspace.reset", keys)
+        self.assertIn("workspace.save", keys)
+        self.assertIn("workspace.delete", keys)
+
+    def test_app_registers_accelerators(self) -> None:
+        """rayforge/app.py calls
+        set_accels_for_action for each workspace
+        action in App.__init__."""
+        with open(
+            os.path.join(_REPO_ROOT, "rayforge/app.py")
+        ) as f:
+            tree = ast.parse(f.read())
+        init_src = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ClassDef)
+                and node.name == "App"
+            ):
+                for item in node.body:
+                    if (
+                        isinstance(item, ast.FunctionDef)
+                        and item.name == "__init__"
+                    ):
+                        init_src = ast.unparse(item)
+                        break
+        self.assertIsNotNone(init_src)
+        # Must bind all three actions
+        self.assertIn("workspace.reset", init_src)
+        self.assertIn("workspace.save", init_src)
+        self.assertIn("workspace.delete", init_src)
+        # Must call set_accels_for_action at least
+        # 3 times for workspace actions (the base
+        # 2 for app.quit/app.preferences are already
+        # there). So the count is at least 5.
+        count = init_src.count("set_accels_for_action")
+        self.assertGreaterEqual(
+            count, 5,
+            f"expected >=5 set_accels_for_action "
+            f"calls, got {count}",
+        )
+
+    def test_apply_workspace_accelerators_exists(self) -> None:
+        """The helper function
+        apply_workspace_accelerators is defined and
+        takes a Gtk.Application + accelerators dict."""
+        with open(
+            os.path.join(
+                _REPO_ROOT,
+                "rayforge/ui_gtk/workspace_menu.py",
+            )
+        ) as f:
+            tree = ast.parse(f.read())
+        func_node = None
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.FunctionDef)
+                and node.name == "apply_workspace_accelerators"
+            ):
+                func_node = node
+                break
+        self.assertIsNotNone(
+            func_node,
+            "apply_workspace_accelerators not defined",
+        )
+        # Has 2 parameters (app, accelerators)
+        self.assertEqual(len(func_node.args.args), 2)
+        # Body calls set_accels_for_action
+        body = ast.unparse(func_node)
+        self.assertIn("set_accels_for_action", body)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
