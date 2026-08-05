@@ -82,6 +82,17 @@ class InsightsDialog(Adw.Dialog):
         self._session_section = self._build_section(
             "This session", body_box
         )
+
+        # Sparkline of action counts over the last 60s.
+        # Placed in the 'session' section above the
+        # stat rows so the user sees 'how is it changing'
+        # before 'how much'.
+        from .insights_chart import InsightsChart
+
+        self._chart = InsightsChart(tracker=self._tracker)
+        chart_row = self._build_chart_row(self._chart)
+        self._session_section.add_row(chart_row)
+
         self._session_labels = {}
         for label in (
             "Session time",
@@ -143,6 +154,29 @@ class InsightsDialog(Adw.Dialog):
         reset_btn.connect("clicked", self._on_reset_clicked)
         footer.append(note)
         footer.append(reset_btn)
+
+        # Tracing toggle: a switch that turns the in-process
+        # Tracer on or off. Default off. The toggle is
+        # persistent via config.tracing_enabled, so closing
+        # the dialog and reopening preserves the state.
+        from ..core.config import get_context
+        from ..util.localized import _
+
+        tracing_label = Gtk.Label(label=_("Enable tracing"))
+        tracing_label.set_xalign(0.0)
+        tracing_switch = Gtk.Switch()
+        tracing_switch.set_active(
+            get_context().config.tracing_enabled
+        )
+        tracing_switch.set_valign(Gtk.Align.CENTER)
+        tracing_switch.connect(
+            "state-set",
+            lambda _sw, state: get_context().config.set_tracing_enabled(
+                bool(state)
+            ),
+        )
+        footer.append(tracing_label)
+        footer.append(tracing_switch)
         toolbar_view.add_bottom_bar(footer)
 
         self.set_child(toolbar_view)
@@ -192,6 +226,30 @@ class InsightsDialog(Adw.Dialog):
         box.append(lbl_right)
         row.set_child(box)
         return row, lbl_right
+
+    @staticmethod
+    def _build_chart_row(chart: Gtk.DrawingArea) -> Gtk.ListBoxRow:
+        """Build a row containing a single chart widget.
+
+        The chart spans the full width of the row. No
+        left label / right value; the chart IS the
+        content.
+        """
+        row = Gtk.ListBoxRow()
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL, spacing=0
+        )
+        box.set_margin_top(8)
+        box.set_margin_bottom(8)
+        box.set_margin_start(12)
+        box.set_margin_end(12)
+        # The chart already has set_size_request(240, 80);
+        # we expand it horizontally to fill the row.
+        chart.set_hexpand(True)
+        chart.set_vexpand(False)
+        box.append(chart)
+        row.set_child(box)
+        return row
 
     def _refresh(self) -> None:
         """Read fresh data from the tracker + config.

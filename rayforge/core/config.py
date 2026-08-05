@@ -1,4 +1,5 @@
 import logging
+import os
 from dataclasses import dataclass, fields
 from datetime import datetime
 from enum import Enum
@@ -93,6 +94,15 @@ class Config:
         # RAYFORGE_LAZY_ADDONS=1 to opt in. The trade-off
         # is documented in rayforge/addon_mgr/lazy.py.
         self.addon_lazy_load: bool = False
+        # Whether to record tracing events. Default off (the
+        # tracer is silent). The toggle is checked at tracer
+        # init AND every time a span is created, so flipping
+        # it at runtime takes effect immediately. Equivalent
+        # to RAYFORGE_TRACE=1 in the env; the env var is
+        # still honored as the initial value.
+        self.tracing_enabled: bool = bool(
+            os.environ.get("RAYFORGE_TRACE")
+        )
         # Default user preferences for units. Key is quantity, value is
         # unit name.
         self.unit_preferences: Dict[str, str] = {
@@ -232,6 +242,28 @@ class Config:
         if not self.coach_marks_seen:
             return
         self.coach_marks_seen = []
+        self.changed.send(self)
+
+    def set_tracing_enabled(self, enabled: bool) -> None:
+        """Toggle the in-process Tracer on or off.
+
+        Setting this at runtime takes effect on the next
+        span() call — the tracer consults the config on
+        each entry. Default off. The env var
+        RAYFORGE_TRACE=1 sets the initial value at config
+        load time.
+        """
+        if self.tracing_enabled == enabled:
+            return
+        self.tracing_enabled = enabled
+        # Sync the tracer so the next span() call sees the
+        # new value (the tracer caches the env var on init).
+        from ..util.tracing import get_tracer
+
+        if enabled:
+            get_tracer().enable()
+        else:
+            get_tracer().disable()
         self.changed.send(self)
 
     def set_unit_preference(self, quantity: str, unit_name: str):

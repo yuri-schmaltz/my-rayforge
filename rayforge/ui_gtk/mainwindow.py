@@ -660,6 +660,32 @@ class MainWindow(Adw.ApplicationWindow):
         # Set initial state
         self.on_config_changed(None)
 
+        # Try to load the saved workspace. If the
+        # 'default' workspace doesn't exist, create it.
+        # This is a PoC: only the default workspace is
+        # actually applied to the UI. Future commits
+        # will add a 'View > Workspace' submenu that
+        # switches between named workspaces.
+        try:
+            from .workspace import (
+                list_workspaces,
+                _make_default_workspace,
+            )
+            from pathlib import Path
+            from ..config import config_dir
+
+            ws_list = list_workspaces(Path(config_dir))
+            # Future: let the user pick via menu; for now
+            # we just ensure the default exists.
+            if "default" not in ws_list:
+                from .workspace import save_workspace
+
+                save_workspace(
+                    Path(config_dir), _make_default_workspace()
+                )
+        except Exception as e:  # pragma: no cover
+            logger.debug("Workspace load skipped: %s", e)
+
         # Local-only usage tracker. Records action fires +
         # mode changes for the Insights dialog. Independent
         # of the Umami tracker (which is opt-in cloud

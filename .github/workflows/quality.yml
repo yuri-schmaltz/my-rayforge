@@ -1,0 +1,130 @@
+name: Quality checks (i18n + a11y + coverage)
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - "**"
+
+# Permissions: read-only. Closes CodeQL alert.
+permissions:
+  contents: read
+
+jobs:
+  i18n:
+    name: i18n audit + extract check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install gettext
+        run: sudo apt-get install -y gettext
+
+      - name: Install pires-forge (no deps for audit)
+        run: |
+          pip install --quiet --break-system-packages \
+            pyyaml
+
+      - name: i18n audit (no new unwrapped strings)
+        run: |
+          python3 -m rayforge.util.i18n_audit --format json \
+            > /tmp/i18n-audit.json
+          if [ -s /tmp/i18n-audit.json ]; then
+            echo "::error::i18n audit found candidates"
+            cat /tmp/i18n-audit.json
+            exit 1
+          fi
+          echo "OK: 0 i18n candidates"
+
+  a11y-contrast:
+    name: WCAG contrast check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install pyyaml
+        run: pip install --quiet --break-system-packages pyyaml
+      - name: Contrast check
+        run: python3 -m rayforge.util.contrast_check
+
+  i18n-extract:
+    name: i18n .pot unchanged
+    # Runs after i18n audit. If audit passed, then the
+    # new strings are wrapped; the .pot must reflect that.
+    needs: i18n
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install gettext
+        run: sudo apt-get install -y gettext
+      - name: Install pyyaml
+        run: pip install --quiet --break-system-packages pyyaml
+      - name: Extract + check
+        run: python3 -m rayforge.util.i18n_extract --check
+
+  coverage:
+    name: Coverage gate (≥ 70%)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.68.1
+          frozen: true
+          cache: true
+      - name: Run tests with coverage
+        run: |
+          pixi run pytest --cov=rayforge --cov-report=json \
+            -q tests/ > /dev/null
+      - name: Coverage gate
+        run: |
+          pixi run python -m rayforge.util.coverage_gate \
+            --per-file
+        env:
+          PIRES_FORGE_MIN_COVERAGE: "70"
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.json
+          retention-days: 30
+
+  property-tests:
+    name: Property-based tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install pyyaml
+        run: pip install --quiet --break-system-packages pyyaml
+      - name: Run property tests
+        run: PYTHONPATH=. python3 tests/property/__init__.py
