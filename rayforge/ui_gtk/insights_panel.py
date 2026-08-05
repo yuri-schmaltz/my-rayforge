@@ -143,6 +143,29 @@ class InsightsDialog(Adw.Dialog):
         reset_btn.connect("clicked", self._on_reset_clicked)
         footer.append(note)
         footer.append(reset_btn)
+
+        # Tracing toggle: a switch that turns the in-process
+        # Tracer on or off. Default off. The toggle is
+        # persistent via config.tracing_enabled, so closing
+        # the dialog and reopening preserves the state.
+        from ..core.config import get_context
+        from ..util.localized import _
+
+        tracing_label = Gtk.Label(label=_("Enable tracing"))
+        tracing_label.set_xalign(0.0)
+        tracing_switch = Gtk.Switch()
+        tracing_switch.set_active(
+            get_context().config.tracing_enabled
+        )
+        tracing_switch.set_valign(Gtk.Align.CENTER)
+        tracing_switch.connect(
+            "state-set",
+            lambda _sw, state: get_context().config.set_tracing_enabled(
+                bool(state)
+            ),
+        )
+        footer.append(tracing_label)
+        footer.append(tracing_switch)
         toolbar_view.add_bottom_bar(footer)
 
         self.set_child(toolbar_view)
