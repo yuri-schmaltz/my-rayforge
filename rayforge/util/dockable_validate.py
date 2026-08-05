@@ -113,13 +113,31 @@ def main() -> int:
         failures.append(f"workspace_menu: {e}")
         print(f"  workspace_menu: FAIL ({e})")
 
+    # 7. dockable_integration — depends on all
+    # of the above, so just AST parse (not a
+    # full import). The integration module is
+    # the single entry point called by MainWindow.
+    try:
+        import ast
+        with open(
+            os.path.join(ui_gtk, "dockable_integration.py")
+        ) as f:
+            ast.parse(f.read())
+        print(
+            "  dockable_integration: parses OK "
+            "(Gtk import skipped)"
+        )
+    except SyntaxError as e:
+        failures.append(f"dockable_integration: {e}")
+        print(f"  dockable_integration: FAIL ({e})")
+
     print()
     if failures:
         print(f"FAIL: {len(failures)} module(s) failed")
         for f in failures:
             print(f"  - {f}")
         return 1
-    print("OK: 6/6 modules")
+    print("OK: 7/7 modules")
     return 0
 
 
