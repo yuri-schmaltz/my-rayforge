@@ -47,6 +47,9 @@ jobs:
   wait-for-artifacts:
     name: Wait for build artifacts
     runs-on: ubuntu-24.04
+    outputs:
+      ready: ${{ steps.verify.outputs.ready }}
+      tag: ${{ steps.meta.outputs.tag }}
     # The build-deb and build-exe workflows also
     # trigger on this same push (their on:push.tags
     # config). They run in parallel; we poll the
