@@ -613,13 +613,38 @@ class AddonManager:
                 module_name, module_path
             )
             if spec and spec.loader:
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[module_name] = module
-                spec.loader.exec_module(module)
-                logger.debug(
-                    f"Registering module {module_name} with plugin_mgr"
+                # Lazy-loading path: when the user opts in
+                # via config.addon_lazy_load (or
+                # RAYFORGE_LAZY_ADDONS=1), wrap the module
+                # in a LazyModule proxy. The actual
+                # exec_module is deferred until the first
+                # attribute access (typically the first
+                # hookimpl call from pluggy).
+                lazy = (
+                    os.environ.get("RAYFORGE_LAZY_ADDONS") == "1"
                 )
-                self.plugin_mgr.register(module)
+                if not lazy and self._addon_config is not None:
+                    lazy = getattr(
+                        self._addon_config, "addon_lazy_load", False
+                    )
+                if lazy:
+                    from .lazy import LazyModule
+
+                    module = LazyModule(module_name, module_path)
+                    logger.debug(
+                        f"Registering LazyModule {module_name} "
+                        "with plugin_mgr"
+                    )
+                    self.plugin_mgr.register(module)
+                else:
+                    module = importlib.util.module_from_spec(spec)
+                    sys.modules[module_name] = module
+                    spec.loader.exec_module(module)
+                    logger.debug(
+                        f"Registering module {module_name} "
+                        "with plugin_mgr"
+                    )
+                    self.plugin_mgr.register(module)
                 self.loaded_addons[name] = addon
                 if name in self._load_errors:
                     del self._load_errors[name]
