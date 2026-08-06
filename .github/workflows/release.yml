@@ -220,8 +220,8 @@ jobs:
 
             - **Linux (.deb)**: attached as `rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
               Install with `sudo dpkg -i rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
-            - **Windows (.exe)**: attached as `pires-forge-v${{ steps.release_info.outputs.version }}-installer.exe`
-              Run the installer
+
+            Windows builds are available on request.
 
             ## Verification
 
@@ -230,7 +230,12 @@ jobs:
             ```
 
             Report issues at https://github.com/yuri-schmaltz/pires-forge/issues
-          files: dist/*
+          # Linux only by user request; Windows builds are
+          # on demand. The release.yml will skip the
+          # Windows download step below if no .zip/.exe
+          # artifact is present (continue-on-error: true).
+          files: |
+            dist/*.deb
           fail_on_unmatched_files: false
           draft: false
           prerelease: ${{ steps.release_info.outputs.is_prerelease }}
