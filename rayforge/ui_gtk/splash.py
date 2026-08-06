@@ -72,11 +72,12 @@ class SplashScreen(Gtk.Window):
         self.set_resizable(False)
         self.set_decorated(False)
         # No input focus while loading. (Gtk 4 removed
-        # set_skip_taskbar_hint / set_skip_pager_hint;
-        # a borderless non-modal window is sufficient to
-        # keep the splash out of the way during startup.)
-        self.set_can_focus(False)
-        self.set_focus_on_map(False)
+        # several Gtk 3 Window methods we used to call
+        # here: set_skip_taskbar_hint, set_skip_pager_hint,
+        # set_focus_on_map. A borderless non-modal
+        # window with set_focusable(False) is sufficient
+        # to keep the splash out of the way during startup.)
+        self.set_focusable(False)
         self.set_modal(False)
         # Default size from the SVG viewBox; if loading fails we keep
         # this geometry as a black box fallback.
