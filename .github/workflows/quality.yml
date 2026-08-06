@@ -128,3 +128,51 @@ jobs:
         run: pip install --quiet --break-system-packages pyyaml
       - name: Run property tests
         run: PYTHONPATH=. python3 tests/property/__init__.py
+
+  smoke-import:
+    name: Smoke import (no display)
+    # Catches ImportError regressions at the package
+    # level, which the other gates can't see (they all
+    # run as scripts, not as the installed package).
+    # This is what would have caught the v1.3.0 bug
+    # (missing `_` alias in localized.py) and the
+    # v1.3.1 bug (set_skip_taskbar_hint removed in
+    # GTK 4) before they shipped.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install Pixi
+        uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.68.1
+          frozen: true
+          cache: true
+      - name: Install system dependencies (gi, cairo, gtk4)
+        # Required for gi.repository.Gtk; pixi.toml lists
+        # them but apt is faster than building them.
+        run: |
+          sudo apt-get install -y --no-install-recommends \
+            python3-gi python3-gi-cairo \
+            gir1.2-gtk-4.0 libgtk-4-1 libcairo2
+      - name: Install pires-forge
+        run: |
+          pixi run pip install --quiet --break-system-packages \
+            -e .
+      - name: Smoke import the main package
+        # This triggers the same import chain as
+        # `pires-forge` startup. Any ImportError (e.g.
+        # missing `_` alias, removed GTK 3 method) is
+        # caught here.
+        run: |
+          python3 -c "import rayforge; from rayforge.ui_gtk.splash import SplashScreen; print('imports OK')"
+      - name: Smoke import the dockable modules
+        # Catches missing exports in the dockable
+        # modules (PR #77-#79 + #80) before they ship.
+        run: |
+          python3 -c "from rayforge.ui_gtk.drag_controller import DragController; from rayforge.ui_gtk.workspace import Workspace; print('dockable imports OK')"
