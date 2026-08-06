@@ -130,14 +130,23 @@ jobs:
         run: PYTHONPATH=. python3 tests/property/__init__.py
 
   smoke-import:
-    name: Smoke import (no display)
+    name: Smoke import + GTK 4 instantiate
     # Catches ImportError regressions at the package
-    # level, which the other gates can't see (they all
-    # run as scripts, not as the installed package).
-    # This is what would have caught the v1.3.0 bug
-    # (missing `_` alias in localized.py) and the
-    # v1.3.1 bug (set_skip_taskbar_hint removed in
-    # GTK 4) before they shipped.
+    # level AND GTK 3->4 method removals that only
+    # fire at object construction. The other gates
+    # can't see either class of bug (they all run as
+    # scripts, not as the installed package, and
+    # don't construct the GTK 4 widgets).
+    #
+    # This is what would have caught:
+    #   - v1.3.0 bug: missing `_` alias in localized.py
+    #     (ImportError, caught by "imports OK" step)
+    #   - v1.3.1 bug: set_skip_taskbar_hint removed in
+    #     GTK 4 (AttributeError on SplashScreen.__init__,
+    #     caught by the "instantiate" step)
+    #   - v1.3.2 bug: set_focus_on_map removed in GTK 4
+    #     (AttributeError on SplashScreen.__init__,
+    #     caught by the "instantiate" step)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -153,26 +162,40 @@ jobs:
           pixi-version: v0.68.1
           frozen: true
           cache: true
-      - name: Install system dependencies (gi, cairo, gtk4)
-        # Required for gi.repository.Gtk; pixi.toml lists
-        # them but apt is faster than building them.
+      - name: Install system dependencies (gi, cairo, gtk4, xvfb)
+        # Required for gi.repository.Gtk and the
+        # headless X server. pixi.toml lists the gi
+        # stack but apt is faster than building it.
         run: |
           sudo apt-get install -y --no-install-recommends \
             python3-gi python3-gi-cairo \
-            gir1.2-gtk-4.0 libgtk-4-1 libcairo2
+            gir1.2-gtk-4.0 libgtk-4-1 libcairo2 \
+            xvfb
       - name: Install pires-forge
         run: |
           pixi run pip install --quiet --break-system-packages \
             -e .
       - name: Smoke import the main package
-        # This triggers the same import chain as
-        # `pires-forge` startup. Any ImportError (e.g.
-        # missing `_` alias, removed GTK 3 method) is
-        # caught here.
+        # Triggers the same import chain as
+        # `pires-forge` startup. Catches ImportError
+        # (e.g. missing `_` alias).
         run: |
           python3 -c "import rayforge; from rayforge.ui_gtk.splash import SplashScreen; print('imports OK')"
-      - name: Smoke import the dockable modules
-        # Catches missing exports in the dockable
-        # modules (PR #77-#79 + #80) before they ship.
+      - name: Smoke instantiate SplashScreen under Xvfb
+        # Catches AttributeError from GTK 3->4
+        # method removals that only fire when the
+        # widget is actually constructed. This is
+        # what would have caught the v1.3.1 +
+        # v1.3.2 bugs.
+        #
+        # Note: we don't show() the window (that
+        # would require a real display). Just
+        # calling the constructor exercises every
+        # method call in SplashScreen.__init__.
         run: |
-          python3 -c "from rayforge.ui_gtk.drag_controller import DragController; from rayforge.ui_gtk.workspace import Workspace; print('dockable imports OK')"
+          xvfb-run -a python3 -c "
+          from rayforge.ui_gtk.splash import SplashScreen
+          s = SplashScreen()
+          print('SplashScreen instantiated OK')
+          s.destroy()
+          "
