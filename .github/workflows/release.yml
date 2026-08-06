@@ -50,6 +50,7 @@ jobs:
     outputs:
       ready: ${{ steps.verify.outputs.ready }}
       tag: ${{ steps.meta.outputs.tag }}
+      windows_ready: ${{ steps.wait.outputs.windows_ready }}
     # The build-deb and build-exe workflows also
     # trigger on this same push (their on:push.tags
     # config). They run in parallel; we poll the
@@ -84,14 +85,24 @@ jobs:
           echo "tag=${TAG} sha=${SHA} version=${VERSION}"
 
       - name: Wait for build workflows
+        id: wait
         # Poll the workflow runs for this SHA until
-        # both build-deb and build-exe are completed.
+        # the Linux build is completed successfully.
+        # The Windows build is OPTIONAL: per user
+        # request, the GitHub Release is Linux-only
+        # by default and Windows builds are produced
+        # on demand. If the Windows build succeeds,
+        # we still download + attach it (good for
+        # users who want both); if it fails or
+        # doesn't exist, we skip it and only
+        # attach the .deb.
+        #
         # 90 retries × 30s = 45 min total wait.
         run: |
           SHA="${{ steps.meta.outputs.sha }}"
-          echo "Waiting for build-deb + build-exe to complete for SHA ${SHA}..."
+          echo "Waiting for build-deb to complete for SHA ${SHA} (build-exe is optional)..."
           for i in $(seq 1 90); do
-            echo "--- attempt ${i}/30 ---"
+            echo "--- attempt ${i}/90 ---"
             DEB_STATUS=$(gh run list \
               --workflow="Build .deb package" \
               --json status,conclusion,headSha \
@@ -103,19 +114,25 @@ jobs:
               --jq ".[] | select(.headSha == \"${SHA}\") | .status + \"|\" + .conclusion" \
               | head -1)
             echo "deb_status=${DEB_STATUS} exe_status=${EXE_STATUS}"
-            if [[ "${DEB_STATUS}" == "completed|success" ]] && [[ "${EXE_STATUS}" == "completed|success" ]]; then
-              echo "Both builds completed successfully"
+            if [[ "${DEB_STATUS}" == "completed|success" ]]; then
+              echo "build-deb completed successfully"
+              if [[ -n "${EXE_STATUS}" ]] && [[ "${EXE_STATUS}" != "completed|success" ]]; then
+                echo "::warning::build-exe status is '${EXE_STATUS}'; skipping Windows artifact"
+                echo "windows_ready=false" | tee -a "$GITHUB_OUTPUT"
+              else
+                echo "windows_ready=true" | tee -a "$GITHUB_OUTPUT"
+              fi
               break
             fi
-            if [[ "${DEB_STATUS}" == "completed|failure" ]] || [[ "${EXE_STATUS}" == "completed|failure" ]]; then
-              echo "::error::A build failed; aborting release"
+            if [[ "${DEB_STATUS}" == "completed|failure" ]]; then
+              echo "::error::build-deb failed; aborting release"
               exit 1
             fi
             sleep 30
           done
           # Final check after the loop
-          if [[ "${DEB_STATUS}" != "completed|success" ]] || [[ "${EXE_STATUS}" != "completed|success" ]]; then
-            echo "::error::Builds did not complete in 15 min; aborting"
+          if [[ "${DEB_STATUS}" != "completed|success" ]]; then
+            echo "::error::build-deb did not complete in 45 min; aborting"
             exit 1
           fi
         env:
@@ -138,6 +155,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Windows installer
+        # Only runs when the build-exe workflow
+        # completed successfully (windows_ready=true
+        # from the wait step). On Linux-only releases
+        # (per user request) the build-exe may fail
+        # or be absent, and we skip this step
+        # entirely.
+        if: steps.wait.outputs.windows_ready == 'true'
         run: |
           SHA="${{ steps.meta.outputs.sha }}"
           RUN_ID=$(gh run list \
@@ -154,7 +178,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Verify both artifacts downloaded
+      - name: Verify at least .deb is downloaded
         id: verify
         run: |
           set -e
@@ -163,7 +187,7 @@ jobs:
           DEB_COUNT=$(find dist/ -name "*.deb" 2>/dev/null | wc -l)
           EXE_COUNT=$(find dist/ -name "*.zip" -o -name "*.exe" 2>/dev/null | wc -l)
           echo "deb_count=${DEB_COUNT} exe_count=${EXE_COUNT}"
-          if [ "${DEB_COUNT}" -ge 1 ] && [ "${EXE_COUNT}" -ge 1 ]; then
+          if [ "${DEB_COUNT}" -ge 1 ]; then
             echo "ready=true" | tee -a "$GITHUB_OUTPUT"
           else
             echo "ready=false" | tee -a "$GITHUB_OUTPUT"
