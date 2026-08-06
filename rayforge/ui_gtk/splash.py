@@ -71,10 +71,10 @@ class SplashScreen(Gtk.Window):
         self.set_title(_("Pires Forge"))
         self.set_resizable(False)
         self.set_decorated(False)
-        # Skip taskbar / pager so the splash doesn't crowd the dock.
-        self.set_skip_taskbar_hint(True)
-        self.set_skip_pager_hint(True)
-        # No input focus while loading.
+        # No input focus while loading. (Gtk 4 removed
+        # set_skip_taskbar_hint / set_skip_pager_hint;
+        # a borderless non-modal window is sufficient to
+        # keep the splash out of the way during startup.)
         self.set_can_focus(False)
         self.set_focus_on_map(False)
         self.set_modal(False)
