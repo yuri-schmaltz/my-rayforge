@@ -15,6 +15,25 @@ SUPPORTED_LANGUAGES = ["en", "de", "es", "fr", "pt", "uk", "zh_CN"]
 
 LocalizedString = Union[str, Dict[str, str]]
 
+# Translation function alias.
+#
+# Many modules in the codebase (e.g. shared.draglist,
+# ui_gtk.splash, util.benchmarks) do:
+#
+#     from rayforge.shared.util.localized import _
+#
+# which requires this module to export a callable named
+# `_`. We bind it to `gettext.gettext` directly, so that
+# when `_AddonDomainChain.install()` monkey-patches
+# `gettext.gettext` at startup (see app.py), all the
+# `_` aliases imported from this module automatically
+# pick up the patched function (because they all share
+# the same `gettext.gettext` lookup at call time).
+#
+# This is the standard gettext pattern; see the Python
+# docs for `gettext.gettext`.
+_ = gettext.gettext
+
 
 def _get_context_language() -> Optional[str]:
     """
