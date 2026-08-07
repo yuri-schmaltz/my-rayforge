@@ -1,4 +1,40 @@
-pires-forge (1.1.0-1) unstable; urgency=medium
+pires-forge (1.3.3-1~ppa1~noble1) unstable; urgency=high
+
+  * Hotfix release: 1.3.3. Consolidates the six
+    v1.3.2 startup-chain fixes (each shipped as a
+    re-tagged v1.3.2 .deb after the previous fix was
+    found to crash on real user installs) under a
+    proper version bump.
+  * Removed: Gtk.Window.move(), set_skip_taskbar_hint(),
+    set_skip_pager_hint(), set_focus_on_map() (Gtk 3
+    APIs removed in Gtk 4). Splash screen removed at
+    user request after three separate regressions.
+  * Added: top-level `from ..shared.util.localized
+    import _` in coordinate_bar, status_bar,
+    command_palette, walkthrough, and doceditor/editor
+    (all five had _ in __init__ or signal callback
+    without a top-level import).
+  * Fixed: self._addon_config -> self.addon_config in
+    addon_manager.py:626 (missed in PR #75 P2 batch).
+  * Fixed: get_version_from_pkg() now tries both
+    'rayforge' and 'pires-forge' (the Debian package
+    name) and strips the Debian revision suffix.
+  * Fixed: AccessibleRole.TEXT -> AccessibleRole.TEXT_BOX
+    in shared/util/a11y.py (Gtk 4 rename).
+  * Fixed: broken relative import in toolbar.py:44
+    and command_palette.py:118 (.shared.util ->
+    ..shared.util).
+  * Fixed: Adw.ViewStack.add() -> add_titled() in
+    mainwindow.py:515.
+  * Fixed: refresh_previews now guards with
+    `if not hasattr(self, "bottom_panel"): return`
+    (the document_settled signal can fire during
+    __init__ before bottom_panel is constructed).
+  * Added: smoke-import CI gate in quality.yml (catches
+    ImportError + AttributeError on Gtk 3->4 method
+    removals in the startup chain).
+  * See CHANGELOG.md for the full per-commit history
+    of the v1.3.0 -> v1.3.3 sequence.
 
   * Feature release: 1.1.0.
   * UI/UX modernisation: light/dark theme picker, splash screen,

@@ -270,6 +270,94 @@ refresh. Security fixes from 1.0.1 are included.
   step (renamed to `verify-snap.yml` in the file tree;
   the old inline YAML was consolidated).
 
+## [1.3.3] - 2026-08-07
+
+### Fixed (startup chain v1.3.2 hotfix batch)
+
+A sequence of six startup-blocking bugs were fixed in v1.3.2
+post-release, each one shipping as a re-tagged v1.3.2 .deb
+after the previous one was found to crash on real user
+installs. They are consolidated here under v1.3.3 so the
+changelog reflects what actually shipped to users.
+
+- **`rayforge/ui_gtk/splash.py`** — removed
+  `Gtk.Window.move()`, `set_skip_taskbar_hint()`,
+  `set_skip_pager_hint()`, and `set_focus_on_map()`. All four
+  are Gtk 3 APIs removed in Gtk 4. The splash is now
+  positioned by the window manager (Mutter/KWin auto-centre
+  borderless non-modal windows); the `realize` callback
+  logs the computed centre for debugging instead of forcing
+  it.
+- **`rayforge/ui_gtk/splash.py`** — the splash screen
+  itself was removed at user request after three separate
+  Gtk 3→4 regressions. `app.do_activate` no longer imports
+  or presents `SplashScreen`; `self._splash = None` is set
+  for idempotency. The `splash.py` module is left in the
+  tree (not deleted) in case it is revived later as part
+  of a larger splash + startup-trace CI effort.
+- **`rayforge/ui_gtk/coordinate_bar.py`** — added missing
+  `from ..shared.util.localized import _`. The module's
+  `__init__` uses `_(...)` for the unit combo tooltip and
+  a11y labels but only had function-local imports in
+  `update_*` methods that don't run on first construct.
+- **`rayforge/ui_gtk/status_bar.py`** — same fix as
+  coordinate_bar: added the missing `_` import.
+- **`rayforge/ui_gtk/command_palette.py`** — same fix;
+  latent (only fires when the user opens Ctrl+Shift+P).
+- **`rayforge/ui_gtk/walkthrough.py`** — same fix;
+  latent (only fires on first run or Help → Reopen tour).
+- **`rayforge/doceditor/editor.py`** — added the missing
+  `_` import; the `_on_addon_state_changed` signal
+  callback uses `_(...)` in a `logger.info()`.
+- **`rayforge/addon_mgr/addon_manager.py:626`** — fixed
+  `self._addon_config` (renamed to `self.addon_config` in
+  PR #75 P2 batch, but the call site at line 626 was
+  missed). The error was non-fatal (each addon import is
+  wrapped in try/except) but emitted a warning per addon.
+- **`rayforge/version.py:50`** — `get_version_from_pkg()`
+  now tries both `rayforge` and `pires-forge` (the Debian
+  package name) and strips the leading `v` plus any Debian
+  revision suffix. Previously returned `None` on .deb
+  installs, emitting a "Could not determine current
+  rayforge version" warning at every addon import.
+- **`rayforge/ui_gtk/splash.py:142`** — `_center_on_primary_monitor`
+  no longer calls `self.move()`; logs the computed centre
+  instead (the WM will position the borderless window).
+- **`rayforge/shared/util/a11y.py:44`** — `Gtk.AccessibleRole.TEXT`
+  renamed to `Gtk.AccessibleRole.TEXT_BOX` in Gtk 4. The
+  `ROLE_TEXT` constant was still using the Gtk 3 name.
+- **`rayforge/ui_gtk/toolbar.py:44`** — broken relative
+  import `from .shared.util.a11y` fixed to
+  `from ..shared.util.a11y`. The single-dot prefix was
+  looking for `rayforge/ui_gtk/shared/util/a11y.py` which
+  doesn't exist (the `shared/util/` package lives at the
+  `rayforge/shared/` level, not `rayforge/ui_gtk/shared/`).
+- **`rayforge/ui_gtk/command_palette.py:118`** — same
+  fix as toolbar.py (latent, only fires on Ctrl+Shift+P).
+- **`rayforge/ui_gtk/mainwindow.py:515`** — `right_pane_stack.add(child, name, title)`
+  is invalid for `Adw.ViewStack`. The correct API is
+  `add_titled(child, name, title)`. Fixed both workflow
+  and properties entries.
+- **`rayforge/ui_gtk/mainwindow.py:1763`** — `refresh_previews`
+  now guards with `if not hasattr(self, "bottom_panel"): return`.
+  The `document_settled` signal is connected in
+  `__init__` (line 400) before `self.bottom_panel` is
+  created (line 588); the signal fires immediately when
+  the doceditor adds its default "Contorno" step during
+  `__init__`, so the callback would crash with
+  `AttributeError: 'MainWindow' object has no attribute 'bottom_panel'`.
+
+### Added
+
+- **`.github/workflows/quality.yml`** — new `smoke-import`
+  job that installs `pixi` + `gi`/`cairo`/`gtk4` system
+  deps and runs `python3 -c "import rayforge; from
+  rayforge.ui_gtk.splash import SplashScreen"` under
+  `xvfb-run`. Catches the class of bug that v1.3.0 and
+  v1.3.1 both shipped (ImportError + AttributeError on
+  Gtk 3→4 method removals in the startup chain).
+  Cost: ~5s per CI run.
+
 ## [Unreleased]
 
 ## [1.0.0] - 2026-08-02
