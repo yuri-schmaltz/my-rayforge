@@ -17,6 +17,7 @@ from ..pipeline.artifact import JobArtifact
 from ..pipeline.artifact.handle import BaseArtifactHandle
 from ..pipeline.pipeline import Pipeline
 from ..pipeline.view import ViewManager
+from ..shared.util.localized import _  # noqa: E402
 from .array_cmd import ArrayCmd
 from .asset_cmd import AssetCmd
 from .command_registry import command_registry
