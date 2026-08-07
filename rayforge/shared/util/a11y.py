@@ -41,7 +41,10 @@ from gi.repository import Gtk
 # as needed.
 ROLE_BUTTON = Gtk.AccessibleRole.BUTTON
 ROLE_LABEL = Gtk.AccessibleRole.LABEL
-ROLE_TEXT = Gtk.AccessibleRole.TEXT
+# GTK 4 renamed the Gtk 3 'TEXT' role to 'TEXT_BOX'
+# (value 68). Use it for editable text widgets
+# (GtkEntry, GtkTextView, etc.).
+ROLE_TEXT = Gtk.AccessibleRole.TEXT_BOX
 ROLE_CHECKBOX = Gtk.AccessibleRole.CHECKBOX
 ROLE_TOGGLE_BUTTON = Gtk.AccessibleRole.TOGGLE_BUTTON
 ROLE_PROGRESS_BAR = Gtk.AccessibleRole.PROGRESS_BAR

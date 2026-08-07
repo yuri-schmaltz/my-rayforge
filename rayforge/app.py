@@ -280,42 +280,22 @@ def main():
                 self.win.present()
                 return
 
-            # Show a splash screen immediately so the user has visual
-            # feedback while the main window initializes (which can
-            # take a few hundred ms on first launch with cold caches
-            # or large addons installed). The splash is closed once
-            # the main window finishes its initial map cycle.
-            #
-            # Install the forge.css stylesheet BEFORE the splash is
-            # presented, so the splash window inherits the
-            # `window.splash-window` rule declared in forge.css.
-            # Without this, the splash would show for ~100-500ms with
-            # the compositor's default background, which leaks
-            # through the SVG's transparent corners on light WM
-            # themes. install_forge_css_once is idempotent — the
-            # MainWindow constructor also calls it as a defensive
-            # fallback, and the second call is a no-op.
+            # Splash screen removed in v1.3.2 FIX-3
+            # (user request, 2026-08-07). The splash
+            # implementation had multiple recurring Gtk 3->4
+            # regressions (set_skip_taskbar_hint, set_focus_on_map,
+            # move) that the smoke-import gate could not catch
+            # because they only fire at realize-time. Disabling
+            # the splash removes the entire class of bugs.
+            # (A new splash can be reintroduced later as part of
+            # a larger splash + startup-trace CI effort.)
             from rayforge.ui_gtk.mainwindow import install_forge_css_once
-            from rayforge.ui_gtk.splash import SplashScreen
-
-            install_forge_css_once()
-            splash = SplashScreen()
-            splash.present()
-
-            # Import the window here to avoid module-level side-effects
             from rayforge.ui_gtk.mainwindow import MainWindow
 
+            install_forge_css_once()
+            self._splash = None
+
             self.win = MainWindow(application=self)
-            self._splash = splash  # keep ref alive until close
-
-            # Don't load files until the window is fully mapped and
-            # allocated on screen. The 'map' signal guarantees this.
-            def _on_main_window_mapped(_win):
-                if self._splash is not None:
-                    self._splash.close()
-                    self._splash = None
-
-            self.win.connect("map", _on_main_window_mapped)
 
             if self.args.filenames:
                 # We connect a one-shot handler to the 'map' event.
