@@ -512,10 +512,10 @@ class MainWindow(Adw.ApplicationWindow):
         )
         scrolled_props.set_vexpand(True)
 
-        right_pane_stack.add(
+        right_pane_stack.add_titled(
             scrolled_workflow, "workflow", _("Workflow")
         )
-        right_pane_stack.add(
+        right_pane_stack.add_titled(
             scrolled_props, "properties", _("Properties")
         )
 
@@ -1758,6 +1758,16 @@ class MainWindow(Adw.ApplicationWindow):
         simulator and G-code view.
         """
         if get_context().exit_after_settle:
+            return
+
+        # The document_settled signal can fire BEFORE
+        # self.bottom_panel is constructed (e.g. when the
+        # doc editor adds its default 'Contorno' step
+        # during __init__). Guard against AttributeError
+        # so the signal doesn't crash startup. The
+        # next signal fire (after construction
+        # completes) will pick up the missing preview.
+        if not hasattr(self, "bottom_panel"):
             return
 
         is_gcode_visible = self.bottom_panel.is_item_visible("gcode")
