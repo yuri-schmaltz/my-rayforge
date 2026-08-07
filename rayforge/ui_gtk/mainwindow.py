@@ -526,8 +526,12 @@ class MainWindow(Adw.ApplicationWindow):
         # it floats on the canvas), but the layout inside is now
         # a tabbed stack. The legacy _right_pane attribute points
         # to the outer box for any code that toggles its visibility.
+        # (Note: set_propagate_natural_height is a ScrolledWindow
+        # method, not a Box method — we removed the call because
+        # the right_pane is a plain Gtk.Box, not a ScrolledWindow.
+        # The natural-height behavior is handled by the inner
+        # ScrolledWindows for each tab.)
         self._right_pane = right_pane_outer
-        self._right_pane.set_propagate_natural_height(True)
         self._canvas_overlay.add_overlay(self._right_pane)
 
         # The WorkflowView will be updated when a layer is activated.
@@ -2300,6 +2304,16 @@ class MainWindow(Adw.ApplicationWindow):
         active_machine = config.machine
         am = self.action_manager
         doc = self.doc_editor.doc
+
+        # The document_settled signal can fire BEFORE
+        # self.bottom_panel and self.toolbar are
+        # constructed (e.g. when the doc editor adds
+        # its default 'Contorno' step during __init__).
+        # Guard so the signal doesn't crash startup. The
+        # next signal fire (after construction completes)
+        # will pick up the missing UI update.
+        if not hasattr(self, "bottom_panel") or not hasattr(self, "toolbar"):
+            return
 
         if not active_machine:
             am.get_action("export").set_enabled(False)
