@@ -230,6 +230,31 @@ jobs:
           VERSION="${TAG#v}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
+      - name: Compute .deb checksums
+        id: checksums
+        # Surface the SHA256 of the .deb in the release body so users
+        # can verify the file they downloaded is the one we built
+        # (e.g. `sha256sum pires-forge-1.3.3-ubuntu24.04.deb`).
+        # Defense against the v1.3.3 incident: user installed a .deb
+        # from a CI artifact (md5 40a87ef8...) that had the v1.3.3
+        # debian/changelog but the v1.3.2 mainwindow.py inside.
+        # Checking sha256 against the release body would have caught
+        # that immediately.
+        shell: bash
+        run: |
+          set -e
+          DEB=$(find dist/ -name "*.deb" -type f | head -1)
+          if [ -z "${DEB}" ]; then
+            echo "::error::No .deb found in dist/; cannot compute checksums"
+            exit 1
+          fi
+          echo "Computing SHA256 of ${DEB}..."
+          SHA256=$(sha256sum "${DEB}" | awk '{print $1}')
+          SIZE=$(stat -c %s "${DEB}")
+          echo "sha256=${SHA256}" >> "$GITHUB_OUTPUT"
+          echo "size=${SIZE}" >> "$GITHUB_OUTPUT"
+          echo "SHA256=${SHA256} SIZE=${SIZE}B"
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -242,12 +267,26 @@ jobs:
 
             ## Downloads
 
-            - **Linux (.deb)**: attached as `rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
-              Install with `sudo dpkg -i rayforge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
+            - **Linux (.deb)**: attached as `pires-forge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
+              Install with `sudo dpkg -i pires-forge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb`
 
             Windows builds are available on request.
 
             ## Verification
+
+            Always verify the SHA256 of the .deb you downloaded against the one below.
+            If they don't match, you're not running the build we released (probably
+            a stale CI artifact or a mirror with a different copy).
+
+            ```
+            # Linux
+            sha256sum pires-forge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb
+            # Expected:
+            # ${{ steps.checksums.outputs.sha256 }}  pires-forge-${{ steps.release_info.outputs.version }}-ubuntu24.04.deb
+            ```
+
+            - **Size**: ${{ steps.checksums.outputs.size }} bytes
+            - **SHA256**: `${{ steps.checksums.outputs.sha256 }}`
 
             ```
             pires-forge --version
