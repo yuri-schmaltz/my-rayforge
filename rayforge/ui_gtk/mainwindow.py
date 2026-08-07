@@ -1405,7 +1405,7 @@ class MainWindow(Adw.ApplicationWindow):
              keyboard shortcut)
         """
         layout = value.get_string()
-        config = get_context().config()
+        config = get_context().config
         # Clear overrides; the preset is now authoritative.
         if config.panel_overrides:
             config.panel_overrides = {}
@@ -2021,7 +2021,7 @@ class MainWindow(Adw.ApplicationWindow):
         'comfortable' class (which is a no-op since the default
         rule already assumes comfortable).
         """
-        config = get_context().config()
+        config = get_context().config
         density = (config.ui_density or "comfortable").lower()
         if density == "compact":
             self.add_css_class("forge-density-compact")
@@ -2038,7 +2038,7 @@ class MainWindow(Adw.ApplicationWindow):
         users). The choice is persisted to config and applied
         here whenever config changes.
         """
-        config = get_context().config()
+        config = get_context().config
         mode = (config.toolbar_mode or "essential").lower()
         show_all = mode == "all"
         if hasattr(self, "toolbar"):
@@ -2059,7 +2059,7 @@ class MainWindow(Adw.ApplicationWindow):
         """
         if not hasattr(self, "panel_manager"):
             return
-        config = get_context().config()
+        config = get_context().config
         layout = (config.panel_layout or "default").lower()
         # Apply the preset via the manager (sets both panels
         # to the preset's visibility).
@@ -2194,7 +2194,7 @@ class MainWindow(Adw.ApplicationWindow):
         """
         from .coach_marks import CoachMark, COACH_MARKS
 
-        config = get_context().config()
+        config = get_context().config
         if zone in config.coach_marks_seen:
             return  # already shown for this zone
         if zone not in COACH_MARKS:
@@ -2220,7 +2220,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._coach_mark_pending = None
         if zone is None or self._walkthrough_active:
             return False
-        config = get_context().config()
+        config = get_context().config
         if zone in config.coach_marks_seen:
             return False
         mark = self._coach_marks.get(zone)
@@ -2271,9 +2271,9 @@ class MainWindow(Adw.ApplicationWindow):
 
     def on_running_tasks_changed(self, sender, tasks, progress):
         self._update_actions_and_ui()
-        self._update_status_message(tasks)
+        self._update_status_message(tasks, progress)
 
-    def _update_status_message(self, tasks):
+    def _update_status_message(self, tasks, progress):
         if not tasks:
             self._status_message_label.set_visible(False)
             self.status_bar.set_mode("designing")

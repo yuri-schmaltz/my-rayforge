@@ -186,6 +186,67 @@ jobs:
           dpkg -l pires-forge
           pires-forge --version
 
+      - name: Smoke-test the GUI startup chain under Xvfb
+        # Real startup test: the previous 'Test package installation'
+        # step only checked `pires-forge --version`, which is just a
+        # import+version print. That misses every bug in App.do_activate
+        # -> MainWindow.__init__ chain (the same chain that produced
+        # FIX-2..FIX-7 + the v1.3.3 config/progress typos we just
+        # fixed). This step:
+        #   1. Starts Xvfb on :99
+        #   2. Runs `pires-forge` under DISPLAY=:99 in background
+        #   3. Sleeps 8s, then checks if the process is still alive
+        #   4. Kills it; fails the job if it died early
+        # Cost: ~10s on the build-deb job. Worth it: would have caught
+        # every single one of the v1.3.x startup crashes before they
+        # shipped to a user.
+        run: |
+          set -e
+          DEB_FILE="${{ steps.build_deb.outputs.deb_file_path }}"
+          sudo apt-get install -y xvfb
+
+          # Xvfb headless display
+          Xvfb :99 -screen 0 1280x720x24 -nolisten tcp >/tmp/xvfb.log 2>&1 &
+          XVFB_PID=$!
+          sleep 2
+          if ! kill -0 ${XVFB_PID} 2>/dev/null; then
+            echo "::error::Xvfb failed to start; log:"
+            cat /tmp/xvfb.log
+            exit 1
+          fi
+          echo "Xvfb running (pid=${XVFB_PID})"
+
+          # Launch pires-forge under the virtual display
+          export DISPLAY=:99
+          rm -f /tmp/pires-forge-startup.log
+          pires-forge >/tmp/pires-forge-startup.log 2>&1 &
+          APP_PID=$!
+          echo "pires-forge launched (pid=${APP_PID}), waiting 8s for startup chain..."
+
+          # Wait and check liveness
+          sleep 8
+          if kill -0 ${APP_PID} 2>/dev/null; then
+            echo "OK: pires-forge still alive after 8s (no startup crash)"
+            # Capture a tail of the log for the artifact even on success
+            tail -30 /tmp/pires-forge-startup.log > /tmp/pires-forge-startup.tail || true
+            kill ${APP_PID} 2>/dev/null || true
+          else
+            echo "::error::pires-forge CRASHED during startup (pid ${APP_PID} exited within 8s)"
+            echo "--- /tmp/pires-forge-startup.log (last 80 lines) ---"
+            tail -80 /tmp/pires-forge-startup.log || true
+            echo "--- end of log ---"
+            # Surface the traceback lines explicitly so they show up in
+            # the failed-CI email/Slack notification (the surrounding
+            # log noise tends to bury them).
+            grep -nE "Traceback|Error:|AttributeError|TypeError|NameError|ModuleNotFoundError" /tmp/pires-forge-startup.log | head -20 || true
+            EXIT_CODE=1
+          fi
+
+          # Cleanup
+          kill ${XVFB_PID} 2>/dev/null || true
+          wait 2>/dev/null || true
+          exit ${EXIT_CODE:-0}
+
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v4
         with:
