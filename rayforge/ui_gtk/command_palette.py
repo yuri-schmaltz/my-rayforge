@@ -33,6 +33,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
+from ..shared.util.localized import _  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
 
