@@ -123,7 +123,22 @@ class SplashScreen(Gtk.Window):
         self.connect("realize", self._center_on_primary_monitor)
 
     def _center_on_primary_monitor(self, *_args) -> None:
-        """Place the splash on the center of the primary monitor."""
+        """Place the splash on the center of the primary monitor.
+
+        Gtk 4 removed Gtk.Window.move(). The closest portable
+        approach is to leave positioning to the window manager:
+        most compositors (Mutter, KWin, etc.) auto-center
+        borderless non-modal windows. As a fallback, we log
+        the computed coordinates (useful for debugging layout
+        issues) but don't try to force them.
+
+        If a user reports that the splash is consistently
+        off-center on a specific WM, the future fix is to
+        use the Gdk.Toplevel.set startup_id + a .desktop
+        file with StartupWMClass hints, or to manage the
+        Gdk.Surface directly via the Wayland/X11 protocol
+        (not portable, hence not implemented yet).
+        """
         display = Gdk.Display.get_default()
         if display is None:
             return
@@ -137,6 +152,12 @@ class SplashScreen(Gtk.Window):
         geometry = monitor.get_geometry()
         x = geometry.x + (geometry.width - _SPLASH_WIDTH) // 2
         y = geometry.y + (geometry.height - _SPLASH_HEIGHT) // 2
-        # Clamp to >= 0 in case the WM reports negative coordinates
-        # for multi-monitor setups with a left-of-primary layout.
-        self.move(max(0, x), max(0, y))
+        # Log the computed center for debugging; the WM will
+        # decide the actual position. (Gtk.Window.move() was
+        # removed in Gtk 4 — there's no portable API to force
+        # this from the client side.)
+        logger.debug(
+            "Splash center computed: x=%d y=%d (monitor=%dx%d at %d,%d)",
+            max(0, x), max(0, y),
+            geometry.width, geometry.height, geometry.x, geometry.y,
+        )

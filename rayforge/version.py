@@ -46,10 +46,18 @@ def get_version_from_pkg() -> Optional[str]:
     except ImportError:
         return None
 
-    try:
-        return version("rayforge")
-    except PackageNotFoundError:
-        return None
+    # Try the upstream name first; the Debian package
+    # renamed it to 'pires-forge' so we fall back to that.
+    for dist_name in ("rayforge", "pires-forge"):
+        try:
+            v = version(dist_name)
+            if v:
+                # Strip leading 'v' and any debian revision
+                # suffix (e.g. '1.3.2-1~ppa1~noble1' -> '1.3.2')
+                return v.split("-")[0].lstrip("v")
+        except PackageNotFoundError:
+            continue
+    return None
 
 
 def get_version_from_file() -> Optional[str]:

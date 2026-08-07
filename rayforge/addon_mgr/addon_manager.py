@@ -623,9 +623,9 @@ class AddonManager:
                 lazy = (
                     os.environ.get("RAYFORGE_LAZY_ADDONS") == "1"
                 )
-                if not lazy and self._addon_config is not None:
+                if not lazy and self.addon_config is not None:
                     lazy = getattr(
-                        self._addon_config, "addon_lazy_load", False
+                        self.addon_config, "addon_lazy_load", False
                     )
                 if lazy:
                     from .lazy import LazyModule
