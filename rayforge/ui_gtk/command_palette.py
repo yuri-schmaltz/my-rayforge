@@ -115,7 +115,7 @@ class CommandPalette(Gtk.Box):
         # Accessibility: the search entry is the primary
         # input. Give it a clear a11y label so the screen
         # reader announces it before the user types.
-        from .shared.util.a11y import set_a11y_label
+        from ..shared.util.a11y import set_a11y_label
 
         set_a11y_label(
             self._search,

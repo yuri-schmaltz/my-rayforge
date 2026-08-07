@@ -41,7 +41,7 @@ class MainToolbar(Gtk.Box):
         # screen reader can navigate by landmark (Ctrl+Alt+Arrow
         # in orca). Each button below uses set_tooltip_text
         # (which GTK also exposes as the AT-SPI description).
-        from .shared.util.a11y import set_a11y_label
+        from ..shared.util.a11y import set_a11y_label
 
         def _a11y_button(btn, label, role=None):
             """Bundle tooltip + AT-SPI label in one call.
