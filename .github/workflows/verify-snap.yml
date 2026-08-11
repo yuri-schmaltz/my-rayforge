@@ -31,13 +31,13 @@ jobs:
     name: Build Snap
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Install Pixi
-        uses: prefix-dev/setup-pixi@v0.9.4
+        uses: prefix-dev/setup-pixi@v0.10.1
         with:
           pixi-version: latest
           frozen: true
@@ -135,7 +135,7 @@ jobs:
 
       - name: Upload .snap artifact
         if: steps.build.outcome == 'success' && github.event_name != 'pull_request'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rayforge-snap
           path: "*.snap"
