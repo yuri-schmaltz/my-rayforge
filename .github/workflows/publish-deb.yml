@@ -39,7 +39,7 @@ jobs:
           - { name: "Ubuntu 24.04", codename: "noble", runner: "ubuntu-24.04" }
     runs-on: ${{ matrix.distro.runner }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -141,7 +141,7 @@ jobs:
           echo "changes_file_path=$CHANGES_FILE" >> $GITHUB_OUTPUT
 
       - name: Upload Binary Artifact for Release
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.build_test_packages.outputs.deb_filename }}
           path: ${{ steps.build_test_packages.outputs.deb_file_path }}
@@ -174,12 +174,12 @@ jobs:
           fi
 
       - name: Download .deb artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ needs.publish-to-ppa.outputs.deb_filename }}
 
       - name: Attach .deb to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: ${{ needs.publish-to-ppa.outputs.deb_filename }}
           draft: false

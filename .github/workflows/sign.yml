@@ -111,7 +111,7 @@ jobs:
     runs-on: windows-2025
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
@@ -148,7 +148,7 @@ jobs:
           }
 
       - name: Upload signed artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rayforge-windows-signed
           path: "*.exe"
@@ -161,7 +161,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
@@ -236,7 +236,7 @@ jobs:
           xcrun stapler staple "$DMG_PATH"
 
       - name: Upload signed+notarized artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rayforge-macos-signed
           path: "*.dmg"
@@ -249,7 +249,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           run-id: ${{ github.event.workflow_run.id }}
@@ -281,7 +281,7 @@ jobs:
           fi
 
       - name: Upload signed .deb artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rayforge-debian-signed
           path: "*.deb"
