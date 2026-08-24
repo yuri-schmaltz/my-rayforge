@@ -5,10 +5,11 @@ on:
     - cron: "0 6 * * *" # Daily at 6 AM UTC
   workflow_dispatch:
 
-# This job only reads from the snap store (via snapcraft) and pushes
-# counters to an external VictoriaMetrics endpoint. The GITHUB_TOKEN
-# is never used for repo write, so `contents: read` is enough.
-# Closes CodeQL alert "Workflow does not contain permissions".
+# This job only reads public download counters (GitHub Releases, Flathub,
+# PyPI, Launchpad PPA) and pushes them to an external VictoriaMetrics
+# endpoint. The GITHUB_TOKEN is never used for repo write, so
+# `contents: read` is enough. Closes CodeQL alert "Workflow does not
+# contain permissions".
 permissions:
   contents: read
 
@@ -20,16 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Install snapcraft
-        run: sudo snap install snapcraft --classic
-
       - name: Fetch and push stats to VictoriaMetrics
         env:
-          SNAPCRAFT_STORE_CREDENTIALS: /tmp/snapcraft-creds.txt
           METRICS_URL: ${{ secrets.METRICS_URL }}
           METRICS_API_USER: ${{ secrets.METRICS_API_USER }}
           METRICS_API_PASSWORD: ${{ secrets.METRICS_API_PASSWORD }}
         run: |
-          echo "${{ secrets.STORE_LOGIN }}" > /tmp/snapcraft-creds.txt
           python3 scripts/fetch_download_stats.py --output metrics
-          rm -f /tmp/snapcraft-creds.txt

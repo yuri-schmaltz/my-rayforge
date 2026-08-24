@@ -29,14 +29,13 @@ class SerialPortPermissionError(Exception):
 
 def safe_list_ports_linux() -> List[str]:
     """
-    A non-crashing implementation of list_ports for sandboxed Linux envs.
+    A conservative glob-based fallback for listing serial ports on Linux.
 
-    pyserial's default list_ports.comports() tries to access /dev/ttyS*
-    ports, which is forbidden by the snap sandbox. This leads to a
-    permission error that causes a TypeError in the pyserial code.
-
-    This function avoids that by only looking for common USB-to-serial
-    device patterns that are permitted by the serial-port interface.
+    pyserial's default ``list_ports.comports()`` uses udev and can crash
+    or raise permission errors in environments where udev is restricted
+    (containers, minimal images, locked-down udev rules). This function
+    avoids that by only looking for common USB-to-serial device patterns
+    that don't require udev enumeration.
     """
     ports = []
     # Use glob to find all devices matching the common patterns
@@ -63,18 +62,24 @@ class SerialTransport(Transport):
     @staticmethod
     def list_ports() -> List[str]:
         """Lists available serial ports."""
-        # If we're on Linux (posix) and running in a Snap, use our
-        # safe scanner, as list_ports.comports() fails with permission errors.
-        if os.name == "posix" and "SNAP" in os.environ:
-            return safe_list_ports_linux()
+        if os.name != "posix":
+            # On non-POSIX systems, fall back to the default enumeration.
+            try:
+                return sorted([p.device for p in list_ports.comports()])
+            except Exception as e:
+                logger.error(f"Failed to list serial ports: {e}")
+                return []
 
-        # On other systems or outside a Snap, the default is fine.
+        # On POSIX, prefer the pyserial default (more complete, uses udev)
+        # and fall back to a conservative glob if udev is unavailable or
+        # the call raises a permission error.
         try:
             return sorted([p.device for p in list_ports.comports()])
         except Exception as e:
-            # Fallback for any other unexpected errors
-            logger.error(f"Failed to list serial ports with pyserial: {e}")
-            return []
+            logger.warning(
+                f"pyserial enumeration failed ({e}); using glob fallback"
+            )
+            return safe_list_ports_linux()
 
     @staticmethod
     def list_usb_ports() -> List[str]:
@@ -92,8 +97,7 @@ class SerialTransport(Transport):
         """
         On POSIX systems, checks if there are visible serial ports that the
         user cannot access. This is a strong indicator that the user is not
-        in the correct group (e.g., 'dialout') or, in a Snap, lacks the
-        necessary permissions.
+        in the correct group (e.g., 'dialout').
 
         Raises:
             SerialPortPermissionError: If systemic permission issues are
@@ -104,43 +108,18 @@ class SerialTransport(Transport):
 
         # Retrieve a list of all relevant serial ports.
         all_ports = SerialTransport.list_usb_ports()
-        snap_name = os.environ.get("SNAP_NAME", "rayforge")
 
-        # First, handle the case where no ports are found and
-        # provide environment-specific guidance if applicable.
-        if not all_ports and "SNAP" in os.environ:
-            msg = _(
-                "Failed to list serial ports due to a Snap confinement!"
-                " Please ensure the device is connected via USB and run:"
-                "\n\n"
-                "sudo snap set system experimental.hotplug=true\n"
-                "sudo snap connect {snap_name}:serial-port"
-            ).format(snap_name=snap_name)
-            raise SerialPortPermissionError(msg)
+        if not all_ports:
+            raise SerialPortPermissionError("No USB serial ports found.")
 
-        elif not all_ports:
-            msg = "No USB serial ports found."
-            raise SerialPortPermissionError(msg)
-
-        # Next, check if any of the found ports are accessible.
+        # Check if any of the found ports are accessible.
         if any(os.access(p, os.R_OK | os.W_OK) for p in all_ports):
             return  # At least one port is accessible; no systemic issue.
 
-        if "SNAP" in os.environ:
-            msg = _(
-                "Serial ports found, but none are accessible. Please ensure"
-                " your Snap has the 'serial-port' interface connected by"
-                " running:\n\n"
-                "sudo snap set system experimental.hotplug=true\n"
-                "sudo snap connect {snap_name}:serial-port"
-            ).format(snap_name=snap_name)
-            raise SerialPortPermissionError(msg)
-        else:
-            msg = (
-                "Could not access any serial ports. On Linux, ensure "
-                "your user is in the 'dialout' group."
-            )
-            raise SerialPortPermissionError(msg)
+        raise SerialPortPermissionError(
+            "Could not access any serial ports. On Linux, ensure "
+            "your user is in the 'dialout' group."
+        )
 
     @staticmethod
     def list_baud_rates() -> List[int]:
